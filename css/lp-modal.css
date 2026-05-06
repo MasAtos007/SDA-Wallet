@@ -1,0 +1,164 @@
+.lp-range{
+    margin-top:10px;
+}
+
+/* OPTION */
+.range-option{
+    display:flex;
+    align-items:center;
+    gap:10px;
+    padding:10px;
+    border-radius:10px;
+    cursor:pointer;
+    color:#aaa;
+    background:#111;
+    margin-bottom:6px;
+}
+
+.range-option i{
+    opacity:0;
+    color:#4cafef;
+}
+
+.range-option.active{
+    background:#1a1a1a;
+    color:#fff;
+}
+
+.range-option.active i{
+    opacity:1;
+}
+
+/* ROW */
+.range-row{
+    display:flex;
+    align-items:center;
+    gap:8px;
+    margin-bottom:8px;
+}
+
+.range-row input{
+    flex:1;
+}
+
+/* CONTROLS */
+.range-controls{
+    display:flex;
+    align-items:center;
+    gap:6px;
+}
+
+.range-controls button{
+    padding:4px 8px;
+    border:none;
+    background:#222;
+    color:#fff;
+    border-radius:6px;
+    cursor:pointer;
+}
+
+.range-controls span{
+    font-size:12px;
+    color:#aaa;
+}
+
+.range-inline{
+    display:flex;
+    gap:14px;
+    font-size:13px;
+}
+
+/* ITEM */
+.range-item{
+    display:flex;
+    align-items:center;
+    gap:6px;
+    cursor:pointer;
+    color:#777;
+}
+
+/* ICON */
+.range-item i{
+    font-size:11px;
+    opacity:0;
+}
+
+/* ACTIVE */
+.range-item.active{
+    color:#fff;
+    font-weight:600;
+}
+
+.range-item.active i{
+    opacity:1;
+}
+
+
+
+
+.lp-card{
+    background:#111;
+    border:1px solid #222;
+    border-radius:18px;
+    padding:16px;
+    margin-bottom:14px;
+    cursor:pointer;
+}
+
+.lp-header{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+}
+
+.lp-pair{
+    display:flex;
+    gap:10px;
+    align-items:center;
+}
+
+.lp-icon{
+    width:28px;
+    height:28px;
+    border-radius:50%;
+}
+
+.lp-icon.overlap{
+    margin-left:-10px;
+}
+
+.lp-status{
+    padding:6px 12px;
+    border-radius:999px;
+    font-size:12px;
+}
+
+.lp-status.active{
+    background:#0a3;
+    color:#fff;
+}
+
+.lp-status.inactive{
+    background:#822;
+    color:#fff;
+}
+
+.lp-range-bar{
+    height:6px;
+    background:#222;
+    border-radius:99px;
+    margin-top:10px;
+    position:relative;
+}
+
+.lp-range-dot{
+    width:14px;
+    height:14px;
+    background:#00ff99;
+    border-radius:50%;
+    position:absolute;
+    top:-4px;
+    transform:translateX(-50%);
+}
+
+
