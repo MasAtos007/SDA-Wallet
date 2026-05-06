@@ -1,0 +1,220 @@
+
+/* =====================================================
+    BASE MODAL SYSTEM (GLOBAL OVERLAY)
+===================================================== */
+
+.modal{
+    position:fixed;
+    inset:0;
+    background:rgba(0,0,0,0.65);
+    display:none;
+    align-items:center;
+    justify-content:center;
+    padding:20px;
+    z-index:9999;
+}
+
+.modal.show{
+    display:flex;
+}
+
+/* GENERIC CONTENT */
+.modal-content{
+    background:#111;
+    width:100%;
+    max-width:420px;
+
+    max-height:85vh;
+    overflow-y:auto;
+
+    border-radius:22px;
+    padding:24px;
+
+    animation:fadeIn .25s ease;
+}
+
+/* HEADER GLOBAL */
+.modal-header{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    margin-bottom:15px;
+    font-weight:600;
+}
+
+/* CLOSE */
+.modal-header span,
+.modal-close{
+    cursor:pointer;
+}
+
+/* ANIMATION */
+@keyframes fadeIn{
+    from{opacity:0;transform:scale(.95);}
+    to{opacity:1;transform:scale(1);}
+}
+
+
+/* =====================================================
+    QR MODAL
+===================================================== */
+
+#qrModalImg,
+#receiveQR{
+    width:170px;
+    padding:10px;
+    background:#111;
+    border-radius:16px;
+
+    border:2px solid #fff;
+    box-shadow:
+        0 0 0 4px #2a2a2a,
+        0 0 20px rgba(255,255,255,0.08),
+        inset 0 0 10px rgba(255,255,255,0.05);
+
+    display:block;
+    margin:15px auto;
+
+    transition:.25s;
+}
+
+#qrModalImg:hover,
+#receiveQR:hover{
+    transform:scale(1.03);
+    box-shadow:
+        0 0 0 4px #3a3a3a,
+        0 0 25px rgba(255,122,0,0.25);
+}
+
+
+/* =====================================================
+    SEND MODAL
+===================================================== */
+
+/* MODAL BASE */
+.send-modal{
+    position:fixed;
+    inset:0;
+    background:#0b0f14;
+    z-index:9999;
+
+    display:none;
+    justify-content:center;
+    align-items:flex-start;
+    overflow-y:auto;
+}
+
+.send-modal.show{
+    display:flex;
+}
+
+/* CONTAINER */
+.send-container{
+    width:100%;
+    max-width:420px;
+    padding:16px;
+}
+
+/* CARD (SAMA KAYAK SWAP) */
+.send-card{
+    position:relative;
+    background:linear-gradient(145deg,#1a1f27,#0f141b);
+    border-radius:20px;
+    padding:16px;
+    box-shadow:0 0 30px rgba(0,0,0,0.5);
+}
+
+/* CLOSE */
+.close-btn.inside{
+    position:absolute;
+    top:12px;
+    right:12px;
+    font-size:20px;
+    cursor:pointer;
+    opacity:0.7;
+}
+
+.close-btn.inside:hover{
+    opacity:1;
+}
+
+/* TITLE */
+
+
+.send-card .swap-title{
+    display:flex;
+    align-items:center;
+    gap:10px;
+    font-size:20px;
+    font-weight:bold;
+}
+
+.swap-sub{
+    font-size:12px;
+    color:#aaa;
+    margin-bottom:15px;
+}
+
+/* BODY */
+.send-body{
+    display:flex;
+    flex-direction:column;
+    gap:12px;
+}
+
+/* INPUT CARD (KAYAK SWAP) */
+.input-card{
+    background:#0c1117;
+    border-radius:18px;
+    padding:14px;
+}
+
+/* INPUT */
+.input-box{
+    display:flex;
+    align-items:center;
+    gap:10px;
+}
+
+.input-box input{
+    width:100%;
+    background:transparent;
+    border:none;
+    outline:none;
+    color:#fff;
+}
+
+/* TOKEN */
+.token-box{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+}
+
+/* BALANCE */
+.send-balance{
+    margin-top:6px;
+    font-size:12px;
+    color:#aaa;
+    display:flex;
+    align-items:center;
+    gap:6px;
+}
+
+.send-balance img{
+    width:16px;
+}
+
+/* BUTTON (PAKAI STYLE SWAP) */
+.btn{
+    margin-top:10px;
+    width:100%;
+    padding:16px;
+    border:none;
+    border-radius:18px;
+    background:#ff4d00;
+    color:#fff;
+    font-size:16px;
+    font-weight:bold;
+    cursor:pointer;
+}
