@@ -559,25 +559,44 @@ return {
         }
 
         results.sort((a, b) => {
-    const aPenalty = a.liquidityWarn ? 999999 : 0;
-    const bPenalty = b.liquidityWarn ? 999999 : 0;
 
-    const aPlus = (a.savingsPct ?? -999) > 0;
-    const bPlus = (b.savingsPct ?? -999) > 0;
+    const aProfit = a.savings ?? -999999;
+    const bProfit = b.savings ?? -999999;
 
-    if (aPlus && !bPlus) return -1;
-    if (!aPlus && bPlus) return 1;
-
-    if (aPlus && bPlus) {
-        return (a.sdaEquiv + aPenalty) - (b.sdaEquiv + bPenalty);
+    // PRIORITAS PROFIT SDA TERBESAR
+    if (bProfit !== aProfit) {
+        return bProfit - aProfit;
     }
 
-    return (a.savingsPct ?? 0) - (b.savingsPct ?? 0);
+    // PRIORITAS LIQUIDITY TERBESAR
+    const aLiq = a.maxSafeReceive ?? 0;
+    const bLiq = b.maxSafeReceive ?? 0;
+
+    if (bLiq !== aLiq) {
+        return bLiq - aLiq;
+    }
+
+    // BARU PERSENTASE
+    return (b.savingsPct ?? -999) - (a.savingsPct ?? -999);
+
 });
 
-const profitable = results.filter(r =>
-    (r.savings ?? 0) >= MIN_AUTO_PROFIT_SDA
-);
+const profitable = results.filter(r => {
+
+    const profit = r.savings ?? 0;
+
+    // wajib profit minimal
+    if (profit < MIN_AUTO_PROFIT_SDA) {
+        return false;
+    }
+
+    // wajib liquidity layak
+    if ((r.maxSafeReceive ?? 0) < 1) {
+        return false;
+    }
+
+    return true;
+});
 
 const reverseCandidates = results.filter(r =>
     (r.savingsPct ?? 0) <= -10
@@ -678,6 +697,11 @@ return [
         : r.unitsNeeded.toFixed(6).replace(/\.?0+$/, "");
 
     const sdaDisplay = Number(r.sdaEquiv || 0).toFixed(4);
+    
+    const profitDisplay =
+    r.savings !== null
+        ? `${r.savings.toFixed(4)} SDA`
+        : "-";
 
         // Liquidity warning
         // =====================================
@@ -739,9 +763,20 @@ return `
                 </div>
 
                 <div class="agg-meta">
-                    ${unitsDisplay} ${r.paySymbol}
-                    &equiv; ${sdaDisplay} SDA
-                </div>
+    ${unitsDisplay} ${r.paySymbol}
+    &equiv; ${sdaDisplay} SDA
+</div>
+
+<div class="agg-profit"
+     style="
+        font-size:11px;
+        margin-top:2px;
+        color:${(r.savings ?? 0) > 0 ? '#00d084' : '#ff4d4f'};
+     ">
+    Profit Est:
+    ${(r.savings ?? 0) > 0 ? '+' : ''}
+    ${profitDisplay}
+</div>
 
                 ${liqWarnHTML}
 
