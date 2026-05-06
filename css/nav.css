@@ -1,0 +1,129 @@
+
+/* =========================
+   COMPACT FLOATING BOTTOM NAV
+========================= */
+
+.bottom-nav{
+    position:fixed;
+    left:10px;
+    right:10px;
+    bottom:10px;
+
+    height:58px;
+
+    display:flex;
+    justify-content:space-around;
+    align-items:center;
+
+    background:rgba(17, 17, 17, 0.55);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+
+    border:1px solid rgba(255,255,255,0.06);
+    border-radius:16px;
+
+    box-shadow:0 6px 20px rgba(0,0,0,0.4);
+
+    z-index:999999;
+
+    /* 🔥 FIX LAYER BUG */
+    transform:none;
+    will-change:auto;
+}
+
+/* =========================
+   NAV ITEM (COMPACT)
+========================= */
+
+.nav-item{
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    justify-content:center;
+
+    gap:2px;
+
+    font-size:10px;
+    color:#aaa;
+
+    cursor:pointer;
+    transition:0.2s ease;
+
+    user-select:none;
+}
+
+/* ICON */
+.nav-item i{
+    font-size:16px;
+
+    width:34px;
+    height:34px;
+
+    display:flex;
+    align-items:center;
+    justify-content:center;
+
+    border-radius:10px;
+
+    background:rgba(255,255,255,0.04);
+    color:#aaa;
+
+    transition:0.2s ease;
+}
+
+/* HOVER */
+.nav-item:hover i{
+    background:#ff7a00;
+    color:#fff;
+}
+
+.nav-item:hover{
+    color:#ff7a00;
+}
+
+/* ACTIVE */
+.nav-item.active{
+    color:#ff7a00;
+}
+
+.nav-item.active i{
+    background:#ff7a00;
+    color:#fff;
+    box-shadow:0 0 10px rgba(255,122,0,0.5);
+}
+
+/* CLICK */
+.nav-item:active{
+    transform:scale(0.95);
+}
+
+/* =========================
+   SAFE AREA (FOOTER FIX)
+========================= */
+
+/* ruang bawah cukup tapi tidak kebanyakan */
+body{
+    padding-bottom:85px;
+}
+
+/* kalau ada container utama */
+.app{
+    padding-bottom:85px;
+}
+
+/* =========================
+   MODAL SAFE LOCK (FIX BUG FOOTER FLOAT)
+========================= */
+
+body.modal-open{
+    overflow:hidden;
+}
+
+/* 🔥 penting: cegah efek transform parent bikin fixed aneh */
+.app,
+.swap-container,
+.modal,
+.swap-modal,
+.send-modal{
+    transform:none !important;
+}
