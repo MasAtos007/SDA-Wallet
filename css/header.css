@@ -1,0 +1,220 @@
+/* =========================
+   HEADER
+========================= */
+
+.header{
+    background:#111;
+    padding:15px;
+    border-radius:14px;
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    margin-bottom:15px;
+}
+
+/* LEFT SIDE */
+.header-left{
+    display:flex;
+    align-items:center;
+    gap:10px;
+}
+
+/* RIGHT SIDE */
+.header-right{
+    display:flex;
+    gap:12px;
+    align-items:center;
+}
+
+/* =========================
+   ICON BUTTON (FIX BUG LONJONG)
+========================= */
+
+.header-right i{
+    font-size:16px;
+
+    width:36px;
+    height:36px;
+
+    display:inline-flex; /* 🔥 FIX */
+
+    align-items:center;
+    justify-content:center;
+
+    border-radius:10px;
+    background:#1a1a1a;
+
+    cursor:pointer;
+    transition:all 0.25s ease;
+
+    line-height:1;
+}
+
+.header-right i::before{
+    display:block;
+}
+
+/* HOVER ICON */
+.header-right i:hover{
+    background:#ff7a00;
+    color:#fff;
+}
+
+/* CLICK EFFECT */
+.header-right i:active{
+    transform:scale(0.95);
+}
+
+/* =========================
+   LOGO
+========================= */
+
+.logo{
+    width:40px;
+    height:40px;
+    border-radius:10px;
+    background:#1a1a1a;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    box-shadow:0 0 10px rgba(255,122,0,0.4);
+    overflow:hidden;
+}
+
+.logo img{
+    width:70%;
+    height:70%;
+    object-fit:contain;
+}
+
+/* TITLE */
+.title{
+    font-size:16px;
+    font-weight:600;
+    color:#fff;
+}
+
+/* =========================
+   MENU WRAPPER
+========================= */
+
+.menu-wrapper{
+    position:relative;
+}
+
+/* DROPDOWN */
+.menu-dropdown{
+    position:absolute;
+    top:45px;
+    right:0;
+
+    background:#111;
+    border:1px solid #222;
+    border-radius:10px;
+
+    width:140px;
+
+    display:none;
+    flex-direction:column;
+
+    z-index:999;
+}
+
+/* ITEM */
+.menu-dropdown div{
+    padding:10px;
+    font-size:13px;
+    color:#ccc;
+    cursor:pointer;
+}
+
+/* HOVER */
+.menu-dropdown div:hover{
+    background:#1a1a1a;
+    color:#fff;
+}
+
+/* =========================
+   BELL WRAPPER
+========================= */
+
+.bell-wrapper{
+    position:relative;
+    display:flex;
+    align-items:center;
+}
+
+/* =========================
+   BADGE NOTIFICATION
+========================= */
+
+.badge{
+    position:absolute;
+    top:2px;
+    right:2px;
+
+    background:#ff3b3b;
+    color:#fff;
+
+    font-size:10px;
+    font-weight:600;
+
+    padding:2px 6px;
+    border-radius:50px;
+
+    min-width:16px;
+    text-align:center;
+
+    display:none;
+
+    box-shadow:0 0 6px rgba(255,0,0,0.6);
+}
+
+
+
+
+
+.pk-btn{
+    position:relative;
+}
+
+/* indikator di bawah icon */
+.pk-indicator{
+    position:absolute;
+    bottom:-14px;
+    left:50%;
+    transform:translateX(-50%);
+
+    display:flex;
+    align-items:center;
+    gap:4px;
+
+    font-size:9px;
+    padding:2px 6px;
+
+    background:#111;
+    border-radius:6px;
+
+    white-space:nowrap;
+}
+
+/* titik hijau */
+.pk-dot{
+    width:6px;
+    height:6px;
+    border-radius:50%;
+    background:#00ff66;
+    box-shadow:0 0 5px #00ff66;
+    animation: blink 1s infinite;
+}
+
+/* animasi */
+@keyframes blink{
+    0%,100%{opacity:1;}
+    50%{opacity:0.3;}
+}
+
+.pk-text{
+    color:#aaa;
+    font-size:9px;
+}
