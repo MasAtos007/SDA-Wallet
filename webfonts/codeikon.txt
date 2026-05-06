@@ -1,0 +1,164 @@
+Tentu bisa, Atos. Aku buatkan **kumpulan ikon Font Awesome** yang paling sering dipakai untuk proyek seperti punyamu: e-commerce, warung online, order, keranjang, kategori, user, pembayaran, promo, lokasi, dll.
+
+Semua sudah **siap copy-paste**.
+
+---
+
+# 🚀 1) **IKON NAVBAR / MENU**
+
+```html
+<i class="fa-solid fa-house"></i>
+<i class="fa-solid fa-bars"></i>
+<i class="fa-solid fa-xmark"></i>
+<i class="fa-solid fa-ellipsis"></i>
+<i class="fa-solid fa-bell"></i>
+<i class="fa-solid fa-user"></i>
+<i class="fa-solid fa-gear"></i>
+```
+
+---
+
+# 🛒 2) **IKON PRODUK & KERANJANG**
+
+```html
+<i class="fa-solid fa-cart-shopping"></i>
+<i class="fa-solid fa-cart-plus"></i>
+<i class="fa-solid fa-cart-arrow-down"></i>
+<i class="fa-solid fa-basket-shopping"></i>
+<i class="fa-solid fa-bag-shopping"></i>
+<i class="fa-solid fa-bags-shopping"></i> <!-- versi pro -->
+<i class="fa-solid fa-tag"></i>
+<i class="fa-solid fa-tags"></i>
+<i class="fa-solid fa-store"></i>
+```
+
+---
+
+# 🚚 3) **IKON PENGIRIMAN / CEK PESANAN**
+
+Ikon paling cocok untuk “cek pesanan” 👇
+
+```html
+<i class="fa-solid fa-truck-fast"></i>
+<i class="fa-solid fa-truck"></i>
+<i class="fa-solid fa-truck-moving"></i>
+<i class="fa-solid fa-truck-ramp-box"></i>
+<i class="fa-solid fa-motorcycle"></i>
+<i class="fa-solid fa-person-biking"></i>
+<i class="fa-solid fa-location-dot"></i>
+<i class="fa-solid fa-location-crosshairs"></i>
+<i class="fa-solid fa-map-location-dot"></i>
+<i class="fa-solid fa-clock-rotate-left"></i> <!-- riwayat -->
+```
+
+---
+
+# 📦 4) **IKON PAKET / ORDER**
+
+```html
+<i class="fa-solid fa-box"></i>
+<i class="fa-solid fa-box-open"></i>
+<i class="fa-solid fa-boxes-stacked"></i>
+<i class="fa-solid fa-clipboard-check"></i>
+<i class="fa-solid fa-receipt"></i>
+<i class="fa-solid fa-file-invoice"></i>
+<i class="fa-solid fa-list-check"></i>
+<i class="fa-solid fa-barcode"></i>
+```
+
+---
+
+# 🧭 5) **IKON KATEGORI PRODUK**
+
+Ikon untuk kategori warung/toko online:
+
+```html
+<i class="fa-solid fa-utensils"></i>         <!-- makanan -->
+<i class="fa-solid fa-bottle-water"></i>     <!-- minuman -->
+<i class="fa-solid fa-apple-whole"></i>      <!-- buah -->
+<i class="fa-solid fa-bread-slice"></i>      <!-- roti -->
+<i class="fa-solid fa-mug-hot"></i>          <!-- kopi / minuman panas -->
+<i class="fa-solid fa-ice-cream"></i>        <!-- es krim -->
+<i class="fa-solid fa-egg"></i>              <!-- telur -->
+<i class="fa-solid fa-pepper-hot"></i>       <!-- bumbu / pedas -->
+<i class="fa-solid fa-leaf"></i>             <!-- sayur -->
+<i class="fa-solid fa-soap"></i>             <!-- sabun -->
+<i class="fa-solid fa-pump-soap"></i>        <!-- sabun cair -->
+<i class="fa-solid fa-screwdriver-wrench"></i> <!-- peralatan -->
+<i class="fa-solid fa-lightbulb"></i>        <!-- listrik / lampu -->
+```
+
+---
+
+# ❤️ 6) **IKON FAVORIT / AKSI**
+
+```html
+<i class="fa-solid fa-heart"></i>
+<i class="fa-regular fa-heart"></i>
+<i class="fa-solid fa-share"></i>
+<i class="fa-solid fa-thumbs-up"></i>
+<i class="fa-solid fa-check"></i>
+<i class="fa-solid fa-plus"></i>
+<i class="fa-solid fa-minus"></i>
+<i class="fa-solid fa-rotate"></i>
+```
+
+---
+
+# 📑 7) **IKON FORM / INPUT**
+
+```html
+<i class="fa-solid fa-user"></i>
+<i class="fa-solid fa-phone"></i>
+<i class="fa-solid fa-location-dot"></i>
+<i class="fa-solid fa-envelope"></i>
+<i class="fa-solid fa-id-card"></i>
+<i class="fa-solid fa-calendar"></i>
+<i class="fa-solid fa-clock"></i>
+```
+
+---
+
+# 💳 8) **IKON PEMBAYARAN**
+
+```html
+<i class="fa-brands fa-google-pay"></i>
+<i class="fa-brands fa-cc-visa"></i>
+<i class="fa-brands fa-cc-mastercard"></i>
+<i class="fa-solid fa-money-bill"></i>
+<i class="fa-solid fa-wallet"></i>
+<i class="fa-solid fa-receipt"></i>
+```
+
+---
+
+# 🧰 9) **IKON UI / UTILITAS**
+
+```html
+<i class="fa-solid fa-search"></i>
+<i class="fa-solid fa-filter"></i>
+<i class="fa-solid fa-arrow-up"></i>
+<i class="fa-solid fa-arrow-down"></i>
+<i class="fa-solid fa-refresh"></i>
+<i class="fa-solid fa-spinner fa-spin"></i> <!-- loading -->
+<i class="fa-solid fa-circle-info"></i>     <!-- info -->
+<i class="fa-solid fa-circle-exclamation"></i> <!-- warning -->
+```
+
+---
+
+# 🤖 10) **IKON SOSIAL**
+
+```html
+<i class="fa-brands fa-whatsapp"></i>
+<i class="fa-brands fa-instagram"></i>
+<i class="fa-brands fa-facebook"></i>
+<i class="fa-brands fa-tiktok"></i>
+```
+
+---
+
+# 🔥 Mau aku buatkan **versi PNG icon** yang rapi untuk offline?
+
+Atau kamu mau list **ikon berdasarkan kategori toko kamu**?
+Tinggal bilang saja.
