@@ -1,0 +1,322 @@
+/* =====================================
+   LP CARD â€” mirip official Uniswap V3
+===================================== */
+
+/* CARD */
+.lp-card {
+    background: #141414;
+    border: 1px solid #222;
+    border-radius: 16px;
+    padding: 16px;
+    margin-bottom: 12px;
+    cursor: pointer;
+    transition: border-color 0.15s;
+}
+
+.lp-card:hover {
+    border-color: #333;
+}
+
+/* HEADER */
+.lp-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+}
+
+.lp-pair {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.lp-pair-logos {
+    position: relative;
+    width: 46px;
+    height: 28px;
+    flex-shrink: 0;
+}
+
+.lp-icon {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    object-fit: contain;
+    background: #1a1a1a;
+    position: absolute;
+}
+
+.lp-icon:first-child {
+    left: 0;
+    z-index: 1;
+}
+
+.lp-icon.overlap,
+.lp-icon:last-child {
+    left: 18px;
+    z-index: 2;
+    border: 2px solid #141414;
+}
+
+.lp-title {
+    font-size: 16px;
+    font-weight: 700;
+    color: #fff;
+}
+
+.lp-sub {
+    font-size: 12px;
+    color: #888;
+    margin-top: 2px;
+}
+
+/* STATUS BADGE */
+.lp-status-badge {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 12px;
+    font-weight: 600;
+    padding: 5px 10px;
+    border-radius: 20px;
+}
+
+.lp-status-badge.active {
+    background: #0d2a1a;
+    color: #00d084;
+}
+
+.lp-status-badge.inactive {
+    background: #1a1a1a;
+    color: #888;
+}
+
+.lp-status-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    flex-shrink: 0;
+}
+
+.lp-status-badge.active .lp-status-dot {
+    background: #00d084;
+}
+
+.lp-status-badge.inactive .lp-status-dot {
+    background: #555;
+}
+
+/* CURRENT PRICE */
+.lp-current-price {
+    font-size: 12px;
+    color: #aaa;
+    text-align: center;
+    margin-bottom: 10px;
+}
+
+/* RANGE BAR */
+.lp-range-track {
+    position: relative;
+    height: 6px;
+    background: #222;
+    border-radius: 6px;
+    margin-bottom: 6px;
+    overflow: visible;
+}
+
+.lp-range-fill {
+    height: 100%;
+    border-radius: 6px;
+    background: #333;
+    transition: width 0.3s;
+}
+
+.lp-range-fill.active {
+    background: linear-gradient(90deg, #1a4a2a, #00d084);
+}
+
+.lp-range-dot-new {
+    position: absolute;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    background: #555;
+    border: 2px solid #141414;
+    z-index: 2;
+    transition: left 0.3s;
+}
+
+.lp-range-dot-new.active {
+    background: #00d084;
+    box-shadow: 0 0 6px #00d08480;
+}
+
+/* RANGE LABELS */
+.lp-range-labels {
+    display: flex;
+    justify-content: space-between;
+    font-size: 11px;
+    color: #666;
+    margin-bottom: 12px;
+}
+
+/* AMOUNTS */
+.lp-amounts {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    margin-bottom: 10px;
+    background: #0d0d0d;
+    border-radius: 10px;
+    padding: 10px 14px;
+}
+
+.lp-amount-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 14px;
+    color: #fff;
+}
+
+.lp-amount-item b {
+    font-weight: 700;
+}
+
+.lp-amount-sep {
+    color: #444;
+    font-size: 16px;
+}
+
+/* FEES BAR â€” ada fees */
+.lp-fees-bar {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    background: #1a1200;
+    border: 1px solid #3a2800;
+    border-radius: 10px;
+    padding: 8px 14px;
+    font-size: 13px;
+}
+
+/* FEES EMPTY */
+.lp-fees-empty {
+    text-align: center;
+    font-size: 12px;
+    color: #555;
+    padding: 6px 0;
+}
+
+
+/* =====================================
+   LP DETAIL VIEW
+===================================== */
+.lp-detail {
+    padding: 4px 0;
+}
+
+.lp-back-btn {
+    background: transparent;
+    border: none;
+    color: #888;
+    font-size: 13px;
+    cursor: pointer;
+    padding: 0 0 14px 0;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.lp-back-btn:hover { color: #fff; }
+
+.lp-detail-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 16px;
+}
+
+.lp-detail-card {
+    background: #0d0d0d;
+    border: 1px solid #1a1a1a;
+    border-radius: 14px;
+    padding: 14px;
+    margin-bottom: 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.lp-card-title {
+    font-size: 13px;
+    font-weight: 600;
+    color: #888;
+    margin-bottom: 4px;
+}
+
+.lp-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 13px;
+    color: #ccc;
+}
+
+.lp-price-info {
+    font-size: 12px;
+    color: #888;
+    text-align: center;
+    padding: 4px 0;
+}
+
+.lp-btn {
+    width: 100%;
+    padding: 12px;
+    border: 1px solid #222;
+    border-radius: 10px;
+    background: #1a1a1a;
+    color: #ccc;
+    font-size: 13px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    transition: 0.15s;
+}
+
+.lp-btn:hover:not(:disabled) {
+    background: #222;
+    color: #fff;
+}
+
+.lp-btn.primary {
+    background: #ff7a00;
+    color: #fff;
+    border-color: transparent;
+}
+
+.lp-btn.primary:hover:not(:disabled) {
+    background: #e06a00;
+}
+
+.lp-btn.danger {
+    background: #2a0d0d;
+    color: #ff4d4f;
+    border-color: #ff4d4f30;
+}
+
+.lp-btn.danger:hover:not(:disabled) {
+    background: #3a1010;
+}
+
+.lp-btn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
