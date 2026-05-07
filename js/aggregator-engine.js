@@ -1520,30 +1520,19 @@ refreshRouteDataAfterAuto(
 
     } catch (e) {
 
-        console.error(e);
+    console.error(e);
 
-        showToast?.(
-            profit >= 0
-                ? `Profit +${profit.toFixed(4)} SDA`
-                : `Loss ${profit.toFixed(4)} SDA`,
-            profit >= 0 ? "success" : "error"
-        );
-        
-        try {
-    window.dingAudio.currentTime = 0;
-    await window.dingAudio?.play();
-} catch {}
+    try {
+        window.dingAudio.currentTime = 0;
+        await window.dingAudio?.play();
+    } catch {}
 
-    } catch (e) {
+    showToast?.(
+        e?.message || "Auto reverse gagal",
+        "error"
+    );
 
-        console.error(e);
-
-        showToast?.(
-            e?.message || "Auto reverse gagal",
-            "error"
-        );
-
-    } finally {
+} finally {
 
     _suspendWatcher = false;
     await releaseWakeLock();
