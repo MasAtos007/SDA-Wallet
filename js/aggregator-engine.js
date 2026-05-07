@@ -698,9 +698,14 @@ return [
 
     const sdaDisplay = Number(r.sdaEquiv || 0).toFixed(4);
     
-    const profitDisplay =
-    r.savings !== null
-        ? `${r.savings.toFixed(4)} SDA`
+    const effectiveProfit =
+    (r.savingsPct ?? 0) < 0
+        ? Math.abs(r.savings || 0)
+        : (r.savings || 0);
+
+const profitDisplay =
+    effectiveProfit > 0
+        ? `${effectiveProfit.toFixed(4)} SDA`
         : "-";
 
         // Liquidity warning
@@ -771,10 +776,10 @@ return `
      style="
         font-size:11px;
         margin-top:2px;
-        color:${(r.savings ?? 0) > 0 ? '#00d084' : '#ff4d4f'};
+        color:${effectiveProfit > 0 ? '#00d084' : '#ff4d4f'};
      ">
     Profit Est:
-    ${(r.savings ?? 0) > 0 ? '+' : ''}
+    +
     ${profitDisplay}
 </div>
 
@@ -824,9 +829,8 @@ return `
     !r.isSDA &&
     !r.liquidityWarn &&
     r.savingsPct !== null &&
-   (
-    (r.savings ?? 0) >= MIN_AUTO_PROFIT_SDA ||
-    (r.savingsPct ?? 0) <= -10
+(
+    Math.abs(r.savings ?? 0) >= MIN_AUTO_PROFIT_SDA
 )
 ? `
     <button class="agg-auto-btn"
