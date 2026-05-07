@@ -25,6 +25,8 @@ window.AGGREGATOR = (() => {
     const BATCH_DELAY  = 500;
     const MAX_RESULTS        = 15;
 const MIN_AUTO_PROFIT_SDA = 0.1;
+const MIN_SAFE_RECEIVE = 0.001;
+
 
     let _scanning      = false;
 let _lastScanKey   = "";
@@ -501,6 +503,16 @@ try {
     if (liq) {
 
 if (liq.maxSwapOut) {
+
+    console.log(
+        "[AGG DEBUG]",
+        symbolOf(receiveToken),
+        "raw maxSwapOut:",
+        liq.maxSwapOut,
+        "decimals:",
+        getTokenDecimals(receiveToken)
+    );
+
     maxSafeReceive = formatTokenAmount(
         liq.maxSwapOut,
         getTokenDecimals(receiveToken)
@@ -526,6 +538,12 @@ if (liq.maxSwapOut) {
     );
 }
 
+if (
+    maxSafeReceive !== null &&
+    maxSafeReceive < MIN_SAFE_RECEIVE
+) {
+    return null;
+}
 
 return {
     payToken:  token.address,
@@ -535,11 +553,17 @@ return {
     unitsNeeded,
     sdaEquiv: netSDAEq,
 
-    savings: baselineSDACost
-        ? baselineSDACost - netSDAEq
-        : null,
+    savings: _isNat(token.address)
+    ? 0
+    : (
+        baselineSDACost
+            ? baselineSDACost - netSDAEq
+            : null
+    ),
 
-    savingsPct,
+    savingsPct: _isNat(token.address)
+    ? 0
+    : savingsPct,
     hops,
 
     isSDA: _isNat(token.address),
@@ -732,9 +756,13 @@ const liqWarnHTML = hasLiqData
                     ? 'Max Aman'
                     : 'Liq OK'
             }:
-            ~${Number(r.maxSafeReceive).toLocaleString(undefined,{
-    maximumFractionDigits:2
-})}
+            ~${
+    r.maxSafeReceive < 0.01
+        ? Number(r.maxSafeReceive).toExponential(2)
+        : Number(r.maxSafeReceive).toLocaleString(undefined,{
+            maximumFractionDigits:2
+        })
+}
             ${symbolOf(receiveToken)}
         </div>
     `
@@ -776,11 +804,14 @@ return `
      style="
         font-size:11px;
         margin-top:2px;
-        color:${effectiveProfit > 0 ? '#00d084' : '#ff4d4f'};
+        color:${effectiveProfit > 0 ? '#00d084' : '#888'};
      ">
     Profit Est:
-    +
-    ${profitDisplay}
+    ${
+        profitDisplay === "-"
+            ? "-"
+            : `+ ${profitDisplay}`
+    }
 </div>
 
                 ${liqWarnHTML}
@@ -827,11 +858,14 @@ return `
 
         ${
     !r.isSDA &&
-    !r.liquidityWarn &&
     r.savingsPct !== null &&
-(
-    Math.abs(r.savings ?? 0) >= MIN_AUTO_PROFIT_SDA
-)
+    (
+        Math.abs(r.savings ?? 0) >= MIN_AUTO_PROFIT_SDA &&
+        (
+            r.maxSafeReceive === null ||
+            r.maxSafeReceive >= MIN_SAFE_RECEIVE
+        )
+    )
 ? `
     <button class="agg-auto-btn"
     onclick="event.stopPropagation();
