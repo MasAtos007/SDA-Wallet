@@ -1212,6 +1212,12 @@ async function autoRouteBuy(
 
         const safeFinal =
             Math.floor(finalReceived * 10000) / 10000;
+            
+            // refresh background setelah swap 2 selesai
+refreshRouteDataAfterAuto(
+    intermediateToken,
+    finalToken
+).catch(console.warn);
 
         // =========================
         // STEP 3 FINAL -> SDA
@@ -1281,21 +1287,26 @@ async function autoRouteBuy(
             finalSdaAfter;
 
         const profit =
-            finalSdaAfter - initialSda;
+    Number(
+        (
+            finalSdaAfter -
+            initialSda
+        ).toFixed(6)
+    );
 
         const profitPct =
-            initialSda > 0
-                ? (profit / initialSda) * 100
-                : 0;
+    Math.abs(initialSda) > 0
+        ? (profit / initialSda) * 100
+        : 0;
 
         showToast?.(
-            profit > 0
-                ? `Profit +${profit.toFixed(4)} SDA (+${profitPct.toFixed(2)}%)`
-                : `Rugi ${profit.toFixed(4)} SDA (${profitPct.toFixed(2)}%)`,
-            profit > 0
-                ? "success"
-                : "error"
-        );
+    profit >= MIN_AUTO_PROFIT_SDA
+        ? `Profit +${profit.toFixed(4)} SDA (+${profitPct.toFixed(2)}%)`
+        : `Rugi ${profit.toFixed(4)} SDA (${profitPct.toFixed(2)}%)`,
+    profit >= MIN_AUTO_PROFIT_SDA
+        ? "success"
+        : "error"
+);
 
         try {
             const audio =
@@ -1455,6 +1466,12 @@ async function autoRouteReverse(
             );
         }
 
+// refresh background setelah swap 2 selesai
+refreshRouteDataAfterAuto(
+    intermediateToken,
+    finalToken
+).catch(console.warn);
+
         // =========================
         // STEP 3 INTERMEDIATE -> SDA
         // =========================
@@ -1500,6 +1517,22 @@ async function autoRouteReverse(
                 : `Loss ${profit.toFixed(4)} SDA`,
             profit >= 0 ? "success" : "error"
         );
+
+    } catch (e) {
+
+        console.error(e);
+
+        showToast?.(
+            profit >= 0
+                ? `Profit +${profit.toFixed(4)} SDA`
+                : `Loss ${profit.toFixed(4)} SDA`,
+            profit >= 0 ? "success" : "error"
+        );
+        
+        try {
+    window.dingAudio.currentTime = 0;
+    await window.dingAudio?.play();
+} catch {}
 
     } catch (e) {
 
@@ -1633,6 +1666,48 @@ async function buyMaxSafe(payToken, receiveToken) {
             "Gagal auto set max safe",
             "error"
         );
+    }
+}
+
+async function refreshRouteDataAfterAuto(
+    intermediateToken,
+    finalToken
+) {
+    try {
+
+        const targetAmt =
+            parseFloat(
+                document.getElementById("receiveAmount")?.value
+            ) || 1;
+
+        // refresh route item yg berubah
+        await Promise.allSettled([
+
+            refreshSingleRoute(
+                intermediateToken,
+                finalToken,
+                targetAmt
+            ),
+
+            refreshSingleRoute(
+                finalToken,
+                "native",
+                targetAmt
+            )
+
+        ]);
+
+        // refresh ranking + liquidity full
+        _lastScanKey = "";
+        triggerScan().catch(console.warn);
+
+    } catch (e) {
+
+        console.warn(
+            "[AGG] refreshRouteDataAfterAuto fail:",
+            e
+        );
+
     }
 }
 
