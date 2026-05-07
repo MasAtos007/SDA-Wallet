@@ -1213,27 +1213,33 @@ async function autoRouteBuy(
         const safeFinal =
             Math.floor(finalReceived * 10000) / 10000;
             
-            // refresh background setelah swap 2 selesai
-refreshRouteDataAfterAuto(
-    intermediateToken,
-    finalToken
-).catch(console.warn);
+            try {
+    refreshRouteDataAfterAuto(
+        intermediateToken,
+        finalToken
+    );
+} catch (e) {
+    console.warn(e);
+}
 
-        // =========================
-        // STEP 3 FINAL -> SDA
-        // =========================
-        showToast?.(
-            `3/3 Sell to SDA...`,
-            "info"
-        );
+        if (!isAutoRunning()) {
+    throw new Error("Auto interrupted before step 3");
+}
+
+showToast?.(
+    `3/3 Sell to SDA...`,
+    "info"
+);
 
         try {
 
-            await SWAP_ENGINE.executeSwap(
-                finalToken,
-                "native",
-                safeFinal
-            );
+            await new Promise(r => setTimeout(r, 1200));
+
+await SWAP_ENGINE.executeSwap(
+    finalToken,
+    "native",
+    safeFinal
+);
 
         } catch (step3Err) {
 
@@ -1337,7 +1343,12 @@ refreshRouteDataAfterAuto(
     } finally {
 
     _suspendWatcher = false;
-    await releaseWakeLock();
+
+    try {
+        await releaseWakeLock();
+    } catch (e) {
+        console.warn(e);
+    }
 
     setAutoRunning(false);
     unlockAutoButtons();
@@ -1466,11 +1477,20 @@ async function autoRouteReverse(
             );
         }
 
-// refresh background setelah swap 2 selesai
-refreshRouteDataAfterAuto(
-    intermediateToken,
-    finalToken
-).catch(console.warn);
+try {
+    refreshRouteDataAfterAuto(
+        intermediateToken,
+        finalToken
+    );
+    
+    setTimeout(() => {
+        const btn = document.querySelector(".agg-pin-btn");
+        if (btn) btn.click();
+    }, 300);
+    
+} catch (e) {
+    console.warn(e);
+}
 
         // =========================
         // STEP 3 INTERMEDIATE -> SDA
@@ -1521,6 +1541,8 @@ refreshRouteDataAfterAuto(
     } catch (e) {
 
     console.error(e);
+    setAutoRunning(false);
+unlockAutoButtons();
 
     try {
         window.dingAudio.currentTime = 0;
@@ -1535,7 +1557,12 @@ refreshRouteDataAfterAuto(
 } finally {
 
     _suspendWatcher = false;
-    await releaseWakeLock();
+
+    try {
+        await releaseWakeLock();
+    } catch (e) {
+        console.warn(e);
+    }
 
     setAutoRunning(false);
     unlockAutoButtons();
