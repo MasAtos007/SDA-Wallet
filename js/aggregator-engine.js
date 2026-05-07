@@ -1668,18 +1668,31 @@ function refreshRouteDataAfterAuto(
             document.getElementById("receiveAmount")?.value
         ) || 1;
 
-    // refresh background TANPA await
-    refreshSingleRoute(
-        intermediateToken,
-        finalToken,
-        targetAmt
-    ).catch(console.warn);
+    // refresh route 1 background
+    (async () => {
+        try {
+            await refreshSingleRoute(
+                intermediateToken,
+                finalToken,
+                targetAmt
+            );
+        } catch (e) {
+            console.warn(e);
+        }
+    })();
 
-    refreshSingleRoute(
-        finalToken,
-        "native",
-        targetAmt
-    ).catch(console.warn);
+    // refresh route 2 background
+    (async () => {
+        try {
+            await refreshSingleRoute(
+                finalToken,
+                "native",
+                targetAmt
+            );
+        } catch (e) {
+            console.warn(e);
+        }
+    })();
 }
 
 return {
