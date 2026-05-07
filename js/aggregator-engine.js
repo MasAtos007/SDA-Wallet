@@ -1658,46 +1658,28 @@ async function buyMaxSafe(payToken, receiveToken) {
     }
 }
 
-async function refreshRouteDataAfterAuto(
+function refreshRouteDataAfterAuto(
     intermediateToken,
     finalToken
 ) {
-    try {
 
-        const targetAmt =
-            parseFloat(
-                document.getElementById("receiveAmount")?.value
-            ) || 1;
+    const targetAmt =
+        parseFloat(
+            document.getElementById("receiveAmount")?.value
+        ) || 1;
 
-        // refresh route item yg berubah
-        await Promise.allSettled([
+    // refresh background TANPA await
+    refreshSingleRoute(
+        intermediateToken,
+        finalToken,
+        targetAmt
+    ).catch(console.warn);
 
-            refreshSingleRoute(
-                intermediateToken,
-                finalToken,
-                targetAmt
-            ),
-
-            refreshSingleRoute(
-                finalToken,
-                "native",
-                targetAmt
-            )
-
-        ]);
-
-        // refresh ranking + liquidity full
-        _lastScanKey = "";
-        triggerScan().catch(console.warn);
-
-    } catch (e) {
-
-        console.warn(
-            "[AGG] refreshRouteDataAfterAuto fail:",
-            e
-        );
-
-    }
+    refreshSingleRoute(
+        finalToken,
+        "native",
+        targetAmt
+    ).catch(console.warn);
 }
 
 return {
