@@ -538,12 +538,7 @@ if (liq.maxSwapOut) {
     );
 }
 
-if (
-    maxSafeReceive !== null &&
-    maxSafeReceive < MIN_SAFE_RECEIVE
-) {
-    return null;
-}
+
 
 return {
     payToken:  token.address,
@@ -607,19 +602,9 @@ return {
 
 const profitable = results.filter(r => {
 
-    const profit = r.savings ?? 0;
+    const profit = Math.abs(r.savings ?? 0);
 
-    // wajib profit minimal
-    if (profit < MIN_AUTO_PROFIT_SDA) {
-        return false;
-    }
-
-    // wajib liquidity layak
-    if ((r.maxSafeReceive ?? 0) < 1) {
-        return false;
-    }
-
-    return true;
+    return profit >= MIN_AUTO_PROFIT_SDA;
 });
 
 const reverseCandidates = results.filter(r =>
@@ -858,14 +843,7 @@ return `
 
         ${
     !r.isSDA &&
-    r.savingsPct !== null &&
-    (
-        Math.abs(r.savings ?? 0) >= MIN_AUTO_PROFIT_SDA &&
-        (
-            r.maxSafeReceive === null ||
-            r.maxSafeReceive >= MIN_SAFE_RECEIVE
-        )
-    )
+    r.savingsPct !== null
 ? `
     <button class="agg-auto-btn"
     onclick="event.stopPropagation();
@@ -1124,7 +1102,11 @@ async function autoRouteBuy(
         const ok = confirm(
             `Auto Arbitrage Full\n\n` +
             `${adjusted ? '⚠ Spend capped\n\n' : ''}` +
-            `Start SDA: ${sdaNeeded.toFixed(4)}\n` +
+            `Start SDA: ${
+    sdaNeeded < 0.0001
+        ? sdaNeeded.toExponential(4)
+        : sdaNeeded.toFixed(4)
+}\n` +
             `Route:\n` +
             `SDA → ${symbolOf(intermediateToken)} → ${symbolOf(finalToken)} → SDA`
         );
