@@ -255,16 +255,70 @@ async function scanSpecificCandidate(
 
         const sdaEquiv = unitsNeeded * sdaPerToken;
 
-        return {
+// ================================
+// REFRESH LIQUIDITY
+// ================================
+
+let maxSafeReceive = null;
+let liquidityWarn = false;
+
+try {
+
+    const liq =
+        await PRICE_ENGINE.getPoolLiquidity(
             payToken,
-            paySymbol: symbolOf(payToken),
-            payLogo: logoOf(payToken),
-            unitsNeeded,
-            sdaEquiv,
-            isSDA: payToken === "native",
-            savingsPct: null,
-            hops: payToken === "native" ? 1 : 2
-        };
+            receiveToken
+        );
+
+    if (liq) {
+
+        if (liq.maxSwapOut) {
+
+            maxSafeReceive =
+                formatTokenAmount(
+                    liq.maxSwapOut,
+                    getTokenDecimals(receiveToken)
+                );
+        }
+
+        else if (liq.maxSwapIn) {
+
+            maxSafeReceive =
+                formatTokenAmount(
+                    liq.maxSwapIn,
+                    getTokenDecimals(payToken)
+                ) * rateOut;
+        }
+
+        if (
+            maxSafeReceive &&
+            targetAmt > maxSafeReceive
+        ) {
+            liquidityWarn = true;
+        }
+    }
+
+} catch(e) {
+
+    console.warn(
+        "[AGG] Refresh liq fail:",
+        e
+    );
+}
+
+return {
+    payToken,
+    paySymbol: symbolOf(payToken),
+    payLogo: logoOf(payToken),
+    unitsNeeded,
+    sdaEquiv,
+    isSDA: payToken === "native",
+    savingsPct: null,
+    hops: payToken === "native" ? 1 : 2,
+
+    maxSafeReceive,
+    liquidityWarn
+};
 
     } catch (e) {
         console.error(e);
@@ -1695,7 +1749,7 @@ function refreshRouteDataAfterAuto(
             document.getElementById("receiveAmount")?.value
         ) || 1;
 
-    // refresh route 1 background
+    // refresh hanya route utama panel
     (async () => {
         try {
             await refreshSingleRoute(
@@ -1708,18 +1762,6 @@ function refreshRouteDataAfterAuto(
         }
     })();
 
-    // refresh route 2 background
-    (async () => {
-        try {
-            await refreshSingleRoute(
-                finalToken,
-                "native",
-                targetAmt
-            );
-        } catch (e) {
-            console.warn(e);
-        }
-    })();
 }
 
 return {
