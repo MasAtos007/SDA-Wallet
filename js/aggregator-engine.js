@@ -188,6 +188,65 @@ function toggleAggregatorCandidate(token){
     }
 }
 
+function getSmartCandidates() {
+
+    return JSON.parse(
+        localStorage.getItem(
+            "aggSmartCandidates"
+        ) || "[]"
+    );
+}
+
+function saveSmartCandidate(
+    token,
+    profit = 0
+) {
+
+    if (
+        !token ||
+        token === "native"
+    ) return;
+
+    let list = getSmartCandidates();
+
+    const found = list.find(
+        x => x.token === token
+    );
+
+    if (found) {
+
+        found.score += 1;
+        found.profit += profit;
+        found.last = Date.now();
+
+    } else {
+
+        list.push({
+            token,
+            score: 1,
+            profit,
+            last: Date.now()
+        });
+    }
+
+    list.sort((a,b) => {
+
+        if (b.score !== a.score) {
+            return b.score - a.score;
+        }
+
+        return b.profit - a.profit;
+    });
+
+    list = list.slice(0, 25);
+
+    localStorage.setItem(
+        "aggSmartCandidates",
+        JSON.stringify(list)
+    );
+}
+
+
 function cleanupAggregatorCandidates() {
 
     const current =
@@ -430,14 +489,45 @@ const selectedSet = new Set(
     selectedCandidates.map(a => String(a).toLowerCase())
 );
 
+const smartList =
+    getSmartCandidates();
+
+const smartSet = new Set(
+    smartList.map(x =>
+        String(x.token).toLowerCase()
+    )
+);
+
 let filteredCustom = tokenList.filter(
-    t =>
-        t.address &&
-        selectedSet.has(String(t.address).toLowerCase())
+    t => {
+
+        if (!t.address) {
+            return false;
+        }
+
+        const addr =
+            String(t.address).toLowerCase();
+
+        // manual checklist
+        if (selectedSet.has(addr)) {
+            return true;
+        }
+
+        // smart auto-learn token
+        if (smartSet.has(addr)) {
+            return true;
+        }
+
+        return false;
+    }
 );
 
 const candidates = [
-    { address: "native", symbol: "SDA", logo: "img/sda.png" },
+    {
+        address: "native",
+        symbol: "SDA",
+        logo: "img/sda.png"
+    },
 
     ...filteredCustom.filter(t =>
         t.address &&
@@ -447,16 +537,43 @@ const candidates = [
     )
 ];
 
-        const targetAmt = amountOut > 0 ? amountOut : 1;
-const panelEl   = document.getElementById("aggPanel");
+const targetAmt =
+    amountOut > 0
+        ? amountOut
+        : 1;
 
+const panelEl =
+    document.getElementById("aggPanel");
+
+// =====================================
+// EMPTY STATE
+// =====================================
 if (!filteredCustom.length) {
 
     if (panelEl) {
+
+        const smartCount =
+            smartList.length;
+
         panelEl.innerHTML = `
-            <div style="padding:12px;color:#888;font-size:12px;">
-                Tidak ada kandidat dipilih.<br>
-                Menggunakan SDA baseline saja.
+            <div style="
+                padding:14px;
+                color:#888;
+                font-size:12px;
+                line-height:1.5;
+            ">
+                Tidak ada kandidat manual dipilih.
+                <br><br>
+
+                Smart Kandidat:
+                <b style="color:#00d084">
+                    ${smartCount}
+                </b>
+
+                <br><br>
+
+                Jalankan auto profit dulu
+                agar sistem belajar token terbaik.
             </div>
         `;
     }
@@ -465,80 +582,232 @@ if (!filteredCustom.length) {
         payToken: "native",
         paySymbol: "SDA",
         payLogo: "img/sda.png",
+
         unitsNeeded: targetAmt,
         sdaEquiv: targetAmt,
+
         savings: 0,
         savingsPct: 0,
+
         hops: 1,
         isSDA: true,
+
         maxSafeReceive: null,
         liquidityWarn: false
     }];
 }
 
-        // debug helper â€” tampil langsung di panel
-        const dbg = (msg) => {
-            if (panelEl) panelEl.innerHTML +=
-                `<div style="font-size:10px;color:#555;padding:1px 12px;">${msg}</div>`;
-        };
+// =====================================
+// DEBUG HELPER
+// =====================================
+const dbg = (msg) => {
 
-        if (panelEl) panelEl.innerHTML =
-    `<div style="padding:10px 12px;font-size:11px;color:#888;">
-        Scan ${candidates.length} kandidat
-        (${Math.max(candidates.length - 1, 0)} custom + SDA baseline)
-        untuk ${symbolOf(receiveToken)}...
-     </div>`;
+    if (!panelEl) return;
 
-        // baseline: berapa SDA untuk dapat 1 receiveToken
-        let baselineSDACost = null;
-        try {
-            const sdaOut = await withTimeout(PRICE_ENGINE.getAmountOut("native", receiveToken, 1), SCAN_TIMEOUT);
-            dbg(`SDA -> ${symbolOf(receiveToken)}: rate=${sdaOut}`);
-            if (sdaOut > 0) baselineSDACost = targetAmt / sdaOut;
-        } catch(e) {
-            dbg(`baseline err: ${e.message}`);
-        }
+    panelEl.innerHTML += `
+        <div style="
+            font-size:10px;
+            color:#555;
+            padding:1px 12px;
+        ">
+            ${msg}
+        </div>
+    `;
+};
 
-        const results = [];
+// =====================================
+// PANEL HEADER
+// =====================================
+if (panelEl) {
 
-        for (let i = 0; i < candidates.length; i += BATCH_SIZE) {
-            const batch = candidates.slice(i, i + BATCH_SIZE);
+    const manualCount =
+        filteredCustom.filter(t =>
+            selectedSet.has(
+                String(t.address).toLowerCase()
+            )
+        ).length;
 
-            const batchRes = await Promise.all(batch.map(async (token) => {
+    const smartOnlyCount =
+        filteredCustom.length - manualCount;
+
+    panelEl.innerHTML = `
+        <div style="
+            padding:10px 12px;
+            font-size:11px;
+            color:#888;
+            line-height:1.5;
+        ">
+            Scan
+            <b>${candidates.length}</b>
+            kandidat
+            untuk
+            <b>${symbolOf(receiveToken)}</b>
+
+            <br>
+
+            Manual:
+            ${manualCount}
+
+            • Smart:
+            ${smartOnlyCount}
+
+            • SDA baseline
+        </div>
+    `;
+}
+
+// =====================================
+// BASELINE SDA COST
+// =====================================
+let baselineSDACost = null;
+
+try {
+
+    const sdaOut =
+        await withTimeout(
+            PRICE_ENGINE.getAmountOut(
+                "native",
+                receiveToken,
+                1
+            ),
+            SCAN_TIMEOUT
+        );
+
+    dbg(
+        `SDA -> ${symbolOf(receiveToken)}: ${sdaOut}`
+    );
+
+    if (sdaOut > 0) {
+        baselineSDACost =
+            targetAmt / sdaOut;
+    }
+
+} catch(e) {
+
+    dbg(
+        `baseline err: ${e.message}`
+    );
+}
+
+const results = [];
+
+for (
+    let i = 0;
+    i < candidates.length;
+    i += BATCH_SIZE
+) {
+
+    const batch =
+        candidates.slice(
+            i,
+            i + BATCH_SIZE
+        );
+
+    const batchRes =
+        await Promise.all(
+            batch.map(async (token) => {
+
                 try {
-                    // rate: 1 token -> berapa receiveToken
-                    const rateOut = await withTimeout(
-                        PRICE_ENGINE.getAmountOut(token.address, receiveToken, 1),
-                        SCAN_TIMEOUT
-                    );
-                    dbg(`${token.symbol} -> ${symbolOf(receiveToken)}: ${rateOut}`);
-                    if (!rateOut || rateOut <= 0) return null;
 
-                    const unitsNeeded = targetAmt / rateOut;
-
-                    // harga token dalam SDA
-                    let sdaPerToken = _isNat(token.address) ? 1 : null;
-                    if (!sdaPerToken) {
-                        const out2 = await withTimeout(
-                            PRICE_ENGINE.getAmountOut("native", token.address, 1),
+                    // =========================
+                    // RATE OUT
+                    // =========================
+                    const rateOut =
+                        await withTimeout(
+                            PRICE_ENGINE.getAmountOut(
+                                token.address,
+                                receiveToken,
+                                1
+                            ),
                             SCAN_TIMEOUT
                         );
-                        dbg(`  SDA -> ${token.symbol}: ${out2}`);
-                        sdaPerToken = out2 > 0 ? (1 / out2) : null;
-                    }
-                    if (!sdaPerToken || sdaPerToken <= 0) return null;
 
-                    const totalSDAEq = unitsNeeded * sdaPerToken;
-                    const hops       = _isNat(token.address) ? 1 : 2;
-                    const feeAdj     = Math.pow(1 - FEE_PER_HOP, hops) * (1 - SLIPPAGE);
-                    const netSDAEq   = totalSDAEq / feeAdj;
+                    dbg(
+                        `${token.symbol} -> ${symbolOf(receiveToken)}: ${rateOut}`
+                    );
+
+                    if (
+                        !rateOut ||
+                        rateOut <= 0
+                    ) {
+                        return null;
+                    }
+
+                    const unitsNeeded =
+                        targetAmt / rateOut;
+
+                    // =========================
+                    // SDA PRICE
+                    // =========================
+                    let sdaPerToken =
+                        _isNat(token.address)
+                            ? 1
+                            : null;
+
+                    if (!sdaPerToken) {
+
+                        const out2 =
+                            await withTimeout(
+                                PRICE_ENGINE.getAmountOut(
+                                    "native",
+                                    token.address,
+                                    1
+                                ),
+                                SCAN_TIMEOUT
+                            );
+
+                        dbg(
+                            `SDA -> ${token.symbol}: ${out2}`
+                        );
+
+                        sdaPerToken =
+                            out2 > 0
+                                ? (1 / out2)
+                                : null;
+                    }
+
+                    if (
+                        !sdaPerToken ||
+                        sdaPerToken <= 0
+                    ) {
+                        return null;
+                    }
+
+                    const totalSDAEq =
+                        unitsNeeded *
+                        sdaPerToken;
+
+                    const hops =
+                        _isNat(token.address)
+                            ? 1
+                            : 2;
+
+                    const feeAdj =
+                        Math.pow(
+                            1 - FEE_PER_HOP,
+                            hops
+                        ) *
+                        (1 - SLIPPAGE);
+
+                    const netSDAEq =
+                        totalSDAEq / feeAdj;
 
                     let savingsPct = null;
 
-if (baselineSDACost && baselineSDACost > 0) {
-    savingsPct =
-        ((baselineSDACost - netSDAEq) / baselineSDACost) * 100;
-}
+                    if (
+                        baselineSDACost &&
+                        baselineSDACost > 0
+                    ) {
+
+                        savingsPct =
+                            (
+                                (
+                                    baselineSDACost -
+                                    netSDAEq
+                                ) /
+                                baselineSDACost
+                            ) * 100;
+                    }
 
 
 
@@ -1086,13 +1355,149 @@ if (_suspendWatcher) return;
         setTimeout(() => { injectUI(); initWatcher(); }, 600);
     });
     
+    
+    async function emergencyBackToSDA(
+    token,
+    amount,
+    retries = 3
+) {
+
+    if (!token || token === "native") {
+        return false;
+    }
+
+    let lastErr = null;
+
+    for (let i = 0; i < retries; i++) {
+
+        try {
+
+            showToast?.(
+                `Recovery sell ${symbolOf(token)}...`,
+                "warning"
+            );
+
+            await SWAP_ENGINE.executeSwap(
+                token,
+                "native",
+                amount * 0.995
+            );
+
+            await new Promise(r =>
+                setTimeout(r, 2000)
+            );
+
+            showToast?.(
+                `${symbolOf(token)} recovered to SDA`,
+                "success"
+            );
+
+            return true;
+
+        } catch (e) {
+
+            lastErr = e;
+
+            console.warn(
+                "[RECOVERY FAIL]",
+                i + 1,
+                e
+            );
+
+            await new Promise(r =>
+                setTimeout(r, 1500)
+            );
+        }
+    }
+
+    console.error(
+        "[RECOVERY FINAL FAIL]",
+        lastErr
+    );
+
+    showToast?.(
+        `Recovery gagal untuk ${symbolOf(token)}`,
+        "error"
+    );
+
+    return false;
+}
+    
 async function autoRouteBuy(
     intermediateToken,
     finalToken,
     targetFinalOutInput
 ) {
+
     let interReceived = 0;
     let finalReceived = 0;
+
+    async function emergencyBackToSDA(
+        token,
+        amount,
+        retries = 3
+    ) {
+
+        if (!token || token === "native") {
+            return false;
+        }
+
+        let lastErr = null;
+
+        for (let i = 0; i < retries; i++) {
+
+            try {
+
+                showToast?.(
+                    `Recovery sell ${symbolOf(token)}...`,
+                    "warning"
+                );
+
+                await SWAP_ENGINE.executeSwap(
+                    token,
+                    "native",
+                    amount * 0.995
+                );
+
+                await new Promise(r =>
+                    setTimeout(r, 2000)
+                );
+
+                showToast?.(
+                    `${symbolOf(token)} recovered to SDA`,
+                    "success"
+                );
+
+                return true;
+
+            } catch (e) {
+
+                lastErr = e;
+
+                console.warn(
+                    "[RECOVERY FAIL]",
+                    i + 1,
+                    e
+                );
+
+                await new Promise(r =>
+                    setTimeout(r, 1500)
+                );
+            }
+        }
+
+        console.error(
+            "[RECOVERY FINAL FAIL]",
+            lastErr
+        );
+
+        showToast?.(
+            `Recovery gagal untuk ${symbolOf(token)}`,
+            "error"
+        );
+
+        return false;
+    }
 
     try {
 
@@ -1100,10 +1505,17 @@ async function autoRouteBuy(
             await getWalletTokenBalance("native");
 
         _suspendWatcher = true;
+
         await acquireWakeLock();
 
-        if (!targetFinalOutInput || targetFinalOutInput <= 0) {
-            showToast?.("Invalid target", "error");
+        if (
+            !targetFinalOutInput ||
+            targetFinalOutInput <= 0
+        ) {
+            showToast?.(
+                "Invalid target",
+                "error"
+            );
             return;
         }
 
@@ -1117,12 +1529,16 @@ async function autoRouteBuy(
                 1
             );
 
-        if (!rateIntermediateToFinal || rateIntermediateToFinal <= 0) {
+        if (
+            !rateIntermediateToFinal ||
+            rateIntermediateToFinal <= 0
+        ) {
             throw new Error("Route invalid");
         }
 
         let intermediateNeeded =
-            targetFinalOut / rateIntermediateToFinal;
+            targetFinalOut /
+            rateIntermediateToFinal;
 
         const rateSdaToIntermediate =
             await PRICE_ENGINE.getAmountOut(
@@ -1131,36 +1547,50 @@ async function autoRouteBuy(
                 1
             );
 
-        if (!rateSdaToIntermediate || rateSdaToIntermediate <= 0) {
-            throw new Error("Cannot price SDA route");
+        if (
+            !rateSdaToIntermediate ||
+            rateSdaToIntermediate <= 0
+        ) {
+            throw new Error(
+                "Cannot price SDA route"
+            );
         }
 
         let sdaNeeded =
-            intermediateNeeded / rateSdaToIntermediate;
+            intermediateNeeded /
+            rateSdaToIntermediate;
 
         const MAX_AUTO_SDA_SPEND = 10;
 
         let adjusted = false;
 
         if (sdaNeeded > MAX_AUTO_SDA_SPEND) {
+
             const scale =
-                MAX_AUTO_SDA_SPEND / sdaNeeded;
+                MAX_AUTO_SDA_SPEND /
+                sdaNeeded;
 
             targetFinalOut *= scale;
             intermediateNeeded *= scale;
-            sdaNeeded = MAX_AUTO_SDA_SPEND;
+
+            sdaNeeded =
+                MAX_AUTO_SDA_SPEND;
 
             adjusted = true;
         }
 
         const ok = confirm(
             `Auto Arbitrage Full\n\n` +
-            `${adjusted ? '⚠ Spend capped\n\n' : ''}` +
+            `${
+                adjusted
+                    ? '⚠ Spend capped\n\n'
+                    : ''
+            }` +
             `Start SDA: ${
-    sdaNeeded < 0.0001
-        ? sdaNeeded.toExponential(4)
-        : sdaNeeded.toFixed(4)
-}\n` +
+                sdaNeeded < 0.0001
+                    ? sdaNeeded.toExponential(4)
+                    : sdaNeeded.toFixed(4)
+            }\n` +
             `Route:\n` +
             `SDA → ${symbolOf(intermediateToken)} → ${symbolOf(finalToken)} → SDA`
         );
@@ -1168,8 +1598,10 @@ async function autoRouteBuy(
         if (!ok) return;
 
         // =========================
-        // STEP 1 SDA -> INTERMEDIATE
+        // STEP 1
+        // SDA -> INTERMEDIATE
         // =========================
+
         const balInterBefore =
             await getWalletTokenBalance(
                 intermediateToken
@@ -1196,7 +1628,8 @@ async function autoRouteBuy(
             );
 
         interReceived =
-            balInterAfter - balInterBefore;
+            balInterAfter -
+            balInterBefore;
 
         if (interReceived <= 0) {
             throw new Error(
@@ -1205,11 +1638,15 @@ async function autoRouteBuy(
         }
 
         const safeInter =
-            Math.floor(interReceived * 10000) / 10000;
+            Math.floor(
+                interReceived * 10000
+            ) / 10000;
 
         // =========================
-        // STEP 2 INTERMEDIATE -> FINAL
+        // STEP 2
+        // INTERMEDIATE -> FINAL
         // =========================
+
         const balFinalBefore =
             await getWalletTokenBalance(
                 finalToken
@@ -1231,17 +1668,14 @@ async function autoRouteBuy(
         } catch (step2Err) {
 
             showToast?.(
-                "Step 2 gagal — recovery sell intermediate...",
+                "Step 2 gagal — emergency recovery...",
                 "warning"
             );
 
-            try {
-                await SWAP_ENGINE.executeSwap(
-                    intermediateToken,
-                    "native",
-                    safeInter * 0.999
-                );
-            } catch {}
+            await emergencyBackToSDA(
+                intermediateToken,
+                safeInter
+            );
 
             throw step2Err;
         }
@@ -1256,7 +1690,8 @@ async function autoRouteBuy(
             );
 
         finalReceived =
-            balFinalAfter - balFinalBefore;
+            balFinalAfter -
+            balFinalBefore;
 
         if (finalReceived <= 0) {
             throw new Error(
@@ -1265,50 +1700,62 @@ async function autoRouteBuy(
         }
 
         const safeFinal =
-            Math.floor(finalReceived * 10000) / 10000;
-            
-            try {
-    refreshRouteDataAfterAuto(
-        intermediateToken,
-        finalToken
-    );
-} catch (e) {
-    console.warn(e);
-}
-
-        if (!isAutoRunning()) {
-    throw new Error("Auto interrupted before step 3");
-}
-
-showToast?.(
-    `3/3 Sell to SDA...`,
-    "info"
-);
+            Math.floor(
+                finalReceived * 10000
+            ) / 10000;
 
         try {
 
-            await new Promise(r => setTimeout(r, 1200));
+            refreshRouteDataAfterAuto(
+                intermediateToken,
+                finalToken
+            );
 
-await SWAP_ENGINE.executeSwap(
-    finalToken,
-    "native",
-    safeFinal
-);
+        } catch (e) {
+
+            console.warn(e);
+        }
+
+        if (!isAutoRunning()) {
+
+            throw new Error(
+                "Auto interrupted before step 3"
+            );
+        }
+
+        showToast?.(
+            `3/3 Sell to SDA...`,
+            "info"
+        );
+
+        // =========================
+        // STEP 3
+        // FINAL -> SDA
+        // =========================
+
+        try {
+
+            await new Promise(r =>
+                setTimeout(r, 1200)
+            );
+
+            await SWAP_ENGINE.executeSwap(
+                finalToken,
+                "native",
+                safeFinal
+            );
 
         } catch (step3Err) {
 
             showToast?.(
-                "Step 3 gagal — retry emergency sell...",
+                "Step 3 gagal — retry sell SDA...",
                 "warning"
             );
 
-            try {
-                await SWAP_ENGINE.executeSwap(
-                    finalToken,
-                    "native",
-                    safeFinal * 0.995
-                );
-            } catch {}
+            await emergencyBackToSDA(
+                finalToken,
+                safeFinal
+            );
 
             throw step3Err;
         }
@@ -1320,6 +1767,7 @@ await SWAP_ENGINE.executeSwap(
         // =========================
         // RESULT
         // =========================
+
         const finalSdaAfter =
             await getWalletTokenBalance(
                 "native"
@@ -1338,6 +1786,7 @@ await SWAP_ENGINE.executeSwap(
         }
 
         if (balanceEl) {
+
             balanceEl.textContent =
                 `${finalSdaAfter.toFixed(4)} SDA`;
         }
@@ -1346,29 +1795,29 @@ await SWAP_ENGINE.executeSwap(
             window._aggStartSda ||
             finalSdaAfter;
 
-        const profit =
-    Number(
-        (
-            finalSdaAfter -
-            initialSda
-        ).toFixed(6)
-    );
+        const profit = Number(
+            (
+                finalSdaAfter -
+                initialSda
+            ).toFixed(6)
+        );
 
         const profitPct =
-    Math.abs(initialSda) > 0
-        ? (profit / initialSda) * 100
-        : 0;
+            Math.abs(initialSda) > 0
+                ? (profit / initialSda) * 100
+                : 0;
 
         showToast?.(
-    profit >= MIN_AUTO_PROFIT_SDA
-        ? `Profit +${profit.toFixed(4)} SDA (+${profitPct.toFixed(2)}%)`
-        : `Rugi ${profit.toFixed(4)} SDA (${profitPct.toFixed(2)}%)`,
-    profit >= MIN_AUTO_PROFIT_SDA
-        ? "success"
-        : "error"
-);
+            profit >= MIN_AUTO_PROFIT_SDA
+                ? `Profit +${profit.toFixed(4)} SDA (+${profitPct.toFixed(2)}%)`
+                : `Rugi ${profit.toFixed(4)} SDA (${profitPct.toFixed(2)}%)`,
+            profit >= MIN_AUTO_PROFIT_SDA
+                ? "success"
+                : "error"
+        );
 
         try {
+
             const audio =
                 new Audio("audio/ding.mp3");
 
@@ -1379,6 +1828,19 @@ await SWAP_ENGINE.executeSwap(
 
         } catch {}
 
+if (profit > 0) {
+
+    saveSmartCandidate(
+        intermediateToken,
+        profit
+    );
+
+    saveSmartCandidate(
+        finalToken,
+        profit
+    );
+}
+
         showToast?.(
             "Full arbitrage completed",
             "success"
@@ -1388,6 +1850,29 @@ await SWAP_ENGINE.executeSwap(
 
         console.error(e);
 
+        // =========================
+        // GLOBAL RECOVERY
+        // =========================
+
+        try {
+
+            if (finalReceived > 0) {
+
+                await emergencyBackToSDA(
+                    finalToken,
+                    finalReceived
+                );
+
+            } else if (interReceived > 0) {
+
+                await emergencyBackToSDA(
+                    intermediateToken,
+                    interReceived
+                );
+            }
+
+        } catch {}
+
         showToast?.(
             e?.message ||
             "Auto arbitrage gagal",
@@ -1396,17 +1881,21 @@ await SWAP_ENGINE.executeSwap(
 
     } finally {
 
-    _suspendWatcher = false;
+        _suspendWatcher = false;
 
-    try {
-        await releaseWakeLock();
-    } catch (e) {
-        console.warn(e);
+        try {
+
+            await releaseWakeLock();
+
+        } catch (e) {
+
+            console.warn(e);
+        }
+
+        setAutoRunning(false);
+
+        unlockAutoButtons();
     }
-
-    setAutoRunning(false);
-    unlockAutoButtons();
-}
 }
 
 
@@ -1415,17 +1904,92 @@ async function autoRouteReverse(
     finalToken,
     targetOutInput
 ) {
+
+    let finalReceived = 0;
+    let interReceived = 0;
+
+    async function emergencyBackToSDA(
+        token,
+        amount,
+        retries = 3
+    ) {
+
+        if (!token || token === "native") {
+            return false;
+        }
+
+        let lastErr = null;
+
+        for (let i = 0; i < retries; i++) {
+
+            try {
+
+                showToast?.(
+                    `Recovery sell ${symbolOf(token)}...`,
+                    "warning"
+                );
+
+                await SWAP_ENGINE.executeSwap(
+                    token,
+                    "native",
+                    amount * 0.995
+                );
+
+                await new Promise(r =>
+                    setTimeout(r, 2000)
+                );
+
+                showToast?.(
+                    `${symbolOf(token)} recovered to SDA`,
+                    "success"
+                );
+
+                return true;
+
+            } catch (e) {
+
+                lastErr = e;
+
+                console.warn(
+                    "[RECOVERY FAIL]",
+                    i + 1,
+                    e
+                );
+
+                await new Promise(r =>
+                    setTimeout(r, 1500)
+                );
+            }
+        }
+
+        console.error(
+            "[RECOVERY FINAL FAIL]",
+            lastErr
+        );
+
+        showToast?.(
+            `Recovery gagal untuk ${symbolOf(token)}`,
+            "error"
+        );
+
+        return false;
+    }
+
     try {
 
         window._aggStartSda =
-            await getWalletTokenBalance("native");
+            await getWalletTokenBalance(
+                "native"
+            );
 
         _suspendWatcher = true;
+
         await acquireWakeLock();
 
         let spendSda = 10;
 
         try {
+
             const finalPerSda =
                 await PRICE_ENGINE.getAmountOut(
                     "native",
@@ -1434,16 +1998,21 @@ async function autoRouteReverse(
                 );
 
             const neededSda =
-                targetOutInput / finalPerSda;
+                targetOutInput /
+                finalPerSda;
 
             spendSda = Math.min(
                 neededSda * 0.95,
                 10
             );
+
         } catch {}
 
         if (spendSda <= 0) {
-            throw new Error("Invalid spend SDA");
+
+            throw new Error(
+                "Invalid spend SDA"
+            );
         }
 
         const ok = confirm(
@@ -1456,10 +2025,19 @@ async function autoRouteReverse(
         if (!ok) return;
 
         // =========================
-        // STEP 1 SDA -> FINAL
+        // STEP 1
+        // SDA -> FINAL
         // =========================
+
         const finalBefore =
-            await getWalletTokenBalance(finalToken);
+            await getWalletTokenBalance(
+                finalToken
+            );
+
+        showToast?.(
+            `1/3 Buy ${symbolOf(finalToken)}...`,
+            "info"
+        );
 
         await SWAP_ENGINE.executeSwap(
             "native",
@@ -1467,21 +2045,30 @@ async function autoRouteReverse(
             spendSda
         );
 
-        await new Promise(r=>setTimeout(r,2000));
+        await new Promise(r =>
+            setTimeout(r, 2000)
+        );
 
         const finalAfter =
-            await getWalletTokenBalance(finalToken);
+            await getWalletTokenBalance(
+                finalToken
+            );
 
-        const finalReceived =
+        finalReceived =
             finalAfter - finalBefore;
 
         if (finalReceived <= 0) {
-            throw new Error("Final token tidak diterima");
+
+            throw new Error(
+                "Final token tidak diterima"
+            );
         }
 
         // =========================
-        // STEP 2 FINAL -> INTERMEDIATE
+        // STEP 2
+        // FINAL -> INTERMEDIATE
         // =========================
+
         const step2Liq =
             await PRICE_ENGINE.getPoolLiquidity(
                 finalToken,
@@ -1492,10 +2079,13 @@ async function autoRouteReverse(
             finalReceived * 0.999;
 
         if (step2Liq?.maxSwapIn) {
+
             const maxSafeStep2 =
                 formatTokenAmount(
                     step2Liq.maxSwapIn,
-                    getTokenDecimals(finalToken)
+                    getTokenDecimals(
+                        finalToken
+                    )
                 ) * 0.95;
 
             sellFinalAmount = Math.min(
@@ -1509,46 +2099,81 @@ async function autoRouteReverse(
                 intermediateToken
             );
 
-        await SWAP_ENGINE.executeSwap(
-            finalToken,
-            intermediateToken,
-            sellFinalAmount
+        showToast?.(
+            `2/3 Swap to ${symbolOf(intermediateToken)}...`,
+            "info"
         );
 
-        await new Promise(r=>setTimeout(r,2000));
+        try {
+
+            await SWAP_ENGINE.executeSwap(
+                finalToken,
+                intermediateToken,
+                sellFinalAmount
+            );
+
+        } catch (step2Err) {
+
+            showToast?.(
+                "Step 2 gagal — emergency recovery...",
+                "warning"
+            );
+
+            await emergencyBackToSDA(
+                finalToken,
+                sellFinalAmount
+            );
+
+            throw step2Err;
+        }
+
+        await new Promise(r =>
+            setTimeout(r, 2000)
+        );
 
         const interAfter =
             await getWalletTokenBalance(
                 intermediateToken
             );
 
-        const interReceived =
+        interReceived =
             interAfter - interBefore;
 
         if (interReceived <= 0) {
+
             throw new Error(
                 "Intermediate token tidak diterima"
             );
         }
 
-try {
-    refreshRouteDataAfterAuto(
-        intermediateToken,
-        finalToken
-    );
-    
-    setTimeout(() => {
-        const btn = document.querySelector(".agg-pin-btn");
-        if (btn) btn.click();
-    }, 300);
-    
-} catch (e) {
-    console.warn(e);
-}
+        try {
+
+            refreshRouteDataAfterAuto(
+                intermediateToken,
+                finalToken
+            );
+
+            setTimeout(() => {
+
+                const btn =
+                    document.querySelector(
+                        ".agg-pin-btn"
+                    );
+
+                if (btn) btn.click();
+
+            }, 300);
+
+        } catch (e) {
+
+            console.warn(e);
+        }
 
         // =========================
-        // STEP 3 INTERMEDIATE -> SDA
+        // STEP 3
+        // INTERMEDIATE -> SDA
         // =========================
+
         const step3Liq =
             await PRICE_ENGINE.getPoolLiquidity(
                 intermediateToken,
@@ -1559,10 +2184,13 @@ try {
             interReceived * 0.999;
 
         if (step3Liq?.maxSwapIn) {
+
             const maxSafeStep3 =
                 formatTokenAmount(
                     step3Liq.maxSwapIn,
-                    getTokenDecimals(intermediateToken)
+                    getTokenDecimals(
+                        intermediateToken
+                    )
                 ) * 0.95;
 
             sellInterAmount = Math.min(
@@ -1571,56 +2199,126 @@ try {
             );
         }
 
-        await SWAP_ENGINE.executeSwap(
-            intermediateToken,
-            "native",
-            sellInterAmount
+        showToast?.(
+            `3/3 Sell to SDA...`,
+            "info"
         );
 
-        await new Promise(r=>setTimeout(r,2000));
+        try {
+
+            await SWAP_ENGINE.executeSwap(
+                intermediateToken,
+                "native",
+                sellInterAmount
+            );
+
+        } catch (step3Err) {
+
+            showToast?.(
+                "Step 3 gagal — retry sell SDA...",
+                "warning"
+            );
+
+            await emergencyBackToSDA(
+                intermediateToken,
+                sellInterAmount
+            );
+
+            throw step3Err;
+        }
+
+        await new Promise(r =>
+            setTimeout(r, 2000)
+        );
+
+        // =========================
+        // RESULT
+        // =========================
 
         const endSda =
-            await getWalletTokenBalance("native");
+            await getWalletTokenBalance(
+                "native"
+            );
 
         const profit =
-            endSda - window._aggStartSda;
+            endSda -
+            window._aggStartSda;
 
         showToast?.(
             profit >= 0
                 ? `Profit +${profit.toFixed(4)} SDA`
                 : `Loss ${profit.toFixed(4)} SDA`,
-            profit >= 0 ? "success" : "error"
+            profit >= 0
+                ? "success"
+                : "error"
         );
 
+        try {
+
+            window.dingAudio.currentTime = 0;
+
+            await window.dingAudio?.play();
+
+        } catch {}
+
     } catch (e) {
 
-    console.error(e);
-    setAutoRunning(false);
-unlockAutoButtons();
+        console.error(e);
 
-    try {
-        window.dingAudio.currentTime = 0;
-        await window.dingAudio?.play();
-    } catch {}
+        // =========================
+        // GLOBAL RECOVERY
+        // =========================
 
-    showToast?.(
-        e?.message || "Auto reverse gagal",
-        "error"
-    );
+        try {
 
-} finally {
+            if (interReceived > 0) {
 
-    _suspendWatcher = false;
+                await emergencyBackToSDA(
+                    intermediateToken,
+                    interReceived
+                );
 
-    try {
-        await releaseWakeLock();
-    } catch (e) {
-        console.warn(e);
+            } else if (finalReceived > 0) {
+
+                await emergencyBackToSDA(
+                    finalToken,
+                    finalReceived
+                );
+            }
+
+        } catch {}
+
+        try {
+
+            window.dingAudio.currentTime = 0;
+
+            await window.dingAudio?.play();
+
+        } catch {}
+
+        showToast?.(
+            e?.message ||
+            "Auto reverse gagal",
+            "error"
+        );
+
+    } finally {
+
+        _suspendWatcher = false;
+
+        try {
+
+            await releaseWakeLock();
+
+        } catch (e) {
+
+            console.warn(e);
+        }
+
+        setAutoRunning(false);
+
+        unlockAutoButtons();
     }
-
-    setAutoRunning(false);
-    unlockAutoButtons();
-}
 }
 
 
