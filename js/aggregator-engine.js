@@ -2112,6 +2112,43 @@ await showProfitPopup(
     profit
 );
 
+await showProfitPopup(
+    profit
+);
+
+// =====================================
+// VOICE NOTIFICATION
+// =====================================
+
+try {
+
+    const text =
+        profit >= 0
+            ? `Profit ${profit.toFixed(2)} SDA`
+            : `Loss ${Math.abs(profit).toFixed(2)} SDA`;
+
+    speechSynthesis.cancel();
+
+    const utter =
+        new SpeechSynthesisUtterance(
+            text
+        );
+
+    utter.lang = "id-ID";
+
+    utter.rate = 1;
+
+    utter.pitch = 1;
+
+    speechSynthesis.speak(
+        utter
+    );
+
+} catch (e) {
+
+    console.warn(e);
+}
+
 if (typeof loadBalance === "function") {
     await loadBalance();
 }
@@ -2660,6 +2697,43 @@ const profit =
 await showProfitPopup(
 profit
 );
+
+await showProfitPopup(
+    profit
+);
+
+// =====================================
+// VOICE NOTIFICATION
+// =====================================
+
+try {
+
+    const text =
+        profit >= 0
+            ? `Profit ${profit.toFixed(2)} SDA`
+            : `Loss ${Math.abs(profit).toFixed(2)} SDA`;
+
+    speechSynthesis.cancel();
+
+    const utter =
+        new SpeechSynthesisUtterance(
+            text
+        );
+
+    utter.lang = "id-ID";
+
+    utter.rate = 1;
+
+    utter.pitch = 1;
+
+    speechSynthesis.speak(
+        utter
+    );
+
+} catch (e) {
+
+    console.warn(e);
+}
 
 showToast?.(
     profit >= 0
