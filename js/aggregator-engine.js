@@ -91,7 +91,7 @@ window.AGGREGATOR = (() => {
     const SLIPPAGE     = 0.005;
 const SCAN_TIMEOUT = 15000;
 const BATCH_SIZE   = 2;
-const BATCH_DELAY  = 60;
+const BATCH_DELAY  = 500;
     const MAX_RESULTS        = 15;
 const MIN_AUTO_PROFIT_SDA = 0.1;
 const MIN_SAFE_RECEIVE = 0.001;
@@ -2092,57 +2092,57 @@ if (sim.estimatedPct < MIN_EDGE) {
         // RESULT
         // =========================
 
-        const finalSdaAfter =
-            await getWalletTokenBalance(
-                "native"
-            );
+const finalSdaAfter =
+    await getWalletTokenBalance(
+        "native"
+    );
+
+const initialSda =
+    window._aggStartSda ||
+    finalSdaAfter;
+
+const profit = Number(
+    (
+        finalSdaAfter -
+        initialSda
+    ).toFixed(6)
+);
 
 await showProfitPopup(
     profit
 );
 
-        if (typeof loadBalance === "function") {
-            await loadBalance();
-        }
+if (typeof loadBalance === "function") {
+    await loadBalance();
+}
 
-        if (typeof updateAddressUI === "function") {
-            updateAddressUI();
-        }
+if (typeof updateAddressUI === "function") {
+    updateAddressUI();
+}
 
-        if (typeof renderAssets === "function") {
-            renderAssets();
-        }
+if (typeof renderAssets === "function") {
+    renderAssets();
+}
 
-        if (balanceEl) {
+if (balanceEl) {
 
-            balanceEl.textContent =
-                `${finalSdaAfter.toFixed(4)} SDA`;
-        }
+    balanceEl.textContent =
+        `${finalSdaAfter.toFixed(4)} SDA`;
+}
 
-        const initialSda =
-            window._aggStartSda ||
-            finalSdaAfter;
+const profitPct =
+    Math.abs(initialSda) > 0
+        ? (profit / initialSda) * 100
+        : 0;
 
-        const profit = Number(
-            (
-                finalSdaAfter -
-                initialSda
-            ).toFixed(6)
-        );
-
-        const profitPct =
-            Math.abs(initialSda) > 0
-                ? (profit / initialSda) * 100
-                : 0;
-
-        showToast?.(
-            profit >= MIN_AUTO_PROFIT_SDA
-                ? `Profit +${profit.toFixed(4)} SDA (+${profitPct.toFixed(2)}%)`
-                : `Rugi ${profit.toFixed(4)} SDA (${profitPct.toFixed(2)}%)`,
-            profit >= MIN_AUTO_PROFIT_SDA
-                ? "success"
-                : "error"
-        );
+showToast?.(
+    profit >= MIN_AUTO_PROFIT_SDA
+        ? `Profit +${profit.toFixed(4)} SDA (+${profitPct.toFixed(2)}%)`
+        : `Rugi ${profit.toFixed(4)} SDA (${profitPct.toFixed(2)}%)`,
+    profit >= MIN_AUTO_PROFIT_SDA
+        ? "success"
+        : "error"
+);
 
         try {
 
