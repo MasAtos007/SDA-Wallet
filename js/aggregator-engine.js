@@ -1,14 +1,83 @@
 window.dingAudio = new Audio("audio/ding.mp3");
 window.dingAudio.preload = "auto";
 
+window._scanAlarmInterval = null;
+
+window.startScanAlarm = function () {
+
+    if (window._scanAlarmInterval) {
+        return;
+    }
+
+    const playAlarm = async () => {
+
+        try {
+
+            window.dingAudio.currentTime = 0;
+
+            await window.dingAudio.play();
+
+        } catch(e) {
+            console.warn(e);
+        }
+    };
+
+    // bunyi langsung
+    playAlarm();
+
+    // ulang tiap 4 detik
+    window._scanAlarmInterval = setInterval(
+        playAlarm,
+        4000
+    );
+};
+
+window.stopScanAlarm = function () {
+
+    if (window._scanAlarmInterval) {
+
+        clearInterval(
+            window._scanAlarmInterval
+        );
+
+        window._scanAlarmInterval = null;
+    }
+
+    try {
+
+        window.dingAudio.pause();
+        window.dingAudio.currentTime = 0;
+
+    } catch(e){}
+};
+
 document.addEventListener("click", () => {
+
     window.dingAudio.play()
         .then(() => {
+
             window.dingAudio.pause();
             window.dingAudio.currentTime = 0;
+
         })
         .catch(()=>{});
+
 }, { once:true });
+
+[
+    "click",
+    "touchstart",
+    "keydown"
+].forEach(evt => {
+
+    document.addEventListener(evt, () => {
+
+        window.stopScanAlarm?.();
+
+    }, {
+        passive: true
+    });
+});
 
 // =====================================
 // AGGREGATOR ENGINE v3
@@ -20,9 +89,9 @@ window.AGGREGATOR = (() => {
     const WSDA         = () => window.CONFIG?.WSDA;
     const FEE_PER_HOP  = 0.003;
     const SLIPPAGE     = 0.005;
-    const SCAN_TIMEOUT = 15000;
-    const BATCH_SIZE   = 2;
-    const BATCH_DELAY  = 500;
+const SCAN_TIMEOUT = 15000;
+const BATCH_SIZE   = 2;
+const BATCH_DELAY  = 60;
     const MAX_RESULTS        = 15;
 const MIN_AUTO_PROFIT_SDA = 0.1;
 const MIN_SAFE_RECEIVE = 0.001;
@@ -522,6 +591,20 @@ let filteredCustom = tokenList.filter(
     }
 );
 
+const uniqueMap = new Map();
+
+filteredCustom.forEach(t => {
+
+    if (!t?.address) return;
+
+    const key =
+        String(t.address).toLowerCase();
+
+    if (!uniqueMap.has(key)) {
+        uniqueMap.set(key, t);
+    }
+});
+
 const candidates = [
     {
         address: "native",
@@ -529,7 +612,7 @@ const candidates = [
         logo: "img/sda.png"
     },
 
-    ...filteredCustom.filter(t =>
+    ...Array.from(uniqueMap.values()).filter(t =>
         t.address &&
         !_same(t.address, receiveToken) &&
         !_same(t.address, WSDA()) &&
@@ -726,12 +809,15 @@ for (
                         `${token.symbol} -> ${symbolOf(receiveToken)}: ${rateOut}`
                     );
 
-                    if (
-                        !rateOut ||
-                        rateOut <= 0
-                    ) {
-                        return null;
-                    }
+                    if (!rateOut || rateOut <= 0) {
+
+    return {
+        payToken: token.address,
+        paySymbol: token.symbol,
+        failed: true,
+        reason: "No route"
+    };
+}
 
                     const unitsNeeded =
                         targetAmt / rateOut;
@@ -923,27 +1009,49 @@ return {
 
 });
 
-const profitable = results.filter(r => {
+// =====================================
+// FINAL SORT ONLY
+// NO HARD FILTER
+// =====================================
 
-    const profit = Math.abs(r.savings ?? 0);
+return results
+    .filter(r =>
+        r &&
+        r.sdaEquiv &&
+        isFinite(r.sdaEquiv)
+    )
+    .sort((a, b) => {
 
-    return profit >= MIN_AUTO_PROFIT_SDA;
-});
+        // PRIORITAS:
+        // 1. liquidity aman
+        // 2. profit absolut terbesar
+        // 3. liquidity terbesar
 
-const reverseCandidates = results.filter(r =>
-    (r.savingsPct ?? 0) <= -10
-);
+        const aSafe = !a.liquidityWarn;
+        const bSafe = !b.liquidityWarn;
 
-const neutral = results.filter(r =>
-    (r.savingsPct ?? 0) <= 0 &&
-    (r.savingsPct ?? 0) > -10
-);
+        if (aSafe && !bSafe) return -1;
+        if (!aSafe && bSafe) return 1;
 
-return [
-    ...profitable.slice(0, 10),
-    ...reverseCandidates.slice(0, 10),
-    ...neutral.slice(0, 5)
-];
+        const aProfit =
+            Math.abs(a.savings || 0);
+
+        const bProfit =
+            Math.abs(b.savings || 0);
+
+        if (bProfit !== aProfit) {
+            return bProfit - aProfit;
+        }
+
+        const aLiq =
+            a.maxSafeReceive || 0;
+
+        const bLiq =
+            b.maxSafeReceive || 0;
+
+        return bLiq - aLiq;
+    })
+    .slice(0, 30);
     }
 
     // =====================================
@@ -1289,9 +1397,19 @@ AGGREGATOR.setAutoRunning(true);
             const p = document.getElementById("aggPanel");
             if (p) p.innerHTML = `<div style="padding:12px;color:#f66;font-size:12px;">Error: ${e.message}</div>`;
         } finally {
+
     _scanning = false;
+
+    try {
+
+        window.startScanAlarm();
+
+    } catch(e) {
+        console.warn(e);
+    }
+
     await releaseWakeLock();
-        }
+}
     }
 
     function _setBadge(val) {
@@ -1421,6 +1539,69 @@ if (_suspendWatcher) return;
     );
 
     return false;
+}
+
+async function simulateFullCycle(
+    intermediateToken,
+    finalToken,
+    spendSda
+) {
+
+    try {
+
+        // STEP 1
+        const interOut =
+            await PRICE_ENGINE.getAmountOut(
+                "native",
+                intermediateToken,
+                spendSda
+            );
+
+        if (!interOut || interOut <= 0) {
+            return null;
+        }
+
+        // STEP 2
+        const finalOut =
+            await PRICE_ENGINE.getAmountOut(
+                intermediateToken,
+                finalToken,
+                interOut
+            );
+
+        if (!finalOut || finalOut <= 0) {
+            return null;
+        }
+
+        // STEP 3
+        const backToSda =
+            await PRICE_ENGINE.getAmountOut(
+                finalToken,
+                "native",
+                finalOut
+            );
+
+        if (!backToSda || backToSda <= 0) {
+            return null;
+        }
+
+        return {
+            spendSda,
+            estimatedBack: backToSda,
+            estimatedProfit:
+                backToSda - spendSda,
+            estimatedPct:
+                (
+                    (backToSda - spendSda)
+                    / spendSda
+                ) * 100
+        };
+
+    } catch (e) {
+
+        console.warn(e);
+        return null;
+    }
 }
     
 async function autoRouteBuy(
@@ -1578,22 +1759,62 @@ async function autoRouteBuy(
 
             adjusted = true;
         }
+        
+        // =====================================
+// FULL CYCLE SIMULATION
+// =====================================
+
+const sim =
+    await simulateFullCycle(
+        intermediateToken,
+        finalToken,
+        sdaNeeded
+    );
+
+if (!sim) {
+
+    showToast?.(
+        "Simulation failed",
+        "error"
+    );
+
+    return;
+}
+
+const MIN_EDGE = 3;
+
+if (sim.estimatedPct < MIN_EDGE) {
+
+    showToast?.(
+        `Edge terlalu kecil (${sim.estimatedPct.toFixed(2)}%)`,
+        "warning"
+    );
+
+    return;
+}
 
         const ok = confirm(
-            `Auto Arbitrage Full\n\n` +
-            `${
-                adjusted
-                    ? '⚠ Spend capped\n\n'
-                    : ''
-            }` +
-            `Start SDA: ${
-                sdaNeeded < 0.0001
-                    ? sdaNeeded.toExponential(4)
-                    : sdaNeeded.toFixed(4)
-            }\n` +
-            `Route:\n` +
-            `SDA → ${symbolOf(intermediateToken)} → ${symbolOf(finalToken)} → SDA`
-        );
+    `Auto Arbitrage Full\n\n` +
+
+    `${
+        adjusted
+            ? '⚠ Spend capped\n\n'
+            : ''
+    }` +
+
+    `Spend SDA:\n` +
+    `${sdaNeeded.toFixed(4)} SDA\n\n` +
+
+    `Estimated Back:\n` +
+    `${sim.estimatedBack.toFixed(4)} SDA\n\n` +
+
+    `Estimated Profit:\n` +
+    `${sim.estimatedProfit.toFixed(4)} SDA\n` +
+    `(${sim.estimatedPct.toFixed(2)}%)\n\n` +
+
+    `Route:\n` +
+    `SDA → ${symbolOf(intermediateToken)} → ${symbolOf(finalToken)} → SDA`
+);
 
         if (!ok) return;
 
@@ -2015,12 +2236,55 @@ async function autoRouteReverse(
             );
         }
 
-        const ok = confirm(
-            `Auto Reverse Arbitrage\n\n` +
-            `Route:\n` +
-            `SDA → ${symbolOf(finalToken)} → ${symbolOf(intermediateToken)} → SDA\n\n` +
-            `Spend: ${spendSda.toFixed(4)} SDA`
-        );
+        // =====================================
+// FULL CYCLE SIMULATION
+// =====================================
+
+const sim =
+    await simulateFullCycle(
+        finalToken,
+        intermediateToken,
+        spendSda
+    );
+
+if (!sim) {
+
+    showToast?.(
+        "Simulation failed",
+        "error"
+    );
+
+    return;
+}
+
+const MIN_EDGE = 3;
+
+if (sim.estimatedPct < MIN_EDGE) {
+
+    showToast?.(
+        `Edge terlalu kecil (${sim.estimatedPct.toFixed(2)}%)`,
+        "warning"
+    );
+
+    return;
+}
+
+const ok = confirm(
+    `Auto Reverse Arbitrage\n\n` +
+
+    `Spend SDA:\n` +
+    `${spendSda.toFixed(4)} SDA\n\n` +
+
+    `Estimated Back:\n` +
+    `${sim.estimatedBack.toFixed(4)} SDA\n\n` +
+
+    `Estimated Profit:\n` +
+    `${sim.estimatedProfit.toFixed(4)} SDA\n` +
+    `(${sim.estimatedPct.toFixed(2)}%)\n\n` +
+
+    `Route:\n` +
+    `SDA → ${symbolOf(finalToken)} → ${symbolOf(intermediateToken)} → SDA`
+);
 
         if (!ok) return;
 
@@ -2198,6 +2462,44 @@ async function autoRouteReverse(
                 maxSafeStep3
             );
         }
+        
+// =====================================
+// LIVE PROFIT RECHECK
+// =====================================
+
+const liveBack =
+    await PRICE_ENGINE.getAmountOut(
+        intermediateToken,
+        "native",
+        sellInterAmount
+    );
+
+const liveProfit =
+    liveBack - spendSda;
+
+const livePct =
+    (liveProfit / spendSda) * 100;
+
+const SAFE_EXIT_BUFFER = 1.2;
+
+if (
+    !isFinite(liveProfit) ||
+    liveProfit <= 0 ||
+    livePct < SAFE_EXIT_BUFFER
+) {
+
+    showToast?.(
+        `Profit drop ${livePct.toFixed(2)}% — emergency exit`,
+        "warning"
+    );
+
+    await emergencyBackToSDA(
+        intermediateToken,
+        sellInterAmount
+    );
+
+    return;
+}
 
         showToast?.(
             `3/3 Sell to SDA...`,
