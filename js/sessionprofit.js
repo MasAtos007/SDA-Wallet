@@ -49,23 +49,25 @@
 
             Object.assign(el.style, {
 
-                position: "fixed",
-                top: "12px",
-                right: "12px",
+    position: "fixed",
 
-                padding: "10px 14px",
-                borderRadius: "10px",
+    top: "12px",
+    left: "12px",
+    right: "auto",   // 🔥 penting
 
-                background: "rgba(0,0,0,.75)",
-                color: "#fff",
+    padding: "10px 14px",
+    borderRadius: "10px",
 
-                fontSize: "13px",
-                fontWeight: "600",
+    background: "rgba(0,0,0,.75)",
+    color: "#fff",
 
-                zIndex: 999999,
+    fontSize: "13px",
+    fontWeight: "600",
 
-                backdropFilter: "blur(8px)"
-            });
+    zIndex: 999999,
+
+    backdropFilter: "blur(8px)"
+});
 
             document.body.appendChild(el);
         }
