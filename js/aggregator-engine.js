@@ -176,14 +176,10 @@ async function getWalletTokenBalance(token) {
     );
 }
 
-async function showProfitPopup(
-    profit
-) {
+async function showProfitPopup(data) {
 
     const old =
-        document.getElementById(
-            "aggProfitPopup"
-        );
+        document.getElementById("aggProfitPopup");
 
     if (old) old.remove();
 
@@ -192,23 +188,51 @@ async function showProfitPopup(
 
     el.id = "aggProfitPopup";
 
+    const profit =
+        typeof data === "object"
+            ? data.profit
+            : data;
+
+    const balance =
+        data?.balance;
+
+    const initial =
+        data?.initial;
+
     const positive =
         profit >= 0;
 
     el.innerHTML = `
         <div style="
-            font-size:28px;
+            font-size:26px;
             font-weight:700;
-            margin-bottom:8px;
+            margin-bottom:6px;
         ">
             ${
                 positive ? "+" : ""
             }${profit.toFixed(4)} SDA
         </div>
 
+        ${
+            balance !== undefined
+                ? `<div style="font-size:13px;opacity:.9;">
+                        Final: ${balance.toFixed(4)} SDA
+                   </div>`
+                : ""
+        }
+
+        ${
+            initial !== undefined
+                ? `<div style="font-size:12px;opacity:.8;margin-top:4px;">
+                        Start: ${initial.toFixed(4)} SDA
+                   </div>`
+                : ""
+        }
+
         <div style="
             font-size:13px;
             opacity:.9;
+            margin-top:6px;
         ">
             ${
                 positive
@@ -233,7 +257,7 @@ async function showProfitPopup(
 
         color: "#fff",
 
-        padding: "22px 28px",
+        padding: "22px 26px",
 
         borderRadius: "18px",
 
@@ -1841,10 +1865,58 @@ async function autoRouteBuy(
         }
 
         let sdaNeeded =
-            intermediateNeeded /
-            rateSdaToIntermediate;
+    intermediateNeeded /
+    rateSdaToIntermediate;
 
-        const MAX_AUTO_SDA_SPEND = 10;
+// =====================================
+// DYNAMIC LIQUIDITY BUFFER
+// =====================================
+
+const liq =
+    await PRICE_ENGINE.getPoolLiquidity(
+        "native",
+        intermediateToken
+    );
+
+let liqRatio = 0;
+
+if (liq?.maxSwapIn) {
+
+    const maxIn =
+        formatTokenAmount(
+            liq.maxSwapIn,
+            getTokenDecimals("native")
+        );
+
+    liqRatio =
+        sdaNeeded / maxIn;
+}
+
+const dynamicBuffer =
+    Math.min(
+        0.40,
+        liqRatio * 0.7
+    );
+
+sdaNeeded *= (1 - dynamicBuffer);
+            
+
+let MAX_AUTO_SDA_SPEND = 10;
+
+if (liq?.maxSwapIn) {
+
+    const maxIn =
+        formatTokenAmount(
+            liq.maxSwapIn,
+            getTokenDecimals("native")
+        );
+
+    MAX_AUTO_SDA_SPEND =
+        Math.min(
+            150,
+            maxIn * 0.06
+        );
+}
 
         let adjusted = false;
 
@@ -2093,28 +2165,33 @@ if (sim.estimatedPct < MIN_EDGE) {
         // =========================
 
 const finalSdaAfter =
-    await getWalletTokenBalance(
-        "native"
-    );
+    await getWalletTokenBalance("native");
 
 const initialSda =
-    window._aggStartSda ||
-    finalSdaAfter;
+    window._aggStartSda || finalSdaAfter;
 
 const profit = Number(
-    (
-        finalSdaAfter -
-        initialSda
-    ).toFixed(6)
+    (finalSdaAfter - initialSda).toFixed(6)
 );
 
-await showProfitPopup(
-    profit
-);
+// =====================================
+// SINGLE FULL POPUP (REAL BALANCE)
+// =====================================
 
-await showProfitPopup(
-    profit
-);
+await showProfitPopup({
+    profit,
+    balance: finalSdaAfter,
+    initial: initialSda
+});
+
+// 🔥 FLOATING LOG
+addTradeLog({
+    profit,
+    route: `SDA → ${symbolOf(intermediateToken)} → ${symbolOf(finalToken)} → SDA`
+});
+
+// 🔥 SESSION COUNTER
+updateSessionProfit(profit);
 
 // =====================================
 // VOICE NOTIFICATION
@@ -2682,25 +2759,32 @@ if (
         // =========================
 
 const endSda =
-    await getWalletTokenBalance(
-        "native"
-    );
+    await getWalletTokenBalance("native");
+
+const initialSda =
+    window._aggStartSda || endSda;
 
 const profit =
-    endSda -
-    window._aggStartSda;
+    endSda - initialSda;
 
 // =====================================
-// REAL BALANCE ANIMATION
+// SINGLE REAL POPUP
 // =====================================
 
-await showProfitPopup(
-profit
-);
+await showProfitPopup({
+    profit,
+    balance: endSda,
+    initial: initialSda
+});
 
-await showProfitPopup(
-    profit
-);
+// 🔥 FLOATING LOG
+addTradeLog({
+    profit,
+    route: `SDA → ${symbolOf(intermediateToken)} → ${symbolOf(finalToken)} → SDA`
+});
+
+// 🔥 SESSION COUNTER
+updateSessionProfit(profit);
 
 // =====================================
 // VOICE NOTIFICATION
@@ -2708,10 +2792,10 @@ await showProfitPopup(
 
 try {
 
-    const text =
-        profit >= 0
-            ? `Profit ${profit.toFixed(2)} SDA`
-            : `Loss ${Math.abs(profit).toFixed(2)} SDA`;
+const text =
+    profit >= 0
+        ? `Profit ${profit.toFixed(2).replace(".", ",")} SDA`
+        : `Loss ${Math.abs(profit).toFixed(2).replace(".", ",")} SDA`;
 
     speechSynthesis.cancel();
 
