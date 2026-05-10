@@ -1865,85 +1865,18 @@ async function autoRouteBuy(
             );
         }
 
-        let sdaNeeded =
+
+// =====================================
+// INITIAL SIZE CALC
+// =====================================
+
+let sdaNeeded =
     intermediateNeeded /
     rateSdaToIntermediate;
 
- // =====================================
- // DYNAMIC LIQUIDITY BUFFER (FIXED STABLE)
- // =====================================
-
-const liq =
-    await PRICE_ENGINE.getPoolLiquidity(
-        "native",
-        intermediateToken
-    );
-
-let liqRatio = 0;
-let maxIn = 0;
-
-if (liq?.maxSwapIn) {
-
-    maxIn =
-        formatTokenAmount(
-            liq.maxSwapIn,
-            getTokenDecimals("native")
-        );
-
-    liqRatio =
-        sdaNeeded / (maxIn || 1);
-}
-
 // =====================================
-// SOFT BUFFER (lebih ringan & stabil)
+// 1. SIMULATION (BASE)
 // =====================================
-const dynamicBuffer =
-    Math.min(
-        0.25,          // 🔥 dari 0.40 → lebih aman profit tidak kepotong
-        liqRatio * 0.5 // 🔥 lebih halus scaling
-    );
-
-sdaNeeded *= (1 - dynamicBuffer);
-
-// =====================================
-// HARD LIMIT (adaptive, tidak fixed terlalu kecil)
-// =====================================
-let MAX_AUTO_SDA_SPEND = 10;
-
-// scale berdasarkan liquidity depth
-if (maxIn > 0) {
-
-    MAX_AUTO_SDA_SPEND =
-        Math.min(
-            100,             // 🔥 cap realistis (bukan 150 terlalu liar)
-            Math.max(
-                10,
-                maxIn * 0.10 // 🔥 10% liquidity instead of 6%
-            )
-        );
-}
-
-// =====================================
-// FINAL SAFETY ADJUSTMENT
-// =====================================
-let adjusted = false;
-
-if (sdaNeeded > MAX_AUTO_SDA_SPEND) {
-
-    const scale =
-        MAX_AUTO_SDA_SPEND / sdaNeeded;
-
-    targetFinalOut *= scale;
-    intermediateNeeded *= scale;
-
-    sdaNeeded = MAX_AUTO_SDA_SPEND;
-
-    adjusted = true;
-}
- // =====================================
-// FULL CYCLE SIMULATION
-// =====================================
-
 const sim =
     await simulateFullCycle(
         intermediateToken,
@@ -1952,96 +1885,135 @@ const sim =
     );
 
 if (!sim) {
-
-    showToast?.(
-        "Simulation failed",
-        "error"
-    );
-
+    showToast?.("Simulation failed", "error");
     return;
 }
 
+// =====================================
+// 2. EDGE FILTER (BEFORE ANY SCALING)
+// =====================================
 const MIN_EDGE = 3;
 
 if (sim.estimatedPct < MIN_EDGE) {
-
     showToast?.(
         `Edge terlalu kecil (${sim.estimatedPct.toFixed(2)}%)`,
         "warning"
     );
-
     return;
 }
 
-        const ok = confirm(
-    `Auto Arbitrage Full\n\n` +
+// =====================================
+// 3. RISK SCALING (PROFIT QUALITY)
+// =====================================
+let riskScale = 1;
 
-    `${
-        adjusted
-            ? '⚠ Spend capped\n\n'
-            : ''
-    }` +
+if (sim.estimatedPct < 1) riskScale = 0.2;
+else if (sim.estimatedPct < 2) riskScale = 0.35;
+else if (sim.estimatedPct < 3) riskScale = 0.5;
+else if (sim.estimatedPct < 5) riskScale = 0.7;
 
-    `Spend SDA:\n` +
-    `${sdaNeeded.toFixed(4)} SDA\n\n` +
+sdaNeeded *= riskScale;
+intermediateNeeded *= riskScale;
 
-    `Estimated Back:\n` +
-    `${sim.estimatedBack.toFixed(4)} SDA\n\n` +
+// =====================================
+// 4. LIQUIDITY CHECK (SINGLE SOURCE)
+// =====================================
+const liq =
+    await PRICE_ENGINE.getPoolLiquidity(
+        "native",
+        intermediateToken
+    );
 
-    `Estimated Profit:\n` +
-    `${sim.estimatedProfit.toFixed(4)} SDA\n` +
-    `(${sim.estimatedPct.toFixed(2)}%)\n\n` +
+let maxSafeLiquidity = Infinity;
 
-    `Route:\n` +
-    `SDA → ${symbolOf(intermediateToken)} → ${symbolOf(finalToken)} → SDA`
+if (liq?.maxSwapIn) {
+
+    const maxIn =
+        formatTokenAmount(
+            liq.maxSwapIn,
+            getTokenDecimals("native")
+        );
+
+    maxSafeLiquidity = maxIn * 0.05;
+}
+
+// =====================================
+// 5. DYNAMIC BUFFER (SMOOTH SLIPPAGE CONTROL)
+// =====================================
+const liqRatio =
+    maxSafeLiquidity > 0
+        ? sdaNeeded / maxSafeLiquidity
+        : 0;
+
+const dynamicBuffer =
+    Math.min(
+        0.25,
+        liqRatio * 0.5
+    );
+
+sdaNeeded *= (1 - dynamicBuffer);
+
+// =====================================
+// 6. HARD LIMIT SAFETY
+// =====================================
+sdaNeeded = Math.min(
+    sdaNeeded,
+    maxSafeLiquidity,
+    50
 );
 
-        if (!ok) return;
+// =====================================
+// 7. FINAL CONFIRM
+// =====================================
+const ok = confirm(
+    `Auto Arbitrage Full\n\n` +
 
-        // =========================
-        // STEP 1
-        // SDA -> INTERMEDIATE
-        // =========================
+    `Spend SDA:\n${sdaNeeded.toFixed(4)} SDA\n\n` +
 
-        const balInterBefore =
-            await getWalletTokenBalance(
-                intermediateToken
-            );
+    `Estimated Back:\n${sim.estimatedBack.toFixed(4)} SDA\n\n` +
 
-        showToast?.(
-            `1/3 Buy ${symbolOf(intermediateToken)}...`,
-            "info"
-        );
+    `Estimated Profit:\n${sim.estimatedProfit.toFixed(4)} SDA\n` +
+    `(${sim.estimatedPct.toFixed(2)}%)\n\n` +
 
-        await SWAP_ENGINE.executeSwap(
-            "native",
-            intermediateToken,
-            sdaNeeded
-        );
+    `Route:\nSDA → ${symbolOf(intermediateToken)} → ${symbolOf(finalToken)} → SDA`
+);
 
-        await new Promise(r =>
-            setTimeout(r, 2000)
-        );
+if (!ok) return;
 
-        const balInterAfter =
-            await getWalletTokenBalance(
-                intermediateToken
-            );
+// =====================================
+// STEP 1: SDA -> INTERMEDIATE
+// =====================================
 
-        interReceived =
-            balInterAfter -
-            balInterBefore;
+const balInterBefore =
+    await getWalletTokenBalance(intermediateToken);
 
-        if (interReceived <= 0) {
-            throw new Error(
-                "Intermediate not received"
-            );
-        }
+showToast?.(
+    `1/3 Buy ${symbolOf(intermediateToken)}...`,
+    "info"
+);
 
-        const safeInter =
-            Math.floor(
-                interReceived * 10000
-            ) / 10000;
+await SWAP_ENGINE.executeSwap(
+    "native",
+    intermediateToken,
+    sdaNeeded
+);
+
+await new Promise(r =>
+    setTimeout(r, 2000)
+);
+
+const balInterAfter =
+    await getWalletTokenBalance(intermediateToken);
+
+const interReceived =
+    balInterAfter - balInterBefore;
+
+if (interReceived <= 0) {
+    throw new Error("Intermediate not received");
+}
+
+const safeInter =
+    Math.floor(interReceived * 10000) / 10000;
 
         // =========================
         // STEP 2
