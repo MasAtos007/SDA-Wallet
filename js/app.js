@@ -42,8 +42,14 @@ if (walletSelectEl) {
 // ==========================
 window.onload = () => {
 
+    // ==========================
+    // DAILY SESSION CHECK (WAJIB DI ATAS)
+    // ==========================
+    isNewDay();
+
     // LANGUAGE
-    const savedLang    = localStorage.getItem("lang") || "id";
+    const savedLang = localStorage.getItem("lang") || "id";
+
     window.CURRENT_LANG = savedLang;
     if (typeof applyLang === "function") applyLang();
 
@@ -146,3 +152,27 @@ window.addEventListener("click", function (e) {
         if (menu) menu.style.display = "none";
     }
 });
+
+
+function isNewDay() {
+
+    const last =
+        localStorage.getItem("agg_last_session_day");
+
+    const now = new Date();
+
+    const today =
+        `${now.getFullYear()}-${now.getMonth()}-${now.getDate()}`;
+
+    if (last !== today) {
+
+        localStorage.setItem("agg_last_session_day", today);
+
+        window._sessionProfit = 0;
+        localStorage.setItem("agg_session_profit", 0);
+
+        return true;
+    }
+
+    return false;
+}
