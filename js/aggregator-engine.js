@@ -1630,7 +1630,7 @@ if (_suspendWatcher) return;
             );
 
             await new Promise(r =>
-                setTimeout(r, 2000)
+                setTimeout(r, 1200)
             );
 
             showToast?.(
@@ -1677,7 +1677,22 @@ async function simulateFullCycle(
 
     try {
 
+        // =====================================
+        // SAFETY CONFIG
+        // =====================================
+
+        const FEE_BUFFER = 0.003;
+        const SLIP_BUFFER = 0.004;
+
+        const HOP_BUFFER =
+            (1 - FEE_BUFFER) *
+            (1 - SLIP_BUFFER);
+
+        // =====================================
         // STEP 1
+        // SDA -> INTERMEDIATE
+        // =====================================
+
         const interOut =
             await PRICE_ENGINE.getAmountOut(
                 "native",
@@ -1685,52 +1700,111 @@ async function simulateFullCycle(
                 spendSda
             );
 
-        if (!interOut || interOut <= 0) {
+        if (
+            !interOut ||
+            interOut <= 0 ||
+            !isFinite(interOut)
+        ) {
             return null;
         }
 
+        const interNet =
+            interOut * HOP_BUFFER;
+
+        // =====================================
         // STEP 2
+        // INTERMEDIATE -> FINAL
+        // =====================================
+
         const finalOut =
             await PRICE_ENGINE.getAmountOut(
                 intermediateToken,
                 finalToken,
-                interOut
+                interNet
             );
 
-        if (!finalOut || finalOut <= 0) {
+        if (
+            !finalOut ||
+            finalOut <= 0 ||
+            !isFinite(finalOut)
+        ) {
             return null;
         }
 
+        const finalNet =
+            finalOut * HOP_BUFFER;
+
+        // =====================================
         // STEP 3
+        // FINAL -> SDA
+        // =====================================
+
         const backToSda =
             await PRICE_ENGINE.getAmountOut(
                 finalToken,
                 "native",
-                finalOut
+                finalNet
             );
 
-        if (!backToSda || backToSda <= 0) {
+        if (
+            !backToSda ||
+            backToSda <= 0 ||
+            !isFinite(backToSda)
+        ) {
             return null;
         }
 
+        const backNet =
+            backToSda * HOP_BUFFER;
+
+        // =====================================
+        // FINAL RESULT
+        // =====================================
+
+        const estimatedProfit =
+            backNet - spendSda;
+
+        const estimatedPct =
+            (
+                estimatedProfit /
+                spendSda
+            ) * 100;
+
         return {
+
             spendSda,
-            estimatedBack: backToSda,
-            estimatedProfit:
-                backToSda - spendSda,
-            estimatedPct:
+
+            estimatedBack:
+                backNet,
+
+            estimatedProfit,
+
+            estimatedPct,
+
+            _rawBack:
+                backToSda,
+
+            _costPct:
                 (
-                    (backToSda - spendSda)
-                    / spendSda
-                ) * 100
+                    (1 - (
+                        HOP_BUFFER *
+                        HOP_BUFFER *
+                        HOP_BUFFER
+                    )) * 100
+                )
         };
 
     } catch (e) {
 
-        console.warn(e);
+        console.warn(
+            "[SIMULATION ERROR]",
+            e
+        );
+
         return null;
     }
 }
+
     
 async function autoRouteBuy(
     intermediateToken,
@@ -1769,7 +1843,7 @@ async function autoRouteBuy(
                 );
 
                 await new Promise(r =>
-                    setTimeout(r, 2000)
+                    setTimeout(r, 1200)
                 );
 
                 showToast?.(
@@ -1999,7 +2073,7 @@ await SWAP_ENGINE.executeSwap(
 );
 
 await new Promise(r =>
-    setTimeout(r, 2000)
+    setTimeout(r, 1200)
 );
 
 const balInterAfter =
@@ -2054,7 +2128,7 @@ const safeInter =
         }
 
         await new Promise(r =>
-            setTimeout(r, 2000)
+            setTimeout(r, 1200)
         );
 
         const balFinalAfter =
@@ -2134,7 +2208,7 @@ const safeInter =
         }
 
         await new Promise(r =>
-            setTimeout(r, 2000)
+            setTimeout(r, 1200)
         );
 
         // =========================
@@ -2355,7 +2429,7 @@ async function autoRouteReverse(
                 );
 
                 await new Promise(r =>
-                    setTimeout(r, 2000)
+                    setTimeout(r, 1200)
                 );
 
                 showToast?.(
@@ -2508,7 +2582,7 @@ const ok = confirm(
         );
 
         await new Promise(r =>
-            setTimeout(r, 2000)
+            setTimeout(r, 1200)
         );
 
         const finalAfter =
@@ -2590,7 +2664,7 @@ const ok = confirm(
         }
 
         await new Promise(r =>
-            setTimeout(r, 2000)
+            setTimeout(r, 1200)
         );
 
         const interAfter =
@@ -2728,7 +2802,7 @@ if (
         }
 
         await new Promise(r =>
-            setTimeout(r, 2000)
+            setTimeout(r, 1200)
         );
 
         // =========================
@@ -2748,11 +2822,11 @@ const profit =
 // SINGLE REAL POPUP
 // =====================================
 
-await showProfitPopup({
+showProfitPopup({
     profit,
     balance: endSda,
     initial: initialSda
-});
+}).catch(console.warn);
 
 // 🔥 FLOATING LOG
 addTradeLog({
@@ -2762,7 +2836,6 @@ addTradeLog({
 
 // 🔥 SESSION COUNTER
 updateSessionProfit(profit);
-
 // =====================================
 // VOICE NOTIFICATION
 // =====================================
