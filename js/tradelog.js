@@ -1,15 +1,17 @@
-// ==============================
-// FLOATING TRADE LOG HISTORY
-// ==============================
-
 (function () {
 
     const LOG_ID = "aggTradeLogPanel";
+    const LIST_ID = "aggTradeLogList";
+    const BTN_ID  = "aggTradeLogToggle";
 
+    window.TRADE_LOG_VISIBLE = true;
+
+    // ==============================
+    // CREATE PANEL
+    // ==============================
     function createPanel() {
 
         let el = document.getElementById(LOG_ID);
-
         if (el) return el;
 
         el = document.createElement("div");
@@ -20,6 +22,7 @@
             position: "fixed",
             bottom: "20px",
             right: "20px",
+
             width: "260px",
             maxHeight: "320px",
 
@@ -38,41 +41,101 @@
 
         el.innerHTML = `
             <div style="
-                font-weight:700;
+                display:flex;
+                justify-content:space-between;
+                align-items:center;
                 margin-bottom:8px;
+                font-weight:700;
                 font-size:13px;
             ">
-                TRADE LOG
+                <span>TRADE LOG</span>
+
+                <button id="${BTN_ID}" style="
+                    font-size:10px;
+                    padding:4px 6px;
+                    border:none;
+                    border-radius:6px;
+                    cursor:pointer;
+                    background:#333;
+                    color:#fff;
+                ">Hide</button>
             </div>
-            <div id="aggTradeLogList"></div>
+
+            <div id="${LIST_ID}"></div>
         `;
 
         document.body.appendChild(el);
 
+        // ==============================
+        // TOGGLE BUTTON
+        // ==============================
+        setTimeout(() => {
+
+            const btn = document.getElementById(BTN_ID);
+
+            if (!btn) return;
+
+            btn.addEventListener("click", () => {
+
+                window.TRADE_LOG_VISIBLE = !window.TRADE_LOG_VISIBLE;
+
+                const panel = document.getElementById(LOG_ID);
+
+                if (!panel) return;
+
+                if (window.TRADE_LOG_VISIBLE) {
+
+                    panel.style.display = "block";
+                    btn.innerText = "Hide";
+
+                } else {
+
+                    panel.style.display = "none";
+                    btn.innerText = "Show";
+                }
+            });
+
+        }, 0);
+
         return el;
     }
 
+    // ==============================
+    // ADD LOG
+    // ==============================
     function addTradeLog(data) {
 
-        const panel = createPanel();
+        if (!window.TRADE_LOG_VISIBLE) return;
 
-        const list = document.getElementById("aggTradeLogList");
+        const panel = createPanel();
+        const list = document.getElementById(LIST_ID);
+
+        if (!list) return;
 
         const time = new Date().toLocaleTimeString();
 
+        const profit = Number(data.profit || 0);
+
         const item = document.createElement("div");
 
-        const profit = data.profit ?? 0;
-
         item.innerHTML = `
-            <div style="margin-bottom:6px;padding:6px;border-bottom:1px solid rgba(255,255,255,.1)">
-                <div style="opacity:.7">${time}</div>
-                <div>
+            <div style="
+                margin-bottom:6px;
+                padding:6px;
+                border-bottom:1px solid rgba(255,255,255,.1)
+            ">
+                <div style="opacity:.6;font-size:10px">
+                    ${time}
+                </div>
+
+                <div style="margin-top:2px">
                     ${data.route || "TRADE"}
                 </div>
+
                 <div style="
-                    color:${profit >= 0 ? "#00ff9d" : "#ff4d4d"};
+                    margin-top:3px;
                     font-weight:600;
+                    color:${profit >= 0 ? "#00ff9d" : "#ff4d4d"};
                 ">
                     ${profit >= 0 ? "+" : ""}${profit.toFixed(4)} SDA
                 </div>
@@ -81,10 +144,15 @@
 
         list.prepend(item);
 
-        // limit max log
-        if (list.children.length > 20) {
+        // ==============================
+        // LIMIT MAX LOG (ANTI NUMPUK)
+        // ==============================
+        while (list.children.length > 20) {
             list.removeChild(list.lastChild);
         }
+
+        // auto scroll top (latest visible)
+        panel.scrollTop = 0;
     }
 
     // expose global
