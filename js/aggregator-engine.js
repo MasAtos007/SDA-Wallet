@@ -1866,17 +1866,15 @@ async function autoRouteBuy(
         }
 
 
-// =====================================
-// INITIAL SIZE CALC
-// =====================================
+let sdaBase =
+    intermediateNeeded / rateSdaToIntermediate;
 
-let sdaNeeded =
-    intermediateNeeded /
-    rateSdaToIntermediate;
+let sdaNeeded = sdaBase * 0.95;
 
-// =====================================
-// 1. SIMULATION (BASE)
-// =====================================
+// ==============================
+// SIMULATION
+// ==============================
+
 const sim =
     await simulateFullCycle(
         intermediateToken,
@@ -1889,16 +1887,41 @@ if (!sim) {
     return;
 }
 
-// =====================================
-// 2. EDGE FILTER (BEFORE ANY SCALING)
-// =====================================
-const MIN_EDGE = 3;
+console.log(
+    "[SIM]",
+    sim.estimatedPct.toFixed(2) + "%",
+    "cost:",
+    sim._costPct?.toFixed(2) + "%"
+);
 
-if (sim.estimatedPct < MIN_EDGE) {
+// ==============================
+// EDGE FILTER (REALISTIC)
+// ==============================
+
+const MIN_EDGE = 7;
+const SAFE_BUFFER = 0.6;
+
+const adjustedEdge =
+    sim.estimatedPct * SAFE_BUFFER;
+
+if (adjustedEdge < MIN_EDGE) {
+
     showToast?.(
-        `Edge terlalu kecil (${sim.estimatedPct.toFixed(2)}%)`,
+        `Edge terlalu kecil (${adjustedEdge.toFixed(2)}%)`,
         "warning"
     );
+
+    return;
+}
+
+// optional cost sanity check
+if ((sim.estimatedPct - (sim._costPct || 0)) < 2) {
+
+    showToast?.(
+        "Profit setelah cost terlalu tipis",
+        "warning"
+    );
+
     return;
 }
 
@@ -1961,6 +1984,24 @@ sdaNeeded = Math.min(
     maxSafeLiquidity,
     50
 );
+
+// =====================================
+// PRE-EXECUTION SAFETY CHECK (FINAL GUARD)
+// =====================================
+
+const preExec = await simulateFullCycle(
+    intermediateToken,
+    finalToken,
+    sdaNeeded
+);
+
+if (!preExec || preExec.estimatedPct < MIN_EDGE) {
+    showToast?.(
+        `Market berubah sebelum eksekusi (${preExec?.estimatedPct?.toFixed(2) ?? "?"}%)`,
+        "error"
+    );
+    return;
+}
 
 // =====================================
 // 7. FINAL CONFIRM
@@ -2100,6 +2141,35 @@ const safeInter =
             `3/3 Sell to SDA...`,
             "info"
         );
+
+// =====================================
+// LIVE EXIT PROTECTION (IMPORTANT)
+// =====================================
+
+const liveBack = await PRICE_ENGINE.getAmountOut(
+    intermediateToken,
+    "native",
+    sellInterAmount
+);
+
+const liveProfit = liveBack - spendSda;
+const livePct = (liveProfit / spendSda) * 100;
+
+const SAFE_EXIT = MIN_EDGE * 0.5;
+
+if (!isFinite(liveProfit) || livePct < SAFE_EXIT) {
+    showToast?.(
+        `Profit drop sebelum exit (${livePct.toFixed(2)}%)`,
+        "warning"
+    );
+
+    await emergencyBackToSDA(
+        intermediateToken,
+        sellInterAmount
+    );
+
+    return;
+}
 
         // =========================
         // STEP 3
@@ -2446,21 +2516,36 @@ const sim =
     );
 
 if (!sim) {
-
-    showToast?.(
-        "Simulation failed",
-        "error"
-    );
-
+    showToast?.("Simulation failed", "error");
     return;
 }
 
-const MIN_EDGE = 3;
+console.log(
+    "[SIM]",
+    sim.estimatedPct.toFixed(2) + "%",
+    "cost:",
+    sim._costPct?.toFixed(2) + "%"
+);
 
-if (sim.estimatedPct < MIN_EDGE) {
+// ==============================
+// HARD EDGE FILTER
+// ==============================
+
+const MIN_EDGE = 7;
+
+if (sim.estimatedPct <= 0) {
+    showToast?.("Negative edge", "error");
+    return;
+}
+
+// safety buffer (real market movement)
+const SAFE_BUFFER = 0.6;
+const adjustedEdge = sim.estimatedPct * SAFE_BUFFER;
+
+if (adjustedEdge < MIN_EDGE) {
 
     showToast?.(
-        `Edge terlalu kecil (${sim.estimatedPct.toFixed(2)}%)`,
+        `Edge terlalu kecil (${adjustedEdge.toFixed(2)}%)`,
         "warning"
     );
 
