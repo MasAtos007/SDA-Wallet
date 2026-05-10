@@ -193,29 +193,23 @@ async function showProfitPopup(data) {
             ? data.profit
             : data;
 
-    const balance =
-        data?.balance;
+    const balance = data?.balance;
+    const initial = data?.initial;
 
-    const initial =
-        data?.initial;
-
-    const positive =
-        profit >= 0;
+    const positive = profit >= 0;
 
     el.innerHTML = `
         <div style="
-            font-size:26px;
+            font-size:18px;
             font-weight:700;
-            margin-bottom:6px;
+            margin-bottom:4px;
         ">
-            ${
-                positive ? "+" : ""
-            }${profit.toFixed(4)} SDA
+            ${positive ? "+" : ""}${profit.toFixed(4)} SDA
         </div>
 
         ${
             balance !== undefined
-                ? `<div style="font-size:13px;opacity:.9;">
+                ? `<div style="font-size:12px;opacity:.85;">
                         Final: ${balance.toFixed(4)} SDA
                    </div>`
                 : ""
@@ -223,81 +217,75 @@ async function showProfitPopup(data) {
 
         ${
             initial !== undefined
-                ? `<div style="font-size:12px;opacity:.8;margin-top:4px;">
+                ? `<div style="font-size:11px;opacity:.7;margin-top:2px;">
                         Start: ${initial.toFixed(4)} SDA
                    </div>`
                 : ""
         }
 
         <div style="
-            font-size:13px;
+            font-size:11px;
             opacity:.9;
             margin-top:6px;
         ">
-            ${
-                positive
-                    ? "REAL PROFIT"
-                    : "REAL LOSS"
-            }
+            ${positive ? "REAL PROFIT" : "REAL LOSS"}
         </div>
     `;
 
     Object.assign(el.style, {
 
         position: "fixed",
-        top: "50%",
-        left: "50%",
-        transform:
-            "translate(-50%,-50%) scale(.8)",
 
-        background:
-            positive
-                ? "rgba(0,180,120,.95)"
-                : "rgba(255,70,70,.95)",
+        top: "20px",
+        left: "20px",
+
+        transform: "translate(0, 0) scale(.9)",
+
+        background: positive
+            ? "rgba(0,180,120,.92)"
+            : "rgba(255,70,70,.92)",
 
         color: "#fff",
 
-        padding: "22px 26px",
+        padding: "12px 14px",
 
-        borderRadius: "18px",
+        borderRadius: "12px",
 
         zIndex: 999999,
 
-        textAlign: "center",
+        textAlign: "left",
 
-        boxShadow:
-            "0 10px 40px rgba(0,0,0,.35)",
+        boxShadow: "0 10px 25px rgba(0,0,0,.25)",
 
         opacity: "0",
 
-        transition:
-            "all .35s ease",
+        transition: "all .25s ease",
 
-        backdropFilter:
-            "blur(8px)"
+        backdropFilter: "blur(8px)",
+
+        maxWidth: "220px",
+
+        fontSize: "12px",
+
+        lineHeight: "1.3"
     });
 
     document.body.appendChild(el);
 
     requestAnimationFrame(() => {
-
         el.style.opacity = "1";
-
-        el.style.transform =
-            "translate(-50%,-50%) scale(1)";
+        el.style.transform = "scale(1)";
     });
 
     await new Promise(r =>
-        setTimeout(r, 2200)
+        setTimeout(r, 2000)
     );
 
     el.style.opacity = "0";
-
-    el.style.transform =
-        "translate(-50%,-50%) scale(.9)";
+    el.style.transform = "scale(.95)";
 
     await new Promise(r =>
-        setTimeout(r, 400)
+        setTimeout(r, 300)
     );
 
     el.remove();
@@ -1868,9 +1856,9 @@ async function autoRouteBuy(
     intermediateNeeded /
     rateSdaToIntermediate;
 
-// =====================================
-// DYNAMIC LIQUIDITY BUFFER
-// =====================================
+ // =====================================
+ // DYNAMIC LIQUIDITY BUFFER (FIXED STABLE)
+ // =====================================
 
 const liq =
     await PRICE_ENGINE.getPoolLiquidity(
@@ -1879,63 +1867,67 @@ const liq =
     );
 
 let liqRatio = 0;
+let maxIn = 0;
 
 if (liq?.maxSwapIn) {
 
-    const maxIn =
+    maxIn =
         formatTokenAmount(
             liq.maxSwapIn,
             getTokenDecimals("native")
         );
 
     liqRatio =
-        sdaNeeded / maxIn;
+        sdaNeeded / (maxIn || 1);
 }
 
+// =====================================
+// SOFT BUFFER (lebih ringan & stabil)
+// =====================================
 const dynamicBuffer =
     Math.min(
-        0.40,
-        liqRatio * 0.7
+        0.25,          // 🔥 dari 0.40 → lebih aman profit tidak kepotong
+        liqRatio * 0.5 // 🔥 lebih halus scaling
     );
 
 sdaNeeded *= (1 - dynamicBuffer);
-            
 
+// =====================================
+// HARD LIMIT (adaptive, tidak fixed terlalu kecil)
+// =====================================
 let MAX_AUTO_SDA_SPEND = 10;
 
-if (liq?.maxSwapIn) {
-
-    const maxIn =
-        formatTokenAmount(
-            liq.maxSwapIn,
-            getTokenDecimals("native")
-        );
+// scale berdasarkan liquidity depth
+if (maxIn > 0) {
 
     MAX_AUTO_SDA_SPEND =
         Math.min(
-            150,
-            maxIn * 0.06
+            100,             // 🔥 cap realistis (bukan 150 terlalu liar)
+            Math.max(
+                10,
+                maxIn * 0.10 // 🔥 10% liquidity instead of 6%
+            )
         );
 }
 
-        let adjusted = false;
+// =====================================
+// FINAL SAFETY ADJUSTMENT
+// =====================================
+let adjusted = false;
 
-        if (sdaNeeded > MAX_AUTO_SDA_SPEND) {
+if (sdaNeeded > MAX_AUTO_SDA_SPEND) {
 
-            const scale =
-                MAX_AUTO_SDA_SPEND /
-                sdaNeeded;
+    const scale =
+        MAX_AUTO_SDA_SPEND / sdaNeeded;
 
-            targetFinalOut *= scale;
-            intermediateNeeded *= scale;
+    targetFinalOut *= scale;
+    intermediateNeeded *= scale;
 
-            sdaNeeded =
-                MAX_AUTO_SDA_SPEND;
+    sdaNeeded = MAX_AUTO_SDA_SPEND;
 
-            adjusted = true;
-        }
-        
-        // =====================================
+    adjusted = true;
+}
+ // =====================================
 // FULL CYCLE SIMULATION
 // =====================================
 
