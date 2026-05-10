@@ -176,6 +176,7 @@ async function getWalletTokenBalance(token) {
     );
 }
 
+Editkan full aja
 async function showProfitPopup(data) {
 
     const old =
@@ -193,23 +194,29 @@ async function showProfitPopup(data) {
             ? data.profit
             : data;
 
-    const balance = data?.balance;
-    const initial = data?.initial;
+    const balance =
+        data?.balance;
 
-    const positive = profit >= 0;
+    const initial =
+        data?.initial;
+
+    const positive =
+        profit >= 0;
 
     el.innerHTML = `
         <div style="
-            font-size:18px;
+            font-size:26px;
             font-weight:700;
-            margin-bottom:4px;
+            margin-bottom:6px;
         ">
-            ${positive ? "+" : ""}${profit.toFixed(4)} SDA
+            ${
+                positive ? "+" : ""
+            }${profit.toFixed(4)} SDA
         </div>
 
         ${
             balance !== undefined
-                ? `<div style="font-size:12px;opacity:.85;">
+                ? `<div style="font-size:13px;opacity:.9;">
                         Final: ${balance.toFixed(4)} SDA
                    </div>`
                 : ""
@@ -217,75 +224,81 @@ async function showProfitPopup(data) {
 
         ${
             initial !== undefined
-                ? `<div style="font-size:11px;opacity:.7;margin-top:2px;">
+                ? `<div style="font-size:12px;opacity:.8;margin-top:4px;">
                         Start: ${initial.toFixed(4)} SDA
                    </div>`
                 : ""
         }
 
         <div style="
-            font-size:11px;
+            font-size:13px;
             opacity:.9;
             margin-top:6px;
         ">
-            ${positive ? "REAL PROFIT" : "REAL LOSS"}
+            ${
+                positive
+                    ? "REAL PROFIT"
+                    : "REAL LOSS"
+            }
         </div>
     `;
 
     Object.assign(el.style, {
 
         position: "fixed",
+        top: "50%",
+        left: "50%",
+        transform:
+            "translate(-50%,-50%) scale(.8)",
 
-        top: "20px",
-        left: "20px",
-
-        transform: "translate(0, 0) scale(.9)",
-
-        background: positive
-            ? "rgba(0,180,120,.92)"
-            : "rgba(255,70,70,.92)",
+        background:
+            positive
+                ? "rgba(0,180,120,.95)"
+                : "rgba(255,70,70,.95)",
 
         color: "#fff",
 
-        padding: "12px 14px",
+        padding: "22px 26px",
 
-        borderRadius: "12px",
+        borderRadius: "18px",
 
         zIndex: 999999,
 
-        textAlign: "left",
+        textAlign: "center",
 
-        boxShadow: "0 10px 25px rgba(0,0,0,.25)",
+        boxShadow:
+            "0 10px 40px rgba(0,0,0,.35)",
 
         opacity: "0",
 
-        transition: "all .25s ease",
+        transition:
+            "all .35s ease",
 
-        backdropFilter: "blur(8px)",
-
-        maxWidth: "220px",
-
-        fontSize: "12px",
-
-        lineHeight: "1.3"
+        backdropFilter:
+            "blur(8px)"
     });
 
     document.body.appendChild(el);
 
     requestAnimationFrame(() => {
+
         el.style.opacity = "1";
-        el.style.transform = "scale(1)";
+
+        el.style.transform =
+            "translate(-50%,-50%) scale(1)";
     });
 
     await new Promise(r =>
-        setTimeout(r, 2000)
+        setTimeout(r, 2200)
     );
 
     el.style.opacity = "0";
-    el.style.transform = "scale(.95)";
+
+    el.style.transform =
+        "translate(-50%,-50%) scale(.9)";
 
     await new Promise(r =>
-        setTimeout(r, 300)
+        setTimeout(r, 400)
     );
 
     el.remove();
