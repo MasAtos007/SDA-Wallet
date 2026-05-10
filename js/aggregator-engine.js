@@ -176,7 +176,7 @@ async function getWalletTokenBalance(token) {
     );
 }
 
-Editkan full aja
+
 async function showProfitPopup(data) {
 
     const old =
