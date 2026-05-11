@@ -1843,7 +1843,7 @@ async function autoRouteBuy(
                 );
 
                 await new Promise(r =>
-                    setTimeout(r, 1200)
+                    setTimeout(r, 2000)
                 );
 
                 showToast?.(
