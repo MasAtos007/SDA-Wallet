@@ -353,7 +353,6 @@ async function releaseWakeLock() {
 }
 
 // Auto reacquire jika tab/app kembali aktif
-// Hanya aktif kalau modal auto terbuka ATAU auto sedang berjalan
 document.addEventListener("visibilitychange", async () => {
     try {
         if (document.visibilityState !== "visible") return;
@@ -383,7 +382,6 @@ function toggleAggregatorCandidate(token){
 
     saveAggregatorCandidates(list);
 
-    // rerender panel agar icon bintang update semua
     if (_lastResults?.length) {
         const receiveToken = window.swapState?.receiveToken;
         const targetAmt = parseFloat(
@@ -520,10 +518,6 @@ async function scanSpecificCandidate(
 
         const sdaEquiv = unitsNeeded * sdaPerToken;
 
-// ================================
-// REFRESH LIQUIDITY
-// ================================
-
 let maxSafeReceive = null;
 let liquidityWarn = false;
 
@@ -619,13 +613,11 @@ async function refreshSingleRoute(
         return;
     }
 
-    // merge updated data â€” data fresh langsung replace
     _lastResults[idx] = {
         ..._lastResults[idx],
         ...updated
     };
 
-    // baseline SDA untuk hitung margin
     const baseline = _lastResults.find(x =>
         x.payToken === "native" ||
         x.symbol === "SDA" ||
@@ -635,7 +627,6 @@ async function refreshSingleRoute(
     if (baseline?.sdaEquiv > 0) {
         const row = _lastResults[idx];
 
-        // SDA row sendiri tidak punya margin
         if (
             row.payToken === "native" ||
             row.symbol === "SDA"
@@ -645,9 +636,6 @@ async function refreshSingleRoute(
         } else {
             const newEquiv = Number(row.sdaEquiv || 0);
 
-            // margin = selisih langsung vs baseline SDA
-            // positif = lebih untung dari hold SDA
-            // negatif = lebih rugi
             const pct =
                 ((newEquiv - baseline.sdaEquiv) /
                   baseline.sdaEquiv) * 100;
@@ -659,7 +647,6 @@ async function refreshSingleRoute(
         _lastResults[idx] = row;
     }
 
-    // sorting tetap
     _lastResults.sort((a, b) => {
         const aPlus = (a.savingsPct ?? -999) > 0;
         const bPlus = (b.savingsPct ?? -999) > 0;
@@ -736,12 +723,10 @@ let filteredCustom = tokenList.filter(
         const addr =
             String(t.address).toLowerCase();
 
-        // manual checklist
         if (selectedSet.has(addr)) {
             return true;
         }
 
-        // smart auto-learn token
         if (smartSet.has(addr)) {
             return true;
         }
@@ -787,9 +772,6 @@ const targetAmt =
 const panelEl =
     document.getElementById("aggPanel");
 
-// =====================================
-// EMPTY STATE
-// =====================================
 if (!filteredCustom.length) {
 
     if (panelEl) {
@@ -839,9 +821,6 @@ if (!filteredCustom.length) {
     }];
 }
 
-// =====================================
-// DEBUG HELPER
-// =====================================
 const dbg = (msg) => {
 
     if (!panelEl) return;
@@ -857,9 +836,6 @@ const dbg = (msg) => {
     `;
 };
 
-// =====================================
-// PANEL HEADER
-// =====================================
 if (panelEl) {
 
     const manualCount =
@@ -890,17 +866,14 @@ if (panelEl) {
             Manual:
             ${manualCount}
 
-            • Smart:
+            - Smart:
             ${smartOnlyCount}
 
-            • SDA baseline
+            - SDA baseline
         </div>
     `;
 }
 
-// =====================================
-// BASELINE SDA COST
-// =====================================
 let baselineSDACost = null;
 
 try {
@@ -951,9 +924,6 @@ for (
 
                 try {
 
-                    // =========================
-                    // RATE OUT
-                    // =========================
                     const rateOut =
                         await withTimeout(
                             PRICE_ENGINE.getAmountOut(
@@ -981,9 +951,6 @@ for (
                     const unitsNeeded =
                         targetAmt / rateOut;
 
-                    // =========================
-                    // SDA PRICE
-                    // =========================
                     let sdaPerToken =
                         _isNat(token.address)
                             ? 1
@@ -1055,10 +1022,6 @@ for (
                     }
 
 
-
-// ================================
-// LIQUIDITY CHECK PER ROUTE
-// ================================
 let maxSafeReceive = null;
 let liquidityWarn  = false;
 
@@ -1107,7 +1070,6 @@ if (liq.maxSwapOut) {
 }
 
 
-
 return {
     payToken:  token.address,
     paySymbol: token.symbol || symbolOf(token.address),
@@ -1150,12 +1112,10 @@ return {
     const aProfit = a.savings ?? -999999;
     const bProfit = b.savings ?? -999999;
 
-    // PRIORITAS PROFIT SDA TERBESAR
     if (bProfit !== aProfit) {
         return bProfit - aProfit;
     }
 
-    // PRIORITAS LIQUIDITY TERBESAR
     const aLiq = a.maxSafeReceive ?? 0;
     const bLiq = b.maxSafeReceive ?? 0;
 
@@ -1163,15 +1123,9 @@ return {
         return bLiq - aLiq;
     }
 
-    // BARU PERSENTASE
     return (b.savingsPct ?? -999) - (a.savingsPct ?? -999);
 
 });
-
-// =====================================
-// FINAL SORT ONLY
-// NO HARD FILTER
-// =====================================
 
 return results
     .filter(r =>
@@ -1180,11 +1134,6 @@ return results
         isFinite(r.sdaEquiv)
     )
     .sort((a, b) => {
-
-        // PRIORITAS:
-        // 1. liquidity aman
-        // 2. profit absolut terbesar
-        // 3. liquidity terbesar
 
         const aSafe = !a.liquidityWarn;
         const bSafe = !b.liquidityWarn;
@@ -1222,7 +1171,7 @@ return results
 
         if (!results?.length) {
             el.innerHTML = `<div style="padding:16px;text-align:center;color:#888;font-size:12px;">
-                Tidak ada data â€” coba token lain</div>`;
+                Tidak ada data — coba token lain</div>`;
             return;
         }
 
@@ -1296,7 +1245,7 @@ return results
         : r.unitsNeeded.toFixed(6).replace(/\.?0+$/, "");
 
     const sdaDisplay = Number(r.sdaEquiv || 0).toFixed(4);
-    
+
     const effectiveProfit =
     (r.savingsPct ?? 0) < 0
         ? Math.abs(r.savings || 0)
@@ -1307,10 +1256,6 @@ const profitDisplay =
         ? `${effectiveProfit.toFixed(4)} SDA`
         : "-";
 
-        // Liquidity warning
-        // =====================================
-// LIQUIDITY DISPLAY
-// =====================================
 const hasLiqData = r.maxSafeReceive !== null && r.maxSafeReceive !== undefined;
 
 const liqWarnHTML = hasLiqData
@@ -1396,7 +1341,6 @@ return `
 
    <div class="agg-row-right">
 
-    <!-- TOP: BADGE (LOCKED AREA) -->
     <div class="agg-top-badges">
         ${badge}
 
@@ -1406,7 +1350,6 @@ return `
         }
     </div>
 
-    <!-- BOTTOM: ACTIONS (ALWAYS STACK SAFE) -->
     <div class="agg-right-actions">
 
         <button class="agg-pin-btn"
@@ -1449,20 +1392,17 @@ onclick="
         finalToken: '${receiveToken}',
         sdaMax: ${r.sdaEquiv || r.maxSafeReceive || 0}
     };
-    
+
     window.ACTIVE_ROUTE = {
-    payToken: '${r.payToken}',
-    receiveToken: '${receiveToken}',
-
-    // SDA -> token rate
-    rate: ${Number(r.unitsNeeded || 0) > 0
-        ? (Number(r.unitsNeeded) / Number(r.sdaEquiv || 1))
-        : 0},
-
-    sdaEquiv: ${Number(r.sdaEquiv || 0)},
-    unitsNeeded: ${Number(r.unitsNeeded || 0)},
-    maxSafeReceive: ${Number(r.maxSafeReceive || 0)}
-};
+        payToken: '${r.payToken}',
+        receiveToken: '${receiveToken}',
+        rate: ${Number(r.unitsNeeded || 0) > 0
+            ? (Number(r.unitsNeeded) / Number(r.sdaEquiv || 1))
+            : 0},
+        sdaEquiv: ${Number(r.sdaEquiv || 0)},
+        unitsNeeded: ${Number(r.unitsNeeded || 0)},
+        maxSafeReceive: ${Number(r.maxSafeReceive || 0)}
+    };
 
     openAutoSpendModal(
         '${r.savingsPct > 0 ? 'buy' : 'reverse'}',
@@ -1556,14 +1496,12 @@ onclick="
         try {
             const results = await scanCheapestPayer(receiveToken, amount);
 
-// Enrich dengan data likuiditas
 const enriched = window.LIQUIDITY_CHECK
     ? await window.LIQUIDITY_CHECK.enrichWithLiquidity(results, receiveToken)
     : results;
 
 _lastResults = enriched;
 
-// expose globally
 AGGREGATOR._lastResults = enriched;
 
 cleanupAggregatorCandidates();
@@ -1649,9 +1587,9 @@ if (_suspendWatcher) return;
     document.addEventListener("DOMContentLoaded", () => {
         setTimeout(() => { injectUI(); initWatcher(); }, 600);
     });
-    
-    
-    async function emergencyBackToSDA(
+
+
+async function emergencyBackToSDA(
     token,
     amount,
     retries = 3
@@ -1726,9 +1664,6 @@ window.simulateFullCycle = async function (
 
     try {
 
-        // =====================================
-        // SAFETY CONFIG
-        // =====================================
         const FEE_BUFFER = 0.003;
         const SLIP_BUFFER = 0.004;
 
@@ -1739,9 +1674,6 @@ window.simulateFullCycle = async function (
         if (!spendSda || spendSda <= 0) return null;
         if (!intermediateToken || !finalToken) return null;
 
-        // =====================================
-        // STEP 1: SDA → INTERMEDIATE
-        // =====================================
         const interOut =
             await PRICE_ENGINE.getAmountOut(
                 "native",
@@ -1755,9 +1687,6 @@ window.simulateFullCycle = async function (
 
         const interNet = interOut * HOP_BUFFER;
 
-        // =====================================
-        // STEP 2: INTERMEDIATE → FINAL
-        // =====================================
         const finalOut =
             await PRICE_ENGINE.getAmountOut(
                 intermediateToken,
@@ -1771,9 +1700,6 @@ window.simulateFullCycle = async function (
 
         const finalNet = finalOut * HOP_BUFFER;
 
-        // =====================================
-        // STEP 3: FINAL → SDA
-        // =====================================
         const backToSda =
             await PRICE_ENGINE.getAmountOut(
                 finalToken,
@@ -1787,9 +1713,6 @@ window.simulateFullCycle = async function (
 
         const backNet = backToSda * HOP_BUFFER;
 
-        // =====================================
-        // RESULT
-        // =====================================
         const estimatedProfit =
             backNet - spendSda;
 
@@ -1814,11 +1737,14 @@ window.simulateFullCycle = async function (
 };
 
 
-    
+// =====================================
+// AUTO ROUTE BUY
+// spendSda — langsung dari modal, tidak dihitung ulang di sini
+// =====================================
 async function autoRouteBuy(
     intermediateToken,
     finalToken,
-    targetFinalOutInput
+    spendSda          // <-- WAJIB diisi dari modal, sudah final
 ) {
 
     let interReceived = 0;
@@ -1893,6 +1819,12 @@ async function autoRouteBuy(
 
     try {
 
+        // validasi spend dari modal
+        if (!spendSda || spendSda <= 0) {
+            showToast?.("Invalid spend SDA dari modal", "error");
+            return;
+        }
+
         window._aggStartSda =
             await getWalletTokenBalance("native");
 
@@ -1900,238 +1832,44 @@ async function autoRouteBuy(
 
         await acquireWakeLock();
 
-        if (
-            !targetFinalOutInput ||
-            targetFinalOutInput <= 0
-        ) {
-            showToast?.(
-                "Invalid target",
-                "error"
-            );
-            return;
-        }
+        // =====================================
+        // STEP 1: SDA -> INTERMEDIATE
+        // =====================================
 
-        let targetFinalOut =
-            targetFinalOutInput * 0.95;
+        const balInterBefore =
+            await getWalletTokenBalance(intermediateToken);
 
-        const rateIntermediateToFinal =
-            await PRICE_ENGINE.getAmountOut(
-                intermediateToken,
-                finalToken,
-                1
-            );
-
-        if (
-            !rateIntermediateToFinal ||
-            rateIntermediateToFinal <= 0
-        ) {
-            throw new Error("Route invalid");
-        }
-
-        let intermediateNeeded =
-            targetFinalOut /
-            rateIntermediateToFinal;
-
-        const rateSdaToIntermediate =
-            await PRICE_ENGINE.getAmountOut(
-                "native",
-                intermediateToken,
-                1
-            );
-
-        if (
-            !rateSdaToIntermediate ||
-            rateSdaToIntermediate <= 0
-        ) {
-            throw new Error(
-                "Cannot price SDA route"
-            );
-        }
-
-
-// =====================================
-// INITIAL SIZE CALC
-// =====================================
-
-let sdaNeeded =
-    intermediateNeeded /
-    rateSdaToIntermediate;
-
-// =====================================
-// 1. SIMULATION (BASE)
-// =====================================
-const sim =
-    await simulateFullCycle(
-        intermediateToken,
-        finalToken,
-        sdaNeeded
-    );
-
-if (!sim) {
-    showToast?.("Simulation failed", "error");
-    return;
-}
-
-// =====================================
-// 2. EDGE FILTER (BEFORE ANY SCALING)
-// =====================================
-const MIN_EDGE = 0.5; // hanya tolak yang benar-benar rugi/tipis banget
-
-if (sim.estimatedPct < MIN_EDGE) {
-    showToast?.(
-        `Edge terlalu kecil (${sim.estimatedPct.toFixed(2)}%)`,
-        "warning"
-    );
-    return;
-}
-
-// =====================================
-// 3. RISK SCALING (PROFIT QUALITY)
-// =====================================
-let riskScale = 1;
-
-if      (sim.estimatedPct < 1)  riskScale = 0.5;
-else if (sim.estimatedPct < 2)  riskScale = 0.65;
-else if (sim.estimatedPct < 3)  riskScale = 0.80;
-else if (sim.estimatedPct < 5)  riskScale = 0.90;
-// >= 5% â†’ full size (riskScale = 1)
-
-sdaNeeded *= riskScale;
-intermediateNeeded *= riskScale;
-
-// =====================================
-// 4. LIQUIDITY CHECK (SINGLE SOURCE)
-// =====================================
-const liq =
-    await PRICE_ENGINE.getPoolLiquidity(
-        "native",
-        intermediateToken
-    );
-
-let maxSafeLiquidity = Infinity;
-
-if (liq?.maxSwapIn) {
-
-    const maxIn =
-        formatTokenAmount(
-            liq.maxSwapIn,
-            getTokenDecimals("native")
+        showToast?.(
+            `1/3 Buy ${symbolOf(intermediateToken)}...`,
+            "info"
         );
 
-    maxSafeLiquidity = maxIn * 0.05;
-}
+        await SWAP_ENGINE.executeSwap(
+            "native",
+            intermediateToken,
+            spendSda
+        );
 
-// =====================================
-// 5. DYNAMIC BUFFER (SMOOTH SLIPPAGE CONTROL)
-// =====================================
-const liqRatio =
-    maxSafeLiquidity > 0
-        ? sdaNeeded / maxSafeLiquidity
-        : 0;
+        await new Promise(r =>
+            setTimeout(r, 1200)
+        );
 
-const dynamicBuffer =
-    Math.min(
-        0.25,
-        liqRatio * 0.5
-    );
+        const balInterAfter =
+            await getWalletTokenBalance(intermediateToken);
 
-sdaNeeded *= (1 - dynamicBuffer);
+        interReceived =
+            balInterAfter - balInterBefore;
 
-// =====================================
-// 6. HARD LIMIT SAFETY
-// =====================================
-// =====================================
-// PARTIAL SPEND FROM CALCULATED SIZE
-// =====================================
+        if (interReceived <= 0) {
+            throw new Error("Intermediate not received");
+        }
 
-const calculatedSda =
-    sdaNeeded;
+        const safeInter =
+            Math.floor(interReceived * 10000) / 10000;
 
-const spendPercent =
-    Math.max(
-        1,
-        Math.min(
-            100,
-            Number(
-                window.AUTO_SPEND_PERCENT || 25
-            )
-        )
-    );
-
-sdaNeeded =
-    calculatedSda *
-    (spendPercent / 100);
-
-// =====================================
-// FINAL HARD LIMIT
-// =====================================
-
-const MAX_AUTO_SDA =
-    Number(window.MAX_AUTO_SDA || 15);
-
-sdaNeeded = Math.min(
-    sdaNeeded,
-    maxSafeLiquidity,
-    MAX_AUTO_SDA
-);
-
-// =====================================
-// 7. FINAL CONFIRM
-// =====================================
-const ok = confirm(
-    `Auto Arbitrage Full\n\n` +
-
-    `Spend SDA:\n${sdaNeeded.toFixed(4)} SDA\n\n` +
-
-    `Estimated Back:\n${sim.estimatedBack.toFixed(4)} SDA\n\n` +
-
-    `Estimated Profit:\n${sim.estimatedProfit.toFixed(4)} SDA\n` +
-    `(${sim.estimatedPct.toFixed(2)}%)\n\n` +
-
-    `Route:\nSDA → ${symbolOf(intermediateToken)} → ${symbolOf(finalToken)} → SDA`
-);
-
-if (!ok) return;
-
-// =====================================
-// STEP 1: SDA -> INTERMEDIATE
-// =====================================
-
-const balInterBefore =
-    await getWalletTokenBalance(intermediateToken);
-
-showToast?.(
-    `1/3 Buy ${symbolOf(intermediateToken)}...`,
-    "info"
-);
-
-await SWAP_ENGINE.executeSwap(
-    "native",
-    intermediateToken,
-    sdaNeeded
-);
-
-await new Promise(r =>
-    setTimeout(r, 1200)
-);
-
-const balInterAfter =
-    await getWalletTokenBalance(intermediateToken);
-
-interReceived =
-    balInterAfter - balInterBefore;
-
-if (interReceived <= 0) {
-    throw new Error("Intermediate not received");
-}
-
-const safeInter =
-    Math.floor(interReceived * 10000) / 10000;
-
-        // =========================
-        // STEP 2
-        // INTERMEDIATE -> FINAL
-        // =========================
+        // =====================================
+        // STEP 2: INTERMEDIATE -> FINAL
+        // =====================================
 
         const balFinalBefore =
             await getWalletTokenBalance(
@@ -2214,10 +1952,9 @@ const safeInter =
             "info"
         );
 
-        // =========================
-        // STEP 3
-        // FINAL -> SDA
-        // =========================
+        // =====================================
+        // STEP 3: FINAL -> SDA
+        // =====================================
 
         try {
 
@@ -2250,9 +1987,9 @@ const safeInter =
             setTimeout(r, 1200)
         );
 
-        // =========================
+        // =====================================
         // RESULT
-        // =========================
+        // =====================================
 
 const finalSdaAfter =
     await getWalletTokenBalance("native");
@@ -2264,28 +2001,18 @@ const profit = Number(
     (finalSdaAfter - initialSda).toFixed(6)
 );
 
-// =====================================
-// SINGLE FULL POPUP (REAL BALANCE)
-// =====================================
-
 await showProfitPopup({
     profit,
     balance: finalSdaAfter,
     initial: initialSda
 });
 
-// 🔥 FLOATING LOG
 addTradeLog({
     profit,
     route: `SDA → ${symbolOf(intermediateToken)} → ${symbolOf(finalToken)} → SDA`
 });
 
-// 🔥 SESSION COUNTER
 updateSessionProfit(profit);
-
-// =====================================
-// VOICE NOTIFICATION
-// =====================================
 
 try {
 
@@ -2326,12 +2053,6 @@ if (typeof updateAddressUI === "function") {
 
 if (typeof renderAssets === "function") {
     renderAssets();
-}
-
-if (balanceEl) {
-
-    balanceEl.textContent =
-        `${finalSdaAfter.toFixed(4)} SDA`;
 }
 
 const profitPct =
@@ -2382,10 +2103,6 @@ if (profit > 0) {
 
         console.error(e);
 
-        // =========================
-        // GLOBAL RECOVERY
-        // =========================
-
         try {
 
             if (finalReceived > 0) {
@@ -2431,10 +2148,14 @@ if (profit > 0) {
 }
 
 
+// =====================================
+// AUTO ROUTE REVERSE
+// spendSda — langsung dari modal, tidak dihitung ulang di sini
+// =====================================
 async function autoRouteReverse(
     intermediateToken,
     finalToken,
-    targetOutInput
+    spendSda          // <-- WAJIB diisi dari modal, sudah final
 ) {
 
     let finalReceived = 0;
@@ -2509,6 +2230,12 @@ async function autoRouteReverse(
 
     try {
 
+        // validasi spend dari modal
+        if (!spendSda || spendSda <= 0) {
+            showToast?.("Invalid spend SDA dari modal", "error");
+            return;
+        }
+
         window._aggStartSda =
             await getWalletTokenBalance(
                 "native"
@@ -2518,91 +2245,9 @@ async function autoRouteReverse(
 
         await acquireWakeLock();
 
-        let spendSda = 10;
-
-        try {
-
-            const finalPerSda =
-                await PRICE_ENGINE.getAmountOut(
-                    "native",
-                    finalToken,
-                    1
-                );
-
-            const neededSda =
-                targetOutInput /
-                finalPerSda;
-
-            spendSda = Math.min(
-                neededSda * 0.95,
-                10
-            );
-
-        } catch {}
-
-        if (spendSda <= 0) {
-
-            throw new Error(
-                "Invalid spend SDA"
-            );
-        }
-
         // =====================================
-// FULL CYCLE SIMULATION
-// =====================================
-
-const sim =
-    await simulateFullCycle(
-        finalToken,
-        intermediateToken,
-        spendSda
-    );
-
-if (!sim) {
-
-    showToast?.(
-        "Simulation failed",
-        "error"
-    );
-
-    return;
-}
-
-const MIN_EDGE = 3;
-
-if (sim.estimatedPct < MIN_EDGE) {
-
-    showToast?.(
-        `Edge terlalu kecil (${sim.estimatedPct.toFixed(2)}%)`,
-        "warning"
-    );
-
-    return;
-}
-
-const ok = confirm(
-    `Auto Reverse Arbitrage\n\n` +
-
-    `Spend SDA:\n` +
-    `${spendSda.toFixed(4)} SDA\n\n` +
-
-    `Estimated Back:\n` +
-    `${sim.estimatedBack.toFixed(4)} SDA\n\n` +
-
-    `Estimated Profit:\n` +
-    `${sim.estimatedProfit.toFixed(4)} SDA\n` +
-    `(${sim.estimatedPct.toFixed(2)}%)\n\n` +
-
-    `Route:\n` +
-    `SDA → ${symbolOf(finalToken)} → ${symbolOf(intermediateToken)} → SDA`
-);
-
-        if (!ok) return;
-
-        // =========================
-        // STEP 1
-        // SDA -> FINAL
-        // =========================
+        // STEP 1: SDA -> FINAL
+        // =====================================
 
         const finalBefore =
             await getWalletTokenBalance(
@@ -2639,10 +2284,9 @@ const ok = confirm(
             );
         }
 
-        // =========================
-        // STEP 2
-        // FINAL -> INTERMEDIATE
-        // =========================
+        // =====================================
+        // STEP 2: FINAL -> INTERMEDIATE
+        // =====================================
 
         const step2Liq =
             await PRICE_ENGINE.getPoolLiquidity(
@@ -2744,10 +2388,9 @@ const ok = confirm(
             console.warn(e);
         }
 
-        // =========================
-        // STEP 3
-        // INTERMEDIATE -> SDA
-        // =========================
+        // =====================================
+        // STEP 3: INTERMEDIATE -> SDA
+        // =====================================
 
         const step3Liq =
             await PRICE_ENGINE.getPoolLiquidity(
@@ -2773,7 +2416,7 @@ const ok = confirm(
                 maxSafeStep3
             );
         }
-        
+
 // =====================================
 // LIVE PROFIT RECHECK
 // =====================================
@@ -2844,9 +2487,9 @@ if (
             setTimeout(r, 1200)
         );
 
-        // =========================
+        // =====================================
         // RESULT
-        // =========================
+        // =====================================
 
 const endSda =
     await getWalletTokenBalance("native");
@@ -2857,27 +2500,18 @@ const initialSda =
 const profit =
     endSda - initialSda;
 
-// =====================================
-// SINGLE REAL POPUP
-// =====================================
-
 showProfitPopup({
     profit,
     balance: endSda,
     initial: initialSda
 }).catch(console.warn);
 
-// 🔥 FLOATING LOG
 addTradeLog({
     profit,
-    route: `SDA → ${symbolOf(intermediateToken)} → ${symbolOf(finalToken)} → SDA`
+    route: `SDA → ${symbolOf(finalToken)} → ${symbolOf(intermediateToken)} → SDA`
 });
 
-// 🔥 SESSION COUNTER
 updateSessionProfit(profit);
-// =====================================
-// VOICE NOTIFICATION
-// =====================================
 
 try {
 
@@ -2928,10 +2562,6 @@ showToast?.(
     } catch (e) {
 
         console.error(e);
-
-        // =========================
-        // GLOBAL RECOVERY
-        // =========================
 
         try {
 
@@ -3001,15 +2631,9 @@ async function buyMaxSafe(payToken, receiveToken) {
             return;
         }
 
-        // =====================================
-        // SAFE BUFFER 95%
-        // =====================================
         const safeReceive =
             bestRoute.maxSafeReceive * 0.95;
 
-        // =====================================
-        // ESTIMATE PAY NEEDED
-        // =====================================
         const rate = await PRICE_ENGINE.getAmountOut(
             payToken,
             receiveToken,
@@ -3026,9 +2650,6 @@ async function buyMaxSafe(payToken, receiveToken) {
 
         let payNeeded = safeReceive / rate;
 
-        // =====================================
-        // REFINE USING REAL QUOTE
-        // =====================================
         try {
             const realOut =
                 await PRICE_ENGINE.getAmountOut(
@@ -3050,9 +2671,6 @@ async function buyMaxSafe(payToken, receiveToken) {
             );
         }
 
-        // =====================================
-        // UPDATE SWAP STATE
-        // =====================================
         window.swapState.payToken = payToken;
 
         document.getElementById(
@@ -3063,9 +2681,6 @@ async function buyMaxSafe(payToken, receiveToken) {
             "payTokenIcon"
         ).src = logoOf(payToken);
 
-        // =====================================
-        // FILL INPUTS
-        // =====================================
         const payInput =
             document.getElementById("payAmount");
 
@@ -3111,7 +2726,6 @@ function refreshRouteDataAfterAuto(
             document.getElementById("receiveAmount")?.value
         ) || 1;
 
-    // refresh hanya route utama panel
     (async () => {
         try {
             await refreshSingleRoute(
