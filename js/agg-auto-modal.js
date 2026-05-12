@@ -1,5 +1,7 @@
 // =====================================
-// AUTO MODAL ENGINE â€” FINAL v5
+// AUTO MODAL ENGINE â€” FINAL v6
+// spend SDA dihitung di sini, langsung dikirim ke engine
+// engine tidak kalkulasi ulang
 // =====================================
 
 window.AUTO_SPEND_PERCENT = window.AUTO_SPEND_PERCENT || 100;
@@ -21,21 +23,6 @@ function _safeSymbol(token) {
         );
         return found?.symbol || found?.name || "TOKEN";
     } catch(e) { return "TOKEN"; }
-}
-
-// =====================================
-// SKIP CONFIRM â€” SAFE (no redeclare)
-// =====================================
-if (!window._confirmPatched) {
-    window._confirmPatched = true;
-    const _orig = window.confirm.bind(window);
-    window.confirm = function(msg) {
-        if (window._skipAutoConfirm) {
-            console.log("[AUTO] confirm() dilewati:", msg);
-            return true;
-        }
-        return _orig(msg);
-    };
 }
 
 // =====================================
@@ -141,7 +128,7 @@ window._rebuildAutoModal = function() {
 };
 
 // =====================================
-// CLOSE HELPER (dengan WakeLock release)
+// CLOSE HELPER
 // =====================================
 window._closeAutoModal = function() {
     document.getElementById("aggAutoModal")?.remove();
@@ -151,12 +138,36 @@ window._closeAutoModal = function() {
 };
 
 // =====================================
+// HITUNG SPEND FINAL (dipakai preview & START)
+// =====================================
+function _calcFinalSpend(sdaMax, percent, sdaPerRecv, maxSafeRecv, capEnabled, globalMax) {
+    let spend = sdaMax * (percent / 100);
+
+    if (!isFinite(spend) || spend <= 0) return 0;
+
+    // hard cap global protection
+    if (capEnabled && spend > globalMax) {
+        spend = globalMax;
+    }
+
+    // cap by liquidity
+    if (sdaPerRecv > 0 && maxSafeRecv > 0) {
+        const maxSdaByLiq = maxSafeRecv * sdaPerRecv * 0.90;
+        if (spend > maxSdaByLiq) {
+            spend = maxSdaByLiq;
+        }
+    }
+
+    return spend;
+}
+
+// =====================================
 // OPEN MODAL
 // =====================================
 window.openAutoSpendModal = async function(mode, payToken, receiveToken, maxAmount) {
     document.getElementById("aggAutoModal")?.remove();
 
-    // balance â€” live dulu, fallback cache
+    // balance live
     let liveBalance = 0;
     try {
         const wallet = typeof getSelectedWallet === "function" ? getSelectedWallet() : null;
@@ -216,6 +227,8 @@ window.openAutoSpendModal = async function(mode, payToken, receiveToken, maxAmou
     el.__maxSafeRecv   = cached.maxSafeRecv  || 0;
     el.__sdaPerRecv    = cached.sdaPerReceive || 0;
     el.__activeRate    = cached.rate          || 0;
+    el.__globalMax     = GLOBAL_MAX;
+    el.__capEnabled    = capEnabled;
 
     el.innerHTML = `
         <div class="agg-auto-backdrop"
@@ -310,54 +323,7 @@ window.openAutoSpendModal = async function(mode, payToken, receiveToken, maxAmou
 
                 <button id="aggAutoStartBtn" class="agg-auto-run"
                     style="width:100%;margin-top:0;opacity:0.5;pointer-events:none;"
-                    onclick="
-                        const modal      = document.getElementById('aggAutoModal');
-                        const route      = modal?.__route;
-                        const sdaMax     = modal?.__sdaMax || 0;
-                        const mod        = modal?.__mode || 'buy';
-                        const capOn      = window.AUTO_CAP_ENABLED !== false;
-                        const globalMax  = Number(window.AUTO_MAX_GLOBAL_SDA || 10);
-                        const maxRecv    = modal?.__maxSafeRecv || 0;
-                        const sdaPerRecv = modal?.__sdaPerRecv || 0;
-
-                        if (!route || sdaMax <= 0) {
-                            alert('Route / liquidity belum siap. Tunggu scan selesai.');
-                            return;
-                        }
-
-                        const percent = window.AUTO_SPEND_PERCENT || 10;
-                        const spend   = Math.min(sdaMax * (percent / 100), sdaMax);
-
-                        if (!isFinite(spend) || spend <= 0) {
-                            alert('Spend tidak valid - data belum ready');
-                            return;
-                        }
-
-                        if (capOn && spend > globalMax) {
-                            alert('Spend ' + spend.toFixed(4) + ' SDA melebihi global protection ' + globalMax + ' SDA');
-                            return;
-                        }
-
-                        if (sdaPerRecv > 0 && maxRecv > 0) {
-                            const maxSdaByLiq = maxRecv * sdaPerRecv * 0.90;
-                            if (spend > maxSdaByLiq) {
-                                alert('Spend ' + spend.toFixed(4) + ' SDA melebihi batas liq aman (' + maxSdaByLiq.toFixed(4) + ' SDA).\\nSwap akan gagal!');
-                                return;
-                            }
-                        }
-
-                        modal.remove();
-                        if (typeof releaseWakeLock === 'function') releaseWakeLock();
-                        window._skipAutoConfirm = true;
-
-                        if (mod === 'buy') {
-                            AGGREGATOR.autoRouteBuy(route.intermediateToken, route.finalToken, spend)
-                                .finally(() => { window._skipAutoConfirm = false; });
-                        } else {
-                            AGGREGATOR.autoRouteReverse(route.intermediateToken, route.finalToken, spend)
-                                .finally(() => { window._skipAutoConfirm = false; });
-                        }
-                    ">
+                    onclick="window._startAuto();">
                     &#x26A1; START AUTO
                 </button>
 
@@ -373,8 +339,68 @@ window.openAutoSpendModal = async function(mode, payToken, receiveToken, maxAmou
     document.body.appendChild(el);
     window.runAutoPreview(el);
 
-    // WakeLock â€” jaga layar tetap nyala selama modal terbuka
     if (typeof acquireWakeLock === "function") await acquireWakeLock();
+};
+
+// =====================================
+// START AUTO â€” langsung pakai spend dari preview
+// tidak ada kalkulasi ulang, tidak ada confirm() browser
+// =====================================
+window._startAuto = function() {
+    const modal = document.getElementById("aggAutoModal");
+    if (!modal) return;
+
+    const route      = modal.__route;
+    const sdaMax     = modal.__sdaMax     || 0;
+    const mod        = modal.__mode       || "buy";
+    const capEnabled = window.AUTO_CAP_ENABLED !== false;
+    const globalMax  = Number(window.AUTO_MAX_GLOBAL_SDA || 10);
+    const maxSafeRecv  = modal.__maxSafeRecv  || 0;
+    const sdaPerRecv   = modal.__sdaPerRecv   || 0;
+    const percent    = window.AUTO_SPEND_PERCENT || 10;
+
+    if (!route || sdaMax <= 0) {
+        showToast?.("Route / liquidity belum siap. Tunggu scan selesai.", "error");
+        return;
+    }
+
+    // hitung spend final â€” satu tempat, konsisten dengan preview
+    const spend = _calcFinalSpend(
+        sdaMax, percent, sdaPerRecv, maxSafeRecv, capEnabled, globalMax
+    );
+
+    if (!isFinite(spend) || spend <= 0) {
+        showToast?.("Spend tidak valid â€” data belum ready", "error");
+        return;
+    }
+
+    console.log("[AUTO START] spend SDA:", spend, "mode:", mod,
+        "route:", route.intermediateToken, "->", route.finalToken);
+
+    // tutup modal dulu sebelum eksekusi
+    modal.remove();
+    if (typeof releaseWakeLock === "function") releaseWakeLock();
+
+    // jalankan â€” spend sudah final, engine tidak kalkulasi ulang
+    if (mod === "buy") {
+        AGGREGATOR.autoRouteBuy(
+            route.intermediateToken,
+            route.finalToken,
+            spend
+        ).catch(e => {
+            console.error("[AUTO BUY ERROR]", e);
+            showToast?.(e?.message || "Auto buy gagal", "error");
+        });
+    } else {
+        AGGREGATOR.autoRouteReverse(
+            route.intermediateToken,
+            route.finalToken,
+            spend
+        ).catch(e => {
+            console.error("[AUTO REVERSE ERROR]", e);
+            showToast?.(e?.message || "Auto reverse gagal", "error");
+        });
+    }
 };
 
 // =====================================
@@ -393,6 +419,9 @@ window.runAutoPreview = async function(modalEl) {
     const recvSymbol  = modalEl.__receiveSymbol || "?";
     const isReverse   = modalEl.__isReverse     || false;
     const maxSafeRecv = modalEl.__maxSafeRecv   || 0;
+    const sdaPerRecv  = modalEl.__sdaPerRecv    || 0;
+    const capEnabled  = window.AUTO_CAP_ENABLED !== false;
+    const globalMax   = Number(window.AUTO_MAX_GLOBAL_SDA || 10);
     const percent     = window.AUTO_SPEND_PERCENT || 10;
 
     if (!route?.intermediateToken || !route?.finalToken) {
@@ -400,8 +429,10 @@ window.runAutoPreview = async function(modalEl) {
         return;
     }
 
-    let spend = Math.min(sdaMax * (percent / 100), sdaMax);
-    if (!isFinite(spend) || spend <= 0) spend = 0;
+    // hitung spend dengan fungsi yang sama persis dengan _startAuto
+    const spend = _calcFinalSpend(
+        sdaMax, percent, sdaPerRecv, maxSafeRecv, capEnabled, globalMax
+    );
 
     if (startBtn) {
         startBtn.style.opacity       = spend > 0 ? "1"    : "0.4";
@@ -424,16 +455,6 @@ window.runAutoPreview = async function(modalEl) {
     `;
 
     try {
-        // =====================================
-        // ARAH ROUTE
-        // intermediateToken = GACP (token A)
-        // finalToken        = TAP  (token B)
-        //
-        // BUY:     SDA -> GACP -> TAP  -> SDA
-        // REVERSE: SDA -> TAP  -> GACP -> SDA
-        // =====================================
-
-        // FIX: reverse swap step1/step2 token DAN symbol dengan benar
         const step1Token = isReverse ? route.finalToken        : route.intermediateToken;
         const step2Token = isReverse ? route.intermediateToken : route.finalToken;
         const firstSym   = isReverse ? recvSymbol              : paySymbol;
@@ -451,8 +472,6 @@ window.runAutoPreview = async function(modalEl) {
             }
         } catch(e) { console.warn("[PREVIEW] step2:", e); }
 
-        // cek liq â€” untuk reverse, liq check di step1 (TAP pool)
-        //           untuk buy,     liq check di step2 (TAP pool)
         const liqCheckAmt = isReverse ? estStep1 : estStep2;
         const exceedsLiq  = maxSafeRecv > 0 && liqCheckAmt > maxSafeRecv;
 
@@ -466,14 +485,6 @@ window.runAutoPreview = async function(modalEl) {
                     &#x2714; Liq OK: ~${maxSafeRecv.toFixed(4)} ${isReverse ? firstSym : secondSym}</div>`
             : "";
 
-        // =====================================
-        // FIX SIMULASI REVERSE
-        // simulateFullCycle(tokenA, tokenB, sdaSpend)
-        // BUY:     simulateFullCycle(intermediateToken, finalToken, spend)
-        //          = simulateFullCycle(GACP, TAP, spend)
-        // REVERSE: simulateFullCycle(finalToken, intermediateToken, spend)
-        //          = simulateFullCycle(TAP, GACP, spend)
-        // =====================================
         const sim = isReverse
             ? await window.simulateFullCycle(route.finalToken, route.intermediateToken, spend)
             : await window.simulateFullCycle(route.intermediateToken, route.finalToken, spend);
@@ -498,6 +509,13 @@ window.runAutoPreview = async function(modalEl) {
         const profitColor = sim.estimatedProfit >= 0 ? "#00d084" : "#ff4d4f";
         const sign        = sim.estimatedProfit >= 0 ? "+"        : "";
 
+        // tampilkan spend yang sudah final (setelah semua cap diterapkan)
+        const capNote = (capEnabled && spend < sdaMax * (percent / 100))
+            ? `<div class="agg-preview-sub" style="color:#ff7a00;margin-top:4px;">
+                &#x26A0; Dibatasi oleh protection (${globalMax} SDA max)
+               </div>`
+            : "";
+
         previewEl.innerHTML = `
             <div class="agg-preview-top">Akan spend</div>
 
@@ -514,6 +532,7 @@ window.runAutoPreview = async function(modalEl) {
             </div>
 
             ${liqHtml}
+            ${capNote}
 
             <div class="agg-preview-sub" style="margin-top:4px;color:#666;">
                 Route: SDA &rarr; ${firstSym} &rarr; ${secondSym} &rarr; SDA
@@ -521,6 +540,7 @@ window.runAutoPreview = async function(modalEl) {
 
             <div class="agg-preview-sub">
                 ${percent}% dari <b style="color:#58a6ff;">${sdaMax.toFixed(4)} SDA</b>
+                &rarr; final <b style="color:#00d084;">${spend.toFixed(4)} SDA</b>
             </div>
 
             <div style="margin-top:10px;padding-top:10px;border-top:1px solid #1a1a1a;">
