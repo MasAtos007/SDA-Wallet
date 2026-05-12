@@ -485,12 +485,9 @@ window.runAutoPreview = async function(modalEl) {
                     &#x2714; Liq OK: ~${maxSafeRecv.toFixed(4)} ${isReverse ? firstSym : secondSym}</div>`
             : "";
 
-const sim =
-    await window.simulateFullCycle(
-        route.intermediateToken,
-        route.finalToken,
-        spend
-    );
+        const sim = isReverse
+            ? await window.simulateFullCycle(route.finalToken, route.intermediateToken, spend)
+            : await window.simulateFullCycle(route.intermediateToken, route.finalToken, spend);
 
         if (startBtn) {
             const ok = !exceedsLiq && spend > 0 && !!sim;
