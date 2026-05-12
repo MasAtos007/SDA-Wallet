@@ -613,13 +613,11 @@ async function refreshSingleRoute(
         return;
     }
 
-    // merge updated data â€” data fresh langsung replace
     _lastResults[idx] = {
         ..._lastResults[idx],
         ...updated
     };
 
-    // baseline SDA untuk hitung margin
     const baseline = _lastResults.find(x =>
         x.payToken === "native" ||
         x.symbol === "SDA" ||
@@ -629,7 +627,6 @@ async function refreshSingleRoute(
     if (baseline?.sdaEquiv > 0) {
         const row = _lastResults[idx];
 
-        // SDA row sendiri tidak punya margin
         if (
             row.payToken === "native" ||
             row.symbol === "SDA"
@@ -639,9 +636,6 @@ async function refreshSingleRoute(
         } else {
             const newEquiv = Number(row.sdaEquiv || 0);
 
-            // margin = selisih langsung vs baseline SDA
-            // positif = lebih untung dari hold SDA
-            // negatif = lebih rugi
             const pct =
                 ((newEquiv - baseline.sdaEquiv) /
                   baseline.sdaEquiv) * 100;
@@ -653,7 +647,6 @@ async function refreshSingleRoute(
         _lastResults[idx] = row;
     }
 
-    // sorting tetap
     _lastResults.sort((a, b) => {
         const aPlus = (a.savingsPct ?? -999) > 0;
         const bPlus = (b.savingsPct ?? -999) > 0;
