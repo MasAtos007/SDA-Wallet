@@ -96,6 +96,16 @@ const BATCH_DELAY  = 500;
 const MIN_AUTO_PROFIT_SDA = 0.1;
 const MIN_SAFE_RECEIVE = 0.001;
 
+// =====================================
+// AUTO SPEND CONFIG
+// =====================================
+
+window.AUTO_SPEND_PERCENT =
+    window.AUTO_SPEND_PERCENT || 25;
+
+window.MAX_AUTO_SDA =
+    window.MAX_AUTO_SDA || 15;
+
 
     let _scanning      = false;
 let _lastScanKey   = "";
@@ -313,21 +323,16 @@ async function acquireWakeLock() {
             console.warn("[AGG] WakeLock unsupported");
             return false;
         }
-
         if (_wakeLock) {
             return true;
         }
-
         _wakeLock = await navigator.wakeLock.request("screen");
-
         _wakeLock.addEventListener("release", () => {
             console.log("[AGG] WakeLock released");
             _wakeLock = null;
         });
-
         console.log("[AGG] WakeLock acquired");
         return true;
-
     } catch (e) {
         console.warn("[AGG] WakeLock fail:", e);
         _wakeLock = null;
@@ -348,12 +353,16 @@ async function releaseWakeLock() {
 }
 
 // Auto reacquire jika tab/app kembali aktif
+// Hanya aktif kalau modal auto terbuka ATAU auto sedang berjalan
 document.addEventListener("visibilitychange", async () => {
     try {
-        if (
-            document.visibilityState === "visible" &&
-            !_wakeLock
-        ) {
+        if (document.visibilityState !== "visible") return;
+        if (_wakeLock) return;
+
+        const modalOpen  = !!document.getElementById("aggAutoModal");
+        const autoActive = AGGREGATOR?._autoRunning === true;
+
+        if (modalOpen || autoActive) {
             await acquireWakeLock();
         }
     } catch (e) {
@@ -591,64 +600,86 @@ async function refreshSingleRoute(
         `Refreshing ${symbolOf(payToken)}...`,
         "info"
     );
-
     const updated = await scanSpecificCandidate(
         payToken,
         receiveToken,
         targetAmt
     );
-
     if (!updated) {
         showToast?.("Refresh gagal", "error");
         return;
     }
-
     const idx = _lastResults.findIndex(
-        x => x.payToken === payToken
+        x =>
+            String(x.payToken || "").toLowerCase() ===
+            String(payToken || "").toLowerCase()
+    );
+    if (idx < 0) {
+        showToast?.("Route tidak ditemukan", "error");
+        return;
+    }
+
+    // merge updated data â€” data fresh langsung replace
+    _lastResults[idx] = {
+        ..._lastResults[idx],
+        ...updated
+    };
+
+    // baseline SDA untuk hitung margin
+    const baseline = _lastResults.find(x =>
+        x.payToken === "native" ||
+        x.symbol === "SDA" ||
+        x.isSDA === true
     );
 
-    if (idx >= 0) {
-        // preserve old liquidity/maxsafe/logo/etc
-        _lastResults[idx] = {
-            ..._lastResults[idx],
-            ...updated
-        };
-    }
-
-    const baseline = _lastResults.find(x => x.isSDA);
-
     if (baseline?.sdaEquiv > 0) {
-        _lastResults = _lastResults.map(r => ({
-            ...r,
-            savings: baseline.sdaEquiv - r.sdaEquiv,
-            savingsPct:
-                ((baseline.sdaEquiv - r.sdaEquiv) / baseline.sdaEquiv) * 100
-        }));
+        const row = _lastResults[idx];
+
+        // SDA row sendiri tidak punya margin
+        if (
+            row.payToken === "native" ||
+            row.symbol === "SDA"
+        ) {
+            row.savings    = 0;
+            row.savingsPct = 0;
+        } else {
+            const newEquiv = Number(row.sdaEquiv || 0);
+
+            // margin = selisih langsung vs baseline SDA
+            // positif = lebih untung dari hold SDA
+            // negatif = lebih rugi
+            const pct =
+                ((newEquiv - baseline.sdaEquiv) /
+                  baseline.sdaEquiv) * 100;
+
+            row.savingsPct = Math.abs(pct) < 0.01 ? 0 : pct;
+            row.savings    = (row.savingsPct / 100) * baseline.sdaEquiv;
+        }
+
+        _lastResults[idx] = row;
     }
 
-    // jangan filter minus
+    // sorting tetap
     _lastResults.sort((a, b) => {
-
-    const aPlus = (a.savingsPct ?? -999) > 0;
-    const bPlus = (b.savingsPct ?? -999) > 0;
-
-    if (aPlus && !bPlus) return -1;
-    if (!aPlus && bPlus) return 1;
-
-    if (aPlus && bPlus) {
-        return a.sdaEquiv - b.sdaEquiv;
-    }
-
-    return (a.savingsPct ?? 0) - (b.savingsPct ?? 0);
-});
+        const aPlus = (a.savingsPct ?? -999) > 0;
+        const bPlus = (b.savingsPct ?? -999) > 0;
+        if (aPlus && !bPlus) return -1;
+        if (!aPlus && bPlus) return 1;
+        if (aPlus && bPlus) {
+            return a.sdaEquiv - b.sdaEquiv;
+        }
+        return (a.savingsPct ?? 0) - (b.savingsPct ?? 0);
+    });
 
     renderPanel(
         _lastResults,
         receiveToken,
         targetAmt
     );
-
-    showToast?.("Route refreshed", "success");
+    showToast?.(
+        "Route refreshed",
+        "success"
+    );
 }
 
 let _autoRunning = false;
@@ -1404,30 +1435,44 @@ return `
     !r.isSDA &&
     r.savingsPct !== null
 ? `
-    <button class="agg-auto-btn"
-    onclick="event.stopPropagation();
+<button class="agg-auto-btn"
+onclick="
+    event.stopPropagation();
+
     if(AGGREGATOR.isAutoRunning()) return;
-AGGREGATOR.setAutoRunning(true);
+
+    AGGREGATOR.setAutoRunning(true);
     AGGREGATOR.lockAutoButton(this);
-        ${
-            r.savingsPct > 0
-            ? `
-            AGGREGATOR.autoRouteBuy(
-                '${r.payToken}',
-                '${receiveToken}',
-                ${(r.maxSafeReceive || 0) * 0.85}
-            )
-            `
-            : `
-            AGGREGATOR.autoRouteReverse(
-                '${r.payToken}',
-                '${receiveToken}',
-                ${(r.maxSafeReceive || 0) * 0.85}
-            )
-            `
-        }">
-        ⚡ Auto
-    </button>
+
+    window._activeAutoRoute = {
+        intermediateToken: '${r.payToken}',
+        finalToken: '${receiveToken}',
+        sdaMax: ${r.sdaEquiv || r.maxSafeReceive || 0}
+    };
+    
+    window.ACTIVE_ROUTE = {
+    payToken: '${r.payToken}',
+    receiveToken: '${receiveToken}',
+
+    // SDA -> token rate
+    rate: ${Number(r.unitsNeeded || 0) > 0
+        ? (Number(r.unitsNeeded) / Number(r.sdaEquiv || 1))
+        : 0},
+
+    sdaEquiv: ${Number(r.sdaEquiv || 0)},
+    unitsNeeded: ${Number(r.unitsNeeded || 0)},
+    maxSafeReceive: ${Number(r.maxSafeReceive || 0)}
+};
+
+    openAutoSpendModal(
+        '${r.savingsPct > 0 ? 'buy' : 'reverse'}',
+        '${r.payToken}',
+        '${receiveToken}',
+        ${r.sdaEquiv || r.maxSafeReceive || 0}
+    );
+">
+    ⚡ Auto
+</button>
 `
 : ''
 }
@@ -1511,14 +1556,18 @@ AGGREGATOR.setAutoRunning(true);
         try {
             const results = await scanCheapestPayer(receiveToken, amount);
 
-            // Enrich dengan data likuiditas
-            const enriched = window.LIQUIDITY_CHECK
-                ? await window.LIQUIDITY_CHECK.enrichWithLiquidity(results, receiveToken)
-                : results;
+// Enrich dengan data likuiditas
+const enriched = window.LIQUIDITY_CHECK
+    ? await window.LIQUIDITY_CHECK.enrichWithLiquidity(results, receiveToken)
+    : results;
 
-            _lastResults  = enriched;
-            cleanupAggregatorCandidates();
-            renderPanel(enriched, receiveToken, amount);
+_lastResults = enriched;
+
+// expose globally
+AGGREGATOR._lastResults = enriched;
+
+cleanupAggregatorCandidates();
+renderPanel(enriched, receiveToken, amount);
             const cheaper = enriched.filter(r => !r.isSDA && r.savingsPct > 0.5).length;
             _setBadge(cheaper > 0 ? cheaper : enriched.length);
         } catch(e) {
@@ -1669,7 +1718,7 @@ if (_suspendWatcher) return;
     return false;
 }
 
-async function simulateFullCycle(
+window.simulateFullCycle = async function (
     intermediateToken,
     finalToken,
     spendSda
@@ -1680,7 +1729,6 @@ async function simulateFullCycle(
         // =====================================
         // SAFETY CONFIG
         // =====================================
-
         const FEE_BUFFER = 0.003;
         const SLIP_BUFFER = 0.004;
 
@@ -1688,11 +1736,12 @@ async function simulateFullCycle(
             (1 - FEE_BUFFER) *
             (1 - SLIP_BUFFER);
 
-        // =====================================
-        // STEP 1
-        // SDA -> INTERMEDIATE
-        // =====================================
+        if (!spendSda || spendSda <= 0) return null;
+        if (!intermediateToken || !finalToken) return null;
 
+        // =====================================
+        // STEP 1: SDA → INTERMEDIATE
+        // =====================================
         const interOut =
             await PRICE_ENGINE.getAmountOut(
                 "native",
@@ -1700,22 +1749,15 @@ async function simulateFullCycle(
                 spendSda
             );
 
-        if (
-            !interOut ||
-            interOut <= 0 ||
-            !isFinite(interOut)
-        ) {
+        if (!interOut || interOut <= 0 || !isFinite(interOut)) {
             return null;
         }
 
-        const interNet =
-            interOut * HOP_BUFFER;
+        const interNet = interOut * HOP_BUFFER;
 
         // =====================================
-        // STEP 2
-        // INTERMEDIATE -> FINAL
+        // STEP 2: INTERMEDIATE → FINAL
         // =====================================
-
         const finalOut =
             await PRICE_ENGINE.getAmountOut(
                 intermediateToken,
@@ -1723,22 +1765,15 @@ async function simulateFullCycle(
                 interNet
             );
 
-        if (
-            !finalOut ||
-            finalOut <= 0 ||
-            !isFinite(finalOut)
-        ) {
+        if (!finalOut || finalOut <= 0 || !isFinite(finalOut)) {
             return null;
         }
 
-        const finalNet =
-            finalOut * HOP_BUFFER;
+        const finalNet = finalOut * HOP_BUFFER;
 
         // =====================================
-        // STEP 3
-        // FINAL -> SDA
+        // STEP 3: FINAL → SDA
         // =====================================
-
         const backToSda =
             await PRICE_ENGINE.getAmountOut(
                 finalToken,
@@ -1746,64 +1781,38 @@ async function simulateFullCycle(
                 finalNet
             );
 
-        if (
-            !backToSda ||
-            backToSda <= 0 ||
-            !isFinite(backToSda)
-        ) {
+        if (!backToSda || backToSda <= 0 || !isFinite(backToSda)) {
             return null;
         }
 
-        const backNet =
-            backToSda * HOP_BUFFER;
+        const backNet = backToSda * HOP_BUFFER;
 
         // =====================================
-        // FINAL RESULT
+        // RESULT
         // =====================================
-
         const estimatedProfit =
             backNet - spendSda;
 
         const estimatedPct =
-            (
-                estimatedProfit /
-                spendSda
-            ) * 100;
+            spendSda > 0
+                ? (estimatedProfit / spendSda) * 100
+                : 0;
 
         return {
-
             spendSda,
-
-            estimatedBack:
-                backNet,
-
+            estimatedBack: backNet,
             estimatedProfit,
-
-            estimatedPct,
-
-            _rawBack:
-                backToSda,
-
-            _costPct:
-                (
-                    (1 - (
-                        HOP_BUFFER *
-                        HOP_BUFFER *
-                        HOP_BUFFER
-                    )) * 100
-                )
+            estimatedPct
         };
 
     } catch (e) {
 
-        console.warn(
-            "[SIMULATION ERROR]",
-            e
-        );
+        console.warn("[SIMULATION ERROR]", e);
 
         return null;
     }
-}
+};
+
 
     
 async function autoRouteBuy(
@@ -1966,7 +1975,7 @@ if (!sim) {
 // =====================================
 // 2. EDGE FILTER (BEFORE ANY SCALING)
 // =====================================
-const MIN_EDGE = 3;
+const MIN_EDGE = 0.5; // hanya tolak yang benar-benar rugi/tipis banget
 
 if (sim.estimatedPct < MIN_EDGE) {
     showToast?.(
@@ -1981,10 +1990,11 @@ if (sim.estimatedPct < MIN_EDGE) {
 // =====================================
 let riskScale = 1;
 
-if (sim.estimatedPct < 1) riskScale = 0.2;
-else if (sim.estimatedPct < 2) riskScale = 0.35;
-else if (sim.estimatedPct < 3) riskScale = 0.5;
-else if (sim.estimatedPct < 5) riskScale = 0.7;
+if      (sim.estimatedPct < 1)  riskScale = 0.5;
+else if (sim.estimatedPct < 2)  riskScale = 0.65;
+else if (sim.estimatedPct < 3)  riskScale = 0.80;
+else if (sim.estimatedPct < 5)  riskScale = 0.90;
+// >= 5% â†’ full size (riskScale = 1)
 
 sdaNeeded *= riskScale;
 intermediateNeeded *= riskScale;
@@ -2030,10 +2040,39 @@ sdaNeeded *= (1 - dynamicBuffer);
 // =====================================
 // 6. HARD LIMIT SAFETY
 // =====================================
+// =====================================
+// PARTIAL SPEND FROM CALCULATED SIZE
+// =====================================
+
+const calculatedSda =
+    sdaNeeded;
+
+const spendPercent =
+    Math.max(
+        1,
+        Math.min(
+            100,
+            Number(
+                window.AUTO_SPEND_PERCENT || 25
+            )
+        )
+    );
+
+sdaNeeded =
+    calculatedSda *
+    (spendPercent / 100);
+
+// =====================================
+// FINAL HARD LIMIT
+// =====================================
+
+const MAX_AUTO_SDA =
+    Number(window.MAX_AUTO_SDA || 15);
+
 sdaNeeded = Math.min(
     sdaNeeded,
     maxSafeLiquidity,
-    50
+    MAX_AUTO_SDA
 );
 
 // =====================================
@@ -2079,7 +2118,7 @@ await new Promise(r =>
 const balInterAfter =
     await getWalletTokenBalance(intermediateToken);
 
-const interReceived =
+interReceived =
     balInterAfter - balInterBefore;
 
 if (interReceived <= 0) {
@@ -3086,6 +3125,8 @@ function refreshRouteDataAfterAuto(
     })();
 
 }
+
+
 
 return {
     togglePanel,
