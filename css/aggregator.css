@@ -351,3 +351,245 @@
 
 
 
+/* ===================================== */
+/* AUTO MODAL CLEAN & COMPACT */
+/* ===================================== */
+
+.agg-auto-backdrop{
+    position:fixed;
+    inset:0;
+    background:rgba(0,0,0,.72);
+    backdrop-filter:blur(6px);
+    z-index:999998;
+}
+
+/* MODAL BOX */
+.agg-auto-box{
+    position:fixed;
+    left:50%;
+    top:50%;
+    transform:translate(-50%,-50%);
+
+    width:min(92vw,360px);
+
+    background:#0f172a;
+
+    border:1px solid rgba(255,255,255,.06);
+
+    border-radius:22px;
+
+    padding:18px;
+
+    z-index:999999;
+
+    box-shadow:0 25px 70px rgba(0,0,0,.55);
+
+    overflow:hidden;
+}
+
+/* TITLE */
+.agg-auto-title{
+    font-size:18px;
+    font-weight:800;
+    color:#fff;
+
+    margin-bottom:6px;
+}
+
+/* SUBTEXT */
+.agg-auto-sub{
+    font-size:13px;
+    color:#94a3b8;
+
+    margin-bottom:14px;
+}
+
+/* =============================== */
+/* TOGGLE BUTTONS (CHIP STYLE) */
+/* =============================== */
+
+.agg-auto-buttons{
+    display:flex;
+    flex-wrap:wrap;
+    justify-content:center;
+    gap:8px;
+}
+
+/* PERCENT CHIP */
+.agg-auto-percent{
+    height:34px;
+
+    padding:0 12px;
+
+    border-radius:999px;
+
+    font-size:12px;
+    font-weight:700;
+
+    background:#1e293b;
+
+    color:#cbd5e1;
+
+    border:1px solid rgba(255,255,255,.06);
+
+    cursor:pointer;
+
+    transition:.15s;
+
+    flex:0 0 auto;
+}
+
+.agg-auto-percent:hover{
+    background:#334155;
+}
+
+.agg-auto-percent.active{
+    background:#00d084;
+    color:#fff;
+    border-color:transparent;
+    transform:scale(1.05);
+}
+
+/* =============================== */
+/* INFO BOX (OPTIONAL DISPLAY SDA) */
+/* =============================== */
+
+.agg-auto-info{
+    margin-top:14px;
+
+    padding:12px;
+
+    border-radius:14px;
+
+    background:#111827;
+
+    border:1px solid rgba(255,255,255,.05);
+
+    text-align:center;
+}
+
+.agg-auto-info-top{
+    font-size:12px;
+    color:#94a3b8;
+}
+
+.agg-auto-info-value{
+    font-size:24px;
+    font-weight:800;
+    color:#00d084;
+    margin-top:4px;
+}
+
+.agg-auto-info-sub{
+    font-size:11px;
+    color:#64748b;
+    margin-top:2px;
+}
+
+/* =============================== */
+/* RUN BUTTON */
+/* =============================== */
+
+.agg-auto-run{
+    width:100%;
+
+    margin-top:16px;
+
+    height:48px;
+
+    border:none;
+
+    border-radius:16px;
+
+    background:#00d084;
+
+    color:#fff;
+
+    font-size:15px;
+    font-weight:800;
+
+    cursor:pointer;
+
+    transition:.15s;
+}
+
+.agg-auto-run:hover{
+    transform:translateY(-1px);
+    filter:brightness(1.05);
+}
+
+/* =============================== */
+/* MOBILE TWEAK */
+/* =============================== */
+
+@media(max-width:420px){
+
+    .agg-auto-box{
+        padding:16px;
+        border-radius:18px;
+    }
+
+    .agg-auto-percent{
+        height:32px;
+        font-size:11px;
+        padding:0 10px;
+    }
+
+    .agg-auto-info-value{
+        font-size:22px;
+    }
+}
+
+
+
+
+/* toggle 1 baris minimalis */
+.agg-auto-toggle-row{
+    display:flex;
+    gap:6px;
+    flex-wrap:wrap;
+    margin:10px 0 14px;
+}
+
+.agg-auto-chip{
+    flex:1;
+    min-width:40px;
+    padding:6px 0;
+    border-radius:8px;
+    border:none;
+    background:#1f2937;
+    color:#aaa;
+    font-size:11px;
+    cursor:pointer;
+}
+
+.agg-auto-chip.active{
+    background:#00d084;
+    color:#fff;
+}
+
+/* preview box */
+.agg-auto-preview{
+    background:#0f172a;
+    border-radius:12px;
+    padding:10px;
+    margin-bottom:12px;
+    text-align:center;
+    color:#ccc;
+}
+
+.agg-preview-top{
+    font-size:12px;
+    opacity:.7;
+}
+
+.agg-preview-value{
+    font-size:18px;
+    font-weight:700;
+    margin:6px 0;
+}
+
+.agg-preview-sub{
+    font-size:11px;
+    opacity:.6;
+}
