@@ -108,6 +108,7 @@ window.MAX_AUTO_SDA =
 
 
     let _scanning      = false;
+    let _stopRequested = false;
 let _lastScanKey   = "";
 let _lastResults   = [];
 let _panelOpen     = false;
@@ -594,20 +595,45 @@ async function refreshSingleRoute(
         `Refreshing ${symbolOf(payToken)}...`,
         "info"
     );
+
+    // refresh baseline SDA dulu supaya savingsPct akurat
+    const baselineUpdated = await scanSpecificCandidate(
+        "native",
+        receiveToken,
+        targetAmt
+    );
+
+    if (baselineUpdated) {
+        const baseIdx = _lastResults.findIndex(x =>
+            x.payToken === "native" || x.isSDA === true
+        );
+        if (baseIdx >= 0) {
+            _lastResults[baseIdx] = {
+                ..._lastResults[baseIdx],
+                ...baselineUpdated,
+                savings: 0,
+                savingsPct: 0
+            };
+        }
+    }
+
+    // refresh token yang diminta
     const updated = await scanSpecificCandidate(
         payToken,
         receiveToken,
         targetAmt
     );
+
     if (!updated) {
         showToast?.("Refresh gagal", "error");
         return;
     }
-    const idx = _lastResults.findIndex(
-        x =>
-            String(x.payToken || "").toLowerCase() ===
-            String(payToken || "").toLowerCase()
+
+    const idx = _lastResults.findIndex(x =>
+        String(x.payToken || "").toLowerCase() ===
+        String(payToken || "").toLowerCase()
     );
+
     if (idx < 0) {
         showToast?.("Route tidak ditemukan", "error");
         return;
@@ -618,55 +644,43 @@ async function refreshSingleRoute(
         ...updated
     };
 
+    // hitung ulang savingsPct semua row berdasar baseline fresh
     const baseline = _lastResults.find(x =>
         x.payToken === "native" ||
-        x.symbol === "SDA" ||
         x.isSDA === true
     );
 
     if (baseline?.sdaEquiv > 0) {
-        const row = _lastResults[idx];
+        _lastResults.forEach((row, i) => {
+            if (row.payToken === "native" || row.isSDA) {
+                row.savings    = 0;
+                row.savingsPct = 0;
+                return;
+            }
+            const equiv = Number(row.sdaEquiv || 0);
+            if (equiv <= 0) return;
 
-        if (
-            row.payToken === "native" ||
-            row.symbol === "SDA"
-        ) {
-            row.savings    = 0;
-            row.savingsPct = 0;
-        } else {
-            const newEquiv = Number(row.sdaEquiv || 0);
-
-            const pct =
-                ((newEquiv - baseline.sdaEquiv) /
-                  baseline.sdaEquiv) * 100;
-
+            // savingsPct: positif = lebih murah dari SDA (bagus)
+            // negatif = lebih mahal dari SDA
+            const pct = ((baseline.sdaEquiv - equiv) / baseline.sdaEquiv) * 100;
             row.savingsPct = Math.abs(pct) < 0.01 ? 0 : pct;
             row.savings    = (row.savingsPct / 100) * baseline.sdaEquiv;
-        }
-
-        _lastResults[idx] = row;
+            _lastResults[i] = row;
+        });
     }
 
+    // sort: profit positif dulu, lalu negatif
     _lastResults.sort((a, b) => {
-        const aPlus = (a.savingsPct ?? -999) > 0;
-        const bPlus = (b.savingsPct ?? -999) > 0;
-        if (aPlus && !bPlus) return -1;
-        if (!aPlus && bPlus) return 1;
-        if (aPlus && bPlus) {
-            return a.sdaEquiv - b.sdaEquiv;
-        }
-        return (a.savingsPct ?? 0) - (b.savingsPct ?? 0);
+        const aSafe = !a.liquidityWarn;
+        const bSafe = !b.liquidityWarn;
+        if (aSafe && !bSafe) return -1;
+        if (!aSafe && bSafe) return 1;
+        return (b.savingsPct ?? -999) - (a.savingsPct ?? -999);
     });
 
-    renderPanel(
-        _lastResults,
-        receiveToken,
-        targetAmt
-    );
-    showToast?.(
-        "Route refreshed",
-        "success"
-    );
+    renderPanel(_lastResults, receiveToken, targetAmt);
+
+    showToast?.("Route refreshed", "success");
 }
 
 let _autoRunning = false;
@@ -1104,6 +1118,13 @@ return {
 
             results.push(...batchRes.filter(Boolean));
             if (results.length && _panelOpen) _renderIncremental(results, receiveToken, targetAmt);
+
+            // Cek stop request — simpan hasil sementara langsung ke cache
+            if (_stopRequested) {
+                console.log("[AGG] Scan dihentikan manual, simpan hasil sementara");
+                break;
+            }
+
             if (i + BATCH_SIZE < candidates.length) await new Promise(r => setTimeout(r, BATCH_DELAY));
         }
 
@@ -1138,8 +1159,9 @@ return results
         const aSafe = !a.liquidityWarn;
         const bSafe = !b.liquidityWarn;
 
-        if (aSafe && !bSafe) return -1;
-        if (!aSafe && bSafe) return 1;
+        // Hapus prioritas safe — tampilkan semua, urut by profit
+        // if (aSafe && !bSafe) return -1;
+        // if (!aSafe && bSafe) return 1;
 
         const aProfit =
             Math.abs(a.savings || 0);
@@ -1204,8 +1226,8 @@ return results
     });
 
     const profitable = sorted.filter(r =>
-    (r.savings ?? 0) >= MIN_AUTO_PROFIT_SDA
-);
+        (r.savings ?? 0) >= MIN_AUTO_PROFIT_SDA
+    );
 
     const reverseCandidates = sorted.filter(r =>
         (r.savingsPct ?? 0) <= -10
@@ -1216,12 +1238,24 @@ return results
         (r.savingsPct ?? 0) > -10
     );
 
+    // Gabungkan semua termasuk liquidityWarn (merah) — jangan disembunyikan
+    const allCombined = [
+        ...profitable,
+        ...reverseCandidates,
+        ...neutral
+    ];
+
+    // Deduplicate by payToken
+    const seen = new Set();
+    const deduped = allCombined.filter(r => {
+        const key = String(r.payToken).toLowerCase();
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+    });
+
     renderPanel(
-        [
-            ...profitable.slice(0, 10),
-            ...reverseCandidates.slice(0, 10),
-            ...neutral.slice(0, 5)
-        ],
+        deduped.slice(0, 25),
         receiveToken,
         targetAmt
     );
@@ -1473,7 +1507,8 @@ onclick="
     // TRIGGER SCAN
     // =====================================
     async function triggerScan() {
-        if (_scanning) return;
+    if (_scanning) return;
+    _stopRequested = false;
 
         const receiveToken = window.swapState?.receiveToken;
         const amount = parseFloat(
@@ -1489,9 +1524,14 @@ onclick="
         }
 
         _scanning = true;
-       await acquireWakeLock();
+        _stopRequested = false;
+        await acquireWakeLock();
         _lastScanKey = scanKey;
         _setBadge("...");
+
+        // Tampilkan tombol stop
+        const stopBtn = document.getElementById("aggStopBtn");
+        if (stopBtn) stopBtn.style.display = "inline-flex";
 
         try {
             const results = await scanCheapestPayer(receiveToken, amount);
@@ -1514,6 +1554,11 @@ renderPanel(enriched, receiveToken, amount);
         } finally {
 
     _scanning = false;
+    _stopRequested = false;
+
+    // Sembunyikan tombol stop
+    const stopBtn = document.getElementById("aggStopBtn");
+    if (stopBtn) stopBtn.style.display = "none";
 
     try {
 
@@ -1558,6 +1603,12 @@ renderPanel(enriched, receiveToken, amount);
 </button>
                 <button class="agg-rescan-btn" onclick="AGGREGATOR.rescan()" title="Rescan">
                     <i class="fa-solid fa-rotate"></i>
+                </button>
+                <button id="aggStopBtn" class="agg-rescan-btn"
+                    onclick="AGGREGATOR.stopScan()"
+                    title="Stop Scan & Save"
+                    style="display:none; color:#ff6b6b;">
+                    <i class="fa-solid fa-stop"></i>
                 </button>
             </div>
             <div id="aggPanelWrap" style="display:none;">
@@ -1901,6 +1952,21 @@ async function autoRouteBuy(
                 safeInter
             );
 
+            window._saveTradeResult?.({
+                pairKey:
+                    `${String(intermediateToken).toLowerCase()}_${String(finalToken).toLowerCase()}`,
+                mode:     "buy",
+                spendSda,
+                profitSda:  0,
+                step1ok:    true,
+                step2ok:    false,
+                step3ok:    false,
+                failedAt:   2,
+                intermediateToken,
+                finalToken,
+                marginAtTrade: 0
+            });
+
             throw step2Err;
         }
 
@@ -1979,6 +2045,21 @@ async function autoRouteBuy(
                 finalToken,
                 safeFinal
             );
+
+            window._saveTradeResult?.({
+                pairKey:
+                    `${String(intermediateToken).toLowerCase()}_${String(finalToken).toLowerCase()}`,
+                mode:     "buy",
+                spendSda,
+                profitSda:  0,
+                step1ok:    true,
+                step2ok:    true,
+                step3ok:    false,
+                failedAt:   3,
+                intermediateToken,
+                finalToken,
+                marginAtTrade: 0
+            });
 
             throw step3Err;
         }
@@ -2093,6 +2174,24 @@ if (profit > 0) {
         profit
     );
 }
+
+window._saveTradeResult?.({
+    pairKey:
+        `${String(intermediateToken).toLowerCase()}_${String(finalToken).toLowerCase()}`,
+    mode:              "buy",
+    spendSda,
+    profitSda:         profit,
+    step1ok:           true,
+    step2ok:           true,
+    step3ok:           true,
+    failedAt:          null,
+    intermediateToken,
+    finalToken,
+    marginAtTrade:
+        window._marginHistory?.[
+            `${String(intermediateToken).toLowerCase()}_${String(finalToken).toLowerCase()}`
+        ]?.slice(-1)?.[0]?.margin ?? 0
+});
 
         showToast?.(
             "Full arbitrage completed",
@@ -2343,6 +2442,21 @@ async function autoRouteReverse(
                 sellFinalAmount
             );
 
+            window._saveTradeResult?.({
+                pairKey:
+                    `${String(intermediateToken).toLowerCase()}_${String(finalToken).toLowerCase()}`,
+                mode:     "reverse",
+                spendSda,
+                profitSda:  0,
+                step1ok:    true,
+                step2ok:    false,
+                step3ok:    false,
+                failedAt:   2,
+                intermediateToken,
+                finalToken,
+                marginAtTrade: 0
+            });
+
             throw step2Err;
         }
 
@@ -2479,6 +2593,21 @@ if (
                 intermediateToken,
                 sellInterAmount
             );
+
+            window._saveTradeResult?.({
+                pairKey:
+                    `${String(intermediateToken).toLowerCase()}_${String(finalToken).toLowerCase()}`,
+                mode:     "reverse",
+                spendSda,
+                profitSda:  0,
+                step1ok:    true,
+                step2ok:    true,
+                step3ok:    false,
+                failedAt:   3,
+                intermediateToken,
+                finalToken,
+                marginAtTrade: 0
+            });
 
             throw step3Err;
         }
@@ -2720,24 +2849,81 @@ function refreshRouteDataAfterAuto(
     intermediateToken,
     finalToken
 ) {
-
     const targetAmt =
         parseFloat(
             document.getElementById("receiveAmount")?.value
         ) || 1;
 
+    // receiveToken yang benar adalah finalToken
+    // semua row di _lastResults perlu dihitung ulang savingsPct-nya
     (async () => {
         try {
+            // refresh token intermediate terhadap finalToken
             await refreshSingleRoute(
                 intermediateToken,
                 finalToken,
                 targetAmt
             );
+
+            // juga refresh semua token lain yang ada di _lastResults
+            // supaya panel tidak jadi single row
+            const others = (_lastResults || []).filter(r =>
+                r.payToken !== "native" &&
+                !r.isSDA &&
+                String(r.payToken || "").toLowerCase() !==
+                String(intermediateToken || "").toLowerCase()
+            );
+
+            for (const row of others) {
+                try {
+                    const upd = await scanSpecificCandidate(
+                        row.payToken,
+                        finalToken,
+                        targetAmt
+                    );
+                    if (!upd) continue;
+
+                    const i = _lastResults.findIndex(x =>
+                        String(x.payToken || "").toLowerCase() ===
+                        String(row.payToken || "").toLowerCase()
+                    );
+                    if (i >= 0) {
+                        _lastResults[i] = { ..._lastResults[i], ...upd };
+                    }
+                } catch(e) {
+                    console.warn("[REFRESH OTHER]", e);
+                }
+            }
+
+            // hitung ulang savingsPct semua setelah semua ter-refresh
+            const baseline = _lastResults.find(x =>
+                x.payToken === "native" || x.isSDA
+            );
+
+            if (baseline?.sdaEquiv > 0) {
+                _lastResults.forEach((row, i) => {
+                    if (row.payToken === "native" || row.isSDA) {
+                        row.savings = 0; row.savingsPct = 0; return;
+                    }
+                    const equiv = Number(row.sdaEquiv || 0);
+                    if (equiv <= 0) return;
+                    const pct = ((baseline.sdaEquiv - equiv) / baseline.sdaEquiv) * 100;
+                    row.savingsPct = Math.abs(pct) < 0.01 ? 0 : pct;
+                    row.savings    = (row.savingsPct / 100) * baseline.sdaEquiv;
+                    _lastResults[i] = row;
+                });
+            }
+
+            _lastResults.sort((a, b) =>
+                (b.savingsPct ?? -999) - (a.savingsPct ?? -999)
+            );
+
+            renderPanel(_lastResults, finalToken, targetAmt);
+
         } catch (e) {
-            console.warn(e);
+            console.warn("[REFRESH AFTER AUTO]", e);
         }
     })();
-
 }
 
 
@@ -2758,7 +2944,13 @@ return {
     lockAutoButton,
     unlockAutoButtons,
 
-    toggleAggregatorCandidate
+    toggleAggregatorCandidate,
+
+    stopScan: function() {
+        if (!_scanning) return;
+        _stopRequested = true;
+        showToast?.("Scan dihentikan — hasil disimpan", "info");
+    }
 };
 
 })();
