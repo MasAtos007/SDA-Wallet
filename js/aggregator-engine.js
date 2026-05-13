@@ -414,41 +414,80 @@ function saveSmartCandidate(
 
     let list = getSmartCandidates();
 
-    const found = list.find(
-        x => x.token === token
+const found = list.find(
+    x => x.token === token
+);
+
+if (found) {
+
+    found.score += Math.min(
+        profit * 8,
+        5
     );
 
-    if (found) {
+    found.profit += profit;
 
-        found.score += 1;
-        found.profit += profit;
-        found.last = Date.now();
+    found.bestMargin = Math.max(
+        found.bestMargin || 0,
+        profit
+    );
 
-    } else {
+    found.last = Date.now();
 
-        list.push({
-            token,
-            score: 1,
-            profit,
-            last: Date.now()
-        });
+} else {
+
+    list.push({
+        token,
+
+        score: Math.min(
+            profit * 8,
+            5
+        ),
+
+        profit,
+
+        bestMargin: profit,
+
+        last: Date.now()
+    });
+}
+
+// cleanup token lama
+const now = Date.now();
+
+list = list.filter(x => {
+
+    const age =
+        now - (x.last || 0);
+
+    return age < 7 * 86400000;
+});
+
+list.sort((a,b) => {
+
+    // prioritas score
+    if (b.score !== a.score) {
+        return b.score - a.score;
     }
 
-    list.sort((a,b) => {
-
-        if (b.score !== a.score) {
-            return b.score - a.score;
-        }
-
+    // lalu total profit
+    if (b.profit !== a.profit) {
         return b.profit - a.profit;
-    });
+    }
 
-    list = list.slice(0, 25);
-
-    localStorage.setItem(
-        "aggSmartCandidates",
-        JSON.stringify(list)
+    // lalu best single margin
+    return (
+        (b.bestMargin || 0) -
+        (a.bestMargin || 0)
     );
+});
+
+list = list.slice(0, 25);
+
+localStorage.setItem(
+    "aggSmartCandidates",
+    JSON.stringify(list)
+);
 }
 
 
@@ -2172,7 +2211,10 @@ showToast?.(
 
         } catch {}
 
-if (profit > 0) {
+if (
+    profit >= MIN_AUTO_PROFIT_SDA &&
+    isFinite(profit)
+) {
 
     saveSmartCandidate(
         intermediateToken,
@@ -2180,9 +2222,9 @@ if (profit > 0) {
     );
 
     saveSmartCandidate(
-        finalToken,
-        profit
-    );
+    intermediateToken,
+    profit
+);
 }
 
 window._saveTradeResult?.({
