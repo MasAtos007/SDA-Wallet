@@ -27,14 +27,20 @@ window._recordMargin = function(pairKey, margin) {
     }
     const hist = window._marginHistory[pairKey];
 
-    // jika tanda margin berbalik (misal dari negatif ke positif atau sebaliknya)
-    // reset history supaya tren lama tidak mencemari tren baru
+    // jangan catat duplikat dalam 30 detik dengan nilai sama
+    if (hist.length > 0) {
+        const last = hist[hist.length - 1];
+        const tooSoon = (Date.now() - last.ts) < 30000;
+        const sameVal = Math.abs(last.margin - margin) < 0.01;
+        if (tooSoon && sameVal) return;
+    }
+
+    // reset jika tanda berbalik
     if (hist.length > 0) {
         const lastMargin = hist[hist.length - 1].margin;
         const signFlipped = (lastMargin < 0 && margin > 0) ||
                             (lastMargin > 0 && margin < 0);
         if (signFlipped) {
-            console.log(`[TREND] Sign flip detected for ${pairKey}: ${lastMargin.toFixed(2)} → ${margin.toFixed(2)}, reset history`);
             window._marginHistory[pairKey] = [];
         }
     }
@@ -690,8 +696,11 @@ function _getSdaMaxFromCache(payToken, receiveToken, liveBalance, capEnabled) {
 
         if (!found) return _emptyCache(payToken, receiveToken);
 
+        // pakai savingsPct langsung dari scan result — jangan hitung ulang
         const savingsPct  = Number(found.savingsPct ?? found.marginPct ?? 0);
-        const savingsAbs  = Number(found.savings    ?? 0);
+        const savingsAbs  = Number(found.savings ?? 0);
+
+        console.log("[MODAL SYNC] savingsPct dari scan:", savingsPct, "payToken:", payToken);
         const sdaEquiv    = Number(found.sdaEquiv   ?? 0);
         const maxSafeRecv = Number(found.maxSafeReceive ?? 0);
 
@@ -851,11 +860,9 @@ window.openAutoSpendModal = async function(mode, payToken, receiveToken, maxAmou
     const cached     = _getSdaMaxFromCache(payToken, receiveToken, liveBalance, capEnabled);
     let   sdaMax     = cached.sdaMax || 0;
 
-    // baca savingsPct langsung dari _lastResults supaya selalu fresh
-    const freshResult = (AGGREGATOR?._lastResults || []).find(r =>
-        String(r.payToken || "").toLowerCase() === String(payToken || "").toLowerCase()
-    );
-    const savingsPct = Number(freshResult?.savingsPct ?? cached.savingsPct ?? 0);
+    // savingsPct sudah diambil dari _lastResults di dalam _getSdaMaxFromCache
+    // gunakan langsung dari cached, tidak perlu ambil ulang
+    const savingsPct = cached.savingsPct || 0;
     const rawLiqMax  = cached.sdaForMaxLiq || 0;
     const paySymbol  = cached.paySymbol || _safeSymbol(payToken);
     const recvSymbol = cached.receiveSymbol || _safeSymbol(receiveToken);
@@ -888,7 +895,7 @@ window.openAutoSpendModal = async function(mode, payToken, receiveToken, maxAmou
     el.__sdaMax        = sdaMax;
     el.__mode          = mode;
     el.__isReverse     = mode === "reverse";
-    el.__savingsPct    = savingsPct;
+    el.__savingsPct    = savingsPct;  // nilai langsung dari _lastResults via cache
     el.__maxAmount     = maxAmount;
     el.__paySymbol     = paySymbol;
     el.__receiveSymbol = recvSymbol;
