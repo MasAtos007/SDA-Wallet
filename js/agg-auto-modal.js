@@ -729,8 +729,15 @@ function _getSdaMaxFromCache(payToken, receiveToken, liveBalance, capEnabled) {
         else if (absSavings < 7)  liqBuffer = 0.82;
         else                      liqBuffer = 0.90;
 
+        // PRICE IMPACT CAP: maksimal swap 15% dari pool size
+        // supaya tidak bablas karena price impact besar
+        const PRICE_IMPACT_CAP = 0.15;
+
         const sdaForMaxLiq = (maxSafeRecv > 0 && sdaPerReceive > 0)
-            ? maxSafeRecv * sdaPerReceive * liqBuffer
+            ? Math.min(
+                maxSafeRecv * sdaPerReceive * liqBuffer,
+                maxSafeRecv * PRICE_IMPACT_CAP * sdaPerReceive
+              )
             : 0;
 
         // =====================================
@@ -822,9 +829,12 @@ function _calcFinalSpend(
         spend = globalMax;
     }
 
-    // cap by liquidity
+    // cap by liquidity — maksimal 20% dari pool untuk hindari price impact
     if (sdaPerRecv > 0 && maxSafeRecv > 0) {
         const maxSdaByLiq = maxSafeRecv * sdaPerRecv * 0.90;
+        // tambahan: cap di 20% pool size untuk jaga price impact
+        const safeImpactCap = maxSafeRecv * sdaPerRecv * 0.20;
+        const effectiveCap = Math.min(maxSdaByLiq, safeImpactCap * 5); // max 100% tapi impact-aware
         if (spend > maxSdaByLiq) spend = maxSdaByLiq;
     }
 
@@ -1223,6 +1233,22 @@ window.runAutoPreview = async function(modalEl) {
         const liqCheckAmt = isReverse ? estStep1 : estStep2;
         const exceedsLiq  = maxSafeRecv > 0 && liqCheckAmt > maxSafeRecv;
 
+        // hitung price impact step 2
+        // jika estStep2 << estStep1 * expectedRate, berarti impact besar
+        const step2Ratio = estStep1 > 0 ? estStep2 / estStep1 : 0;
+        const step1Ratio = spend > 0 ? estStep1 / spend : 0;
+
+        // deteksi slippage berlebih: step2 dapat < 85% dari yang diharapkan
+        const highImpact = step2Ratio > 0 && step2Ratio < 0.85;
+
+        const impactHtml = highImpact
+            ? `<div style="margin-top:6px;padding:6px 8px;background:rgba(255,170,0,.1);
+                border:1px solid #ff7a00;border-radius:8px;font-size:11px;color:#ff7a00;">
+                ⚠ Price impact tinggi — step 2 dapat ${(step2Ratio*100).toFixed(1)}% dari step 1<br>
+                <b>Kurangi % spend untuk kurangi slippage</b>
+               </div>`
+            : "";
+
         const liqHtml = maxSafeRecv > 0
             ? exceedsLiq
                 ? `<div style="margin-top:6px;padding:6px 8px;background:rgba(255,77,79,.1);
@@ -1238,9 +1264,12 @@ window.runAutoPreview = async function(modalEl) {
             : await window.simulateFullCycle(route.intermediateToken, route.finalToken, spend);
 
         if (startBtn) {
-            const ok = !exceedsLiq && spend > 0 && !!sim;
+            const ok = !exceedsLiq && !highImpact && spend > 0 && !!sim;
             startBtn.style.opacity       = ok ? "1"    : "0.4";
             startBtn.style.pointerEvents = ok ? "auto" : "none";
+            if (highImpact && !exceedsLiq) {
+                startBtn.textContent = "⚠ Impact Tinggi — Kurangi %";
+            }
         }
 
         if (!sim) {
@@ -1313,6 +1342,7 @@ window.runAutoPreview = async function(modalEl) {
             </div>
 
             ${liqHtml}
+            ${impactHtml}
             ${capNote}
 
             <div class="agg-preview-sub" style="margin-top:4px;color:#666;">
