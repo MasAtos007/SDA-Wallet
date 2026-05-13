@@ -707,12 +707,13 @@ function _getSdaMaxFromCache(payToken, receiveToken, liveBalance, capEnabled) {
         const paySymbol  = found.paySymbol || _safeSymbol(payToken);
         const recvSymbol = _safeSymbol(receiveToken);
 
-        const targetAmt = parseFloat(
-            document.getElementById("receiveAmount")?.value
-        ) || 1;
-
-        const sdaPerReceive = (sdaEquiv > 0 && targetAmt > 0)
-            ? sdaEquiv / targetAmt : 0;
+        // sdaPerReceive = berapa SDA per 1 token receive
+        // pakai rate langsung dari scan result kalau ada
+        // jangan pakai receiveAmount UI — itu input user bukan pool rate
+        const sdaPerReceive = Number(found.sdaPerReceive ?? found.sdaPerRecv ?? 0)
+            || (found.sdaEquiv > 0 && found.maxSafeReceive > 0
+                ? found.sdaEquiv / found.maxSafeReceive
+                : 0);
 
         // =====================================
         // DETEKSI MODE — pakai absSavings untuk buffer
@@ -729,10 +730,18 @@ function _getSdaMaxFromCache(payToken, receiveToken, liveBalance, capEnabled) {
         else if (absSavings < 7)  liqBuffer = 0.82;
         else                      liqBuffer = 0.90;
 
-        // PRICE IMPACT CAP: maksimal swap 15% dari pool size
-        // supaya tidak bablas karena price impact besar
-        const PRICE_IMPACT_CAP = 0.03;
+        // cap dinamis berdasar margin — makin besar margin, boleh pakai pool lebih besar
+        const PRICE_IMPACT_CAP =
+            absSavings >= 10 ? 0.35 :
+            absSavings >=  7 ? 0.25 :
+            absSavings >=  5 ? 0.18 :
+            absSavings >=  3 ? 0.12 :
+            absSavings >=  2 ? 0.08 :
+            absSavings >=  1 ? 0.05 :
+                               0.03;
 
+        // sdaForMaxLiq = pool SDA yang aman dipakai
+        // pakai liqBuffer saja — PRICE_IMPACT_CAP sudah handle batas atas
         const sdaForMaxLiq = (maxSafeRecv > 0 && sdaPerReceive > 0)
             ? Math.min(
                 maxSafeRecv * sdaPerReceive * liqBuffer,
@@ -752,21 +761,16 @@ function _getSdaMaxFromCache(payToken, receiveToken, liveBalance, capEnabled) {
 
         const sdaMax = effectiveMax;
 
-        // safePct berdasar magnitude — mode reverse tetap dapat % yang proporsional
-        let safePct;
-        if (absSavings <= 0.5) {
-    safePct = 5;
-}
-else if (absSavings < 1) {
-    safePct = 10;
-}
-        else if (absSavings < 1)   safePct = 15;
-        else if (absSavings < 2)   safePct = 25;
-        else if (absSavings < 3)   safePct = 35;
-        else if (absSavings < 5)   safePct = 50;
-        else if (absSavings < 8)   safePct = 70;
-        else if (absSavings < 10)  safePct = 85;
-        else                       safePct = 100;
+        // safePct berdasar magnitude margin — chip default yang disarankan
+        const safePct =
+            absSavings <= 0.5 ?  5 :
+            absSavings <  1   ? 10 :
+            absSavings <  2   ? 20 :
+            absSavings <  3   ? 30 :
+            absSavings <  5   ? 50 :
+            absSavings <  8   ? 70 :
+            absSavings < 10   ? 80 :
+                               100;
 
         console.log("[MODAL CACHE RESULT]", {
             savingsPct, savingsAbs, sdaEquiv, maxSafeRecv,
@@ -798,6 +802,82 @@ function _emptyCache(payToken, receiveToken) {
 }
 
 // =====================================
+// CHIP CLICK HANDLER
+// =====================================
+window._onChipClick = function(btn, p) {
+    window.AUTO_SPEND_PERCENT = p;
+    document.querySelectorAll('.agg-auto-chip').forEach(x => x.classList.remove('active'));
+    btn.classList.add('active');
+
+    const modal = document.getElementById('aggAutoModal');
+    if (!modal) return;
+
+    // selalu tampilkan spend — tidak butuh fetch
+    const pv = document.getElementById('aggAutoPreview');
+    pv.style.display = 'block';
+
+    const { spend, trendAdj } = _calcFinalSpend(
+        modal.__sdaMax    || 0,
+        p,
+        modal.__sdaPerRecv  || 0,
+        modal.__maxSafeRecv || 0,
+        window.AUTO_CAP_ENABLED !== false,
+        Number(window.AUTO_MAX_GLOBAL_SDA || 10),
+        modal.__pairKey    || "",
+        modal.__savingsPct || 0,
+        modal.__isReverse  || false
+    );
+
+    const safetyColor = {
+        safe:    "#00d084",
+        caution: "#ff7a00",
+        reduced: "#ff4d4f",
+        blocked: "#ff4d4f"
+    }[trendAdj?.safetyLevel || "safe"] || "#00d084";
+
+    const trendNote = trendAdj?.reason
+        ? `<div style="font-size:11px;color:${safetyColor};margin-top:4px;">⚠ ${trendAdj.reason}</div>`
+        : "";
+
+    if (spend <= 0) {
+        pv.innerHTML = `<div class="agg-preview-top" style="color:#ff4d4f;">⛔ Spend 0 — ${trendAdj?.reason || "data tidak cukup"}</div>`;
+    } else {
+        pv.innerHTML = `
+            <div class="agg-preview-top">Akan spend</div>
+            <div class="agg-preview-value" style="color:${safetyColor};">${spend.toFixed(4)} SDA</div>
+            <div class="agg-preview-sub" style="margin-top:2px;color:#555;">
+                ${p}% dari <b style="color:#58a6ff;">${(modal.__sdaMax||0).toFixed(4)} SDA</b>
+            </div>
+            ${trendNote}
+            <div class="agg-preview-sub" style="margin-top:6px;color:#444;">
+                Klik 🔍 Lihat Simulasi untuk estimasi profit
+            </div>
+        `;
+    }
+
+    // kalau cache sudah ada, langsung render full preview
+    if (modal.__previewCache) {
+        document.getElementById('aggSimBtn').style.display = 'none';
+        window.runAutoPreview(modal);
+    }
+
+    // aktifkan START berdasar spend — tidak perlu tunggu simulasi
+    const startBtn = document.getElementById('aggAutoStartBtn');
+    if (startBtn) {
+        const canStart = spend > 0 && (trendAdj?.safetyLevel !== 'blocked');
+        startBtn.style.opacity       = canStart ? '1'    : '0.4';
+        startBtn.style.pointerEvents = canStart ? 'auto' : 'none';
+        startBtn.style.background    = trendAdj?.safetyLevel === 'caution' ? '#ff7a00'
+                                     : trendAdj?.safetyLevel === 'reduced' ? '#ff4d4f'
+                                     : '';
+        startBtn.textContent = spend <= 0                              ? '⛔ Spend 0'
+            : trendAdj?.safetyLevel === 'blocked'                      ? '⛔ DIBLOKIR — Tren Bahaya'
+            : trendAdj?.safetyLevel === 'caution'                      ? '⚡ START AUTO (Spend -25%)'
+            : trendAdj?.safetyLevel === 'reduced'                      ? '⚡ START AUTO (Spend -50%)'
+            : '⚡ START AUTO';
+    }
+};
+// =====================================
 // REBUILD SETELAH TOGGLE CAP
 // =====================================
 window._rebuildAutoModal = function() {
@@ -823,10 +903,9 @@ window._closeAutoModal = function() {
 function _calcFinalSpend(
     sdaMax, percent, sdaPerRecv, maxSafeRecv,
     capEnabled, globalMax,
-    pairKey, currentMargin, isReverse   // <-- tambah isReverse
+    pairKey, currentMargin, isReverse
 ) {
     let spend = sdaMax * (percent / 100);
-
     if (!isFinite(spend) || spend <= 0) return { spend: 0, trendAdj: null };
 
     // hard cap global protection
@@ -834,19 +913,9 @@ function _calcFinalSpend(
         spend = globalMax;
     }
 
-    // cap by liquidity — maksimal 20% dari pool untuk hindari price impact
+    // guard liq — sdaMax sudah dihitung smart di cache, ini cuma safety net
     if (sdaPerRecv > 0 && maxSafeRecv > 0) {
-        const maxSdaByLiq = maxSafeRecv * sdaPerRecv * 0.90;
-        // tambahan: cap di 20% pool size untuk jaga price impact
-        const safeImpactCap = maxSafeRecv * sdaPerRecv * 0.20;
-        const effectiveCap = Math.min(
-    maxSdaByLiq,
-    safeImpactCap
-);
-
-if (spend > effectiveCap) {
-    spend = effectiveCap;
-} // max 100% tapi impact-aware
+        const maxSdaByLiq = maxSafeRecv * sdaPerRecv * 0.95;
         if (spend > maxSdaByLiq) spend = maxSdaByLiq;
     }
 
@@ -854,12 +923,9 @@ if (spend > effectiveCap) {
     const trendAdj = pairKey
         ? window._adjustSpendByTrend(pairKey, spend, currentMargin || 0, !!isReverse)
         : null;
-
     const finalSpend = trendAdj ? trendAdj.spend : spend;
-
     return { spend: finalSpend, trendAdj };
 }
-
 // =====================================
 // OPEN MODAL
 // =====================================
@@ -959,6 +1025,16 @@ const savingsPct = Number(
         `${String(payToken).toLowerCase()}_${String(receiveToken).toLowerCase()}`;
 
     el.__pairKey = pairKey;
+    
+    console.log("[AUTO MODAL RAW liveRow]", JSON.stringify(liveRow || latestRow || {}, null, 2));
+
+    // coba ambil row SDA baseline untuk dapat rate STSX→SDA
+    const sdaBaseRow = (AGGREGATOR?._lastResults || []).find(r =>
+        r.isSDA === true || 
+        String(r.payToken || "").toLowerCase() === "native" ||
+        String(r.paySymbol || "").toLowerCase() === "sda"
+    );
+    console.log("[AUTO MODAL SDA BASE]", JSON.stringify(sdaBaseRow || {}, null, 2));
 
     // catat margin fresh saat modal dibuka — ini titik data pertama yang valid
     window._recordMargin?.(pairKey, savingsPct);
@@ -968,7 +1044,7 @@ const savingsPct = Number(
             onclick="window._closeAutoModal();">
         </div>
 
-        <div class="agg-auto-box">
+        <div class="agg-auto-box" style="display:flex;flex-direction:column;max-height:90vh;overflow:hidden;">
 
             <!-- HEADER -->
             <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
@@ -1032,27 +1108,29 @@ const savingsPct = Number(
                 &mdash; margin ${savingsPct.toFixed(1)}%
             </div>
 
+            <div style="flex:1;overflow-y:auto;overflow-x:hidden;">
             <!-- CHIPS -->
             <div class="agg-auto-sub" style="margin-bottom:6px;">% dari Max Liq</div>
             <div class="agg-auto-toggle-row">
                 ${chips.map(p => `
                     <button class="agg-auto-chip ${nearest === p ? "active" : ""}"
-                        onclick="
-                            window.AUTO_SPEND_PERCENT = ${p};
-                            document.querySelectorAll('.agg-auto-chip').forEach(x => x.classList.remove('active'));
-                            this.classList.add('active');
-                            window.runAutoPreview(document.getElementById('aggAutoModal'));
-                        ">${p}%</button>
+                        onclick="window._onChipClick(this,${p});">${p}%</button>
                 `).join("")}
             </div>
 
             <!-- PREVIEW -->
-            <div id="aggAutoPreview" class="agg-auto-preview">
-                <div class="agg-preview-top">Menghitung simulasi...</div>
-            </div>
+            <div id="aggAutoPreview" class="agg-auto-preview" style="display:none;"></div>
+            <button id="aggSimBtn"
+                onclick="document.getElementById('aggAutoPreview').style.display='block';document.getElementById('aggSimBtn').style.display='none';window.runAutoPreview(document.getElementById('aggAutoModal'));"
+                style="width:100%;height:40px;border:1px solid #1a1a1a;border-radius:12px;
+                background:#0a0a0a;color:#58a6ff;font-size:13px;font-weight:600;
+                cursor:pointer;margin-bottom:4px;">
+                🔍 Lihat Simulasi
+            </button>
 
+            </div><!-- end scroll area -->
             <!-- BUTTONS -->
-            <div style="display:flex;flex-direction:column;gap:8px;margin-top:4px;">
+            <div style="display:flex;flex-direction:column;gap:8px;margin-top:4px;flex-shrink:0;">
 
                 <button id="aggAutoStartBtn" class="agg-auto-run"
                     style="width:100%;margin-top:0;opacity:0.5;pointer-events:none;"
@@ -1088,7 +1166,12 @@ const savingsPct = Number(
     `;
 
     document.body.appendChild(el);
-    window.runAutoPreview(el);
+
+    // tampilkan spend instan saat modal buka — tanpa fetch
+    window._onChipClick(
+        el.querySelectorAll('.agg-auto-chip')[chips.indexOf(nearest)],
+        nearest
+    );
 
     if (typeof acquireWakeLock === "function") await acquireWakeLock();
 };
