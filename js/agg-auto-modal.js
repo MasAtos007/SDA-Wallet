@@ -715,14 +715,19 @@ function _getSdaMaxFromCache(payToken, receiveToken, liveBalance, capEnabled) {
             ? sdaEquiv / targetAmt : 0;
 
         // =====================================
-        // SMART LIQ BUFFER
+        // DETEKSI MODE — pakai absSavings untuk buffer
+        // margin negatif = mode reverse, tetap valid
         // =====================================
+        const absSavings = Math.abs(savingsPct);
+        const isReverseMode = savingsPct < 0;
+
+        // liqBuffer berdasar magnitude margin, bukan tanda
         let liqBuffer = 0.85;
-        if      (savingsPct < 1) liqBuffer = 0.55;
-        else if (savingsPct < 2) liqBuffer = 0.65;
-        else if (savingsPct < 4) liqBuffer = 0.75;
-        else if (savingsPct < 7) liqBuffer = 0.82;
-        else                     liqBuffer = 0.90;
+        if      (absSavings < 1)  liqBuffer = 0.55;
+        else if (absSavings < 2)  liqBuffer = 0.65;
+        else if (absSavings < 4)  liqBuffer = 0.75;
+        else if (absSavings < 7)  liqBuffer = 0.82;
+        else                      liqBuffer = 0.90;
 
         const sdaForMaxLiq = (maxSafeRecv > 0 && sdaPerReceive > 0)
             ? maxSafeRecv * sdaPerReceive * liqBuffer
@@ -740,14 +745,15 @@ function _getSdaMaxFromCache(payToken, receiveToken, liveBalance, capEnabled) {
 
         const sdaMax = effectiveMax;
 
+        // safePct berdasar magnitude — mode reverse tetap dapat % yang proporsional
         let safePct;
-        if      (savingsPct <= 0)  safePct = 10;
-        else if (savingsPct < 1)   safePct = 15;
-        else if (savingsPct < 2)   safePct = 25;
-        else if (savingsPct < 3)   safePct = 35;
-        else if (savingsPct < 5)   safePct = 50;
-        else if (savingsPct < 8)   safePct = 70;
-        else if (savingsPct < 10)  safePct = 85;
+        if      (absSavings <= 0)  safePct = 10;
+        else if (absSavings < 1)   safePct = 15;
+        else if (absSavings < 2)   safePct = 25;
+        else if (absSavings < 3)   safePct = 35;
+        else if (absSavings < 5)   safePct = 50;
+        else if (absSavings < 8)   safePct = 70;
+        else if (absSavings < 10)  safePct = 85;
         else                       safePct = 100;
 
         console.log("[MODAL CACHE RESULT]", {
@@ -755,9 +761,7 @@ function _getSdaMaxFromCache(payToken, receiveToken, liveBalance, capEnabled) {
             sdaPerReceive, sdaForMaxLiq, sdaMax, safePct
         });
 
-        // catat ke history tren
         const pairKey = `${String(payToken).toLowerCase()}_${String(receiveToken).toLowerCase()}`;
-        window._recordMargin?.(pairKey, savingsPct);
 
         return {
             sdaMax, safePct, savingsPct, savingsAbs,
@@ -857,12 +861,21 @@ window.openAutoSpendModal = async function(mode, payToken, receiveToken, maxAmou
     const capEnabled = window.AUTO_CAP_ENABLED !== false;
     const GLOBAL_MAX = Number(window.AUTO_MAX_GLOBAL_SDA || 5);
 
+    // ambil langsung dari _lastResults sebelum apapun — ini sumber kebenaran tunggal
+    const liveRow = (AGGREGATOR?._lastResults || []).find(r =>
+        String(r.payToken || "").toLowerCase() ===
+        String(payToken || "").toLowerCase()
+    );
+
     const cached     = _getSdaMaxFromCache(payToken, receiveToken, liveBalance, capEnabled);
     let   sdaMax     = cached.sdaMax || 0;
 
-    // savingsPct sudah diambil dari _lastResults di dalam _getSdaMaxFromCache
-    // gunakan langsung dari cached, tidak perlu ambil ulang
-    const savingsPct = cached.savingsPct || 0;
+    // savingsPct: liveRow prioritas utama, cached sebagai fallback
+    const savingsPct = Number(
+        liveRow?.savingsPct ??
+        cached.savingsPct ??
+        0
+    );
     const rawLiqMax  = cached.sdaForMaxLiq || 0;
     const paySymbol  = cached.paySymbol || _safeSymbol(payToken);
     const recvSymbol = cached.receiveSymbol || _safeSymbol(receiveToken);
@@ -895,13 +908,13 @@ window.openAutoSpendModal = async function(mode, payToken, receiveToken, maxAmou
     el.__sdaMax        = sdaMax;
     el.__mode          = mode;
     el.__isReverse     = mode === "reverse";
-    el.__savingsPct    = savingsPct;  // nilai langsung dari _lastResults via cache
+    el.__savingsPct = savingsPct; // dari liveRow — sinkron dengan scan
     el.__maxAmount     = maxAmount;
     el.__paySymbol     = paySymbol;
     el.__receiveSymbol = recvSymbol;
-    el.__sdaEquiv      = cached.sdaEquiv     || 0;
-    el.__maxSafeRecv   = cached.maxSafeRecv  || 0;
-    el.__sdaPerRecv    = cached.sdaPerReceive || 0;
+    el.__sdaEquiv    = Number(liveRow?.sdaEquiv      ?? cached.sdaEquiv     ?? 0);
+    el.__maxSafeRecv = Number(liveRow?.maxSafeReceive ?? cached.maxSafeRecv  ?? 0);
+    el.__sdaPerRecv  = cached.sdaPerReceive || 0;
     el.__activeRate    = cached.rate          || 0;
     el.__globalMax     = GLOBAL_MAX;
     el.__capEnabled    = capEnabled;
