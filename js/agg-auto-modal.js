@@ -692,67 +692,97 @@ function _getSdaMaxFromCache(payToken, receiveToken, liveBalance, capEnabled) {
             String(r.payToken || "").toLowerCase() === String(payToken || "").toLowerCase()
         );
 
-        console.log("[MODAL CACHE] payToken:", payToken, "found:", found);
-
         if (!found) return _emptyCache(payToken, receiveToken);
 
-        // pakai savingsPct langsung dari scan result — jangan hitung ulang
         const savingsPct  = Number(found.savingsPct ?? found.marginPct ?? 0);
-        const savingsAbs  = Number(found.savings ?? 0);
-
-        console.log("[MODAL SYNC] savingsPct dari scan:", savingsPct, "payToken:", payToken);
         const sdaEquiv    = Number(found.sdaEquiv   ?? 0);
         const maxSafeRecv = Number(found.maxSafeReceive ?? 0);
-
-        const paySymbol  = found.paySymbol || _safeSymbol(payToken);
-        const recvSymbol = _safeSymbol(receiveToken);
-
-        // sdaPerReceive = berapa SDA per 1 token receive
-        // pakai rate langsung dari scan result kalau ada
-        // jangan pakai receiveAmount UI — itu input user bukan pool rate
-        const sdaPerReceive = Number(found.sdaPerReceive ?? found.sdaPerRecv ?? 0)
-            || (found.sdaEquiv > 0 && found.maxSafeReceive > 0
-                ? found.sdaEquiv / found.maxSafeReceive
-                : 0);
+        const unitsNeeded = Number(found.unitsNeeded ?? 0);
+        const paySymbol   = found.paySymbol || _safeSymbol(payToken);
+        const recvSymbol  = _safeSymbol(receiveToken);
+        const absSavings  = Math.abs(savingsPct);
 
         // =====================================
-        // DETEKSI MODE — pakai absSavings untuk buffer
-        // margin negatif = mode reverse, tetap valid
+        // RATE: SDA per 1 intermediate token
+        // Cari row intermediate token di scan result
+        // intermediateSymbol = receiveToken symbol
+        // kalau ada rownya, pakai sdaEquiv/unitsNeeded dari sana
         // =====================================
-        const absSavings = Math.abs(savingsPct);
-        const isReverseMode = savingsPct < 0;
+        const interRow = results.find(r =>
+            String(r.payToken || "").toLowerCase() === String(receiveToken || "").toLowerCase()
+        );
 
-        // liqBuffer berdasar magnitude margin, bukan tanda
-        let liqBuffer = 0.85;
-        if      (absSavings < 1)  liqBuffer = 0.55;
-        else if (absSavings < 2)  liqBuffer = 0.65;
-        else if (absSavings < 4)  liqBuffer = 0.75;
-        else if (absSavings < 7)  liqBuffer = 0.82;
-        else                      liqBuffer = 0.90;
+        let sdaPerIntermediate = 0;
 
-        // cap dinamis berdasar margin — makin besar margin, boleh pakai pool lebih besar
-        const PRICE_IMPACT_CAP =
-            absSavings >= 10 ? 0.35 :
-            absSavings >=  7 ? 0.25 :
-            absSavings >=  5 ? 0.18 :
-            absSavings >=  3 ? 0.12 :
-            absSavings >=  2 ? 0.08 :
-            absSavings >=  1 ? 0.05 :
-                               0.03;
+        if (interRow && interRow.sdaEquiv > 0 && interRow.unitsNeeded > 0) {
+            // rate dari row intermediate langsung — paling akurat
+            sdaPerIntermediate = interRow.sdaEquiv / interRow.unitsNeeded;
+        } else if (sdaEquiv > 0 && unitsNeeded > 0 && maxSafeRecv > 0) {
+            // fallback: estimasi dari row payToken sendiri
+            // sdaEquiv = nilai SDA dari unitsNeeded payToken
+            // tidak langsung representasi harga intermediate
+            // pakai sebagai proxy kasar
+            sdaPerIntermediate = sdaEquiv / unitsNeeded;
+        }
 
-        // sdaForMaxLiq = pool SDA yang aman dipakai
-        // pakai liqBuffer saja — PRICE_IMPACT_CAP sudah handle batas atas
-        const sdaForMaxLiq = (maxSafeRecv > 0 && sdaPerReceive > 0)
-            ? Math.min(
-                maxSafeRecv * sdaPerReceive * liqBuffer,
-                maxSafeRecv * PRICE_IMPACT_CAP * sdaPerReceive
-              )
-            : 0;
+        // nilai SDA aktual yang tersedia di pool intermediate
+        // INI BATAS KERAS — spend tidak boleh melebihi ini
+        const actualPoolSda = maxSafeRecv * sdaPerIntermediate;
+
+        console.log("[MODAL RATE]", {
+            paySymbol,
+            recvSymbol,
+            interRowFound:      !!interRow,
+            sdaPerIntermediate: sdaPerIntermediate.toFixed(6),
+            maxSafeRecv:        maxSafeRecv.toFixed(6),
+            actualPoolSda:      actualPoolSda.toFixed(6),
+        });
+
+        // =====================================
+        // LIQ BUFFER berdasar magnitude margin
+        // =====================================
+        const liqBuffer =
+            absSavings < 1 ? 0.55 :
+            absSavings < 2 ? 0.65 :
+            absSavings < 4 ? 0.75 :
+            absSavings < 7 ? 0.82 :
+                             0.88;
+
+        // =====================================
+        // MARGIN FACTOR: seberapa besar pool yang boleh dipakai
+        // makin besar margin = makin banyak yang worthwhile di-spend
+        // =====================================
+        const marginFactor =
+            absSavings >= 20 ? 1.00 :
+            absSavings >= 15 ? 0.85 :
+            absSavings >= 10 ? 0.70 :
+            absSavings >=  7 ? 0.55 :
+            absSavings >=  5 ? 0.40 :
+            absSavings >=  3 ? 0.28 :
+            absSavings >=  2 ? 0.18 :
+            absSavings >=  1 ? 0.10 :
+                               0.05;
+
+        // sdaForMaxLiq = MIN dari:
+        // 1. actualPoolSda × liqBuffer  → BATAS KERAS dari liq nyata
+        // 2. sdaEquiv × marginFactor × liqBuffer → batas dari margin
+        // liq nyata selalu jadi batas atas — tidak bisa dilanggar
+        const fromLiq    = actualPoolSda * liqBuffer;
+        const fromMargin = sdaEquiv * marginFactor * liqBuffer;
+        const sdaForMaxLiq = actualPoolSda > 0
+            ? Math.min(fromLiq, fromMargin)
+            : fromMargin;
+
+        console.log("[MODAL LIQ CALC]", {
+            fromLiq:       fromLiq.toFixed(4),
+            fromMargin:    fromMargin.toFixed(4),
+            sdaForMaxLiq:  sdaForMaxLiq.toFixed(4)
+        });
 
         // =====================================
         // FINAL SAFE MAX SPEND
         // =====================================
-        const GLOBAL_MAX   = Number(window.AUTO_MAX_GLOBAL_SDA || 5);
+        const GLOBAL_MAX   = Number(window.AUTO_MAX_GLOBAL_SDA || 10);
         const protectionOn = window.AUTO_CAP_ENABLED !== false;
 
         const effectiveMax = protectionOn
@@ -761,7 +791,7 @@ function _getSdaMaxFromCache(payToken, receiveToken, liveBalance, capEnabled) {
 
         const sdaMax = effectiveMax;
 
-        // safePct berdasar magnitude margin — chip default yang disarankan
+        // chip default berdasar magnitude margin
         const safePct =
             absSavings <= 0.5 ?  5 :
             absSavings <  1   ? 10 :
@@ -772,17 +802,15 @@ function _getSdaMaxFromCache(payToken, receiveToken, liveBalance, capEnabled) {
             absSavings < 10   ? 80 :
                                100;
 
-        console.log("[MODAL CACHE RESULT]", {
-            savingsPct, savingsAbs, sdaEquiv, maxSafeRecv,
-            sdaPerReceive, sdaForMaxLiq, sdaMax, safePct
-        });
-
         const pairKey = `${String(payToken).toLowerCase()}_${String(receiveToken).toLowerCase()}`;
 
         return {
-            sdaMax, safePct, savingsPct, savingsAbs,
+            sdaMax, safePct, savingsPct,
+            savingsAbs: Math.abs(Number(found.savings ?? 0)),
             sdaForMaxLiq, paySymbol, receiveSymbol: recvSymbol,
-            sdaEquiv, maxSafeRecv, sdaPerReceive, rate: found.rate || 0,
+            sdaEquiv, maxSafeRecv,
+            sdaPerReceive: sdaPerIntermediate,
+            rate: found.rate || 0,
             pairKey
         };
 
@@ -839,6 +867,23 @@ window._onChipClick = function(btn, p) {
         ? `<div style="font-size:11px;color:${safetyColor};margin-top:4px;">⚠ ${trendAdj.reason}</div>`
         : "";
 
+    // cek liq warning
+    const maxSafeRecv  = modal.__maxSafeRecv || 0;
+    const sdaPerRecv   = modal.__sdaPerRecv  || 0;
+    const maxSdaByLiq  = (maxSafeRecv > 0 && sdaPerRecv > 0)
+        ? maxSafeRecv * sdaPerRecv
+        : 0;
+    const liqTooLow    = maxSdaByLiq > 0 && maxSdaByLiq < 0.05;
+    const liqWarnHtml  = liqTooLow
+        ? `<div style="margin-top:6px;padding:5px 8px;background:rgba(255,77,79,.12);
+            border:1px solid #ff4d4f;border-radius:8px;font-size:11px;color:#ff4d4f;">
+            ⚠ Liq sangat tipis (~${maxSdaByLiq.toFixed(4)} SDA) — swap berisiko gagal
+           </div>`
+        : maxSafeRecv > 0
+            ? `<div style="font-size:11px;color:#555;margin-top:4px;">
+                Liq OK: ~${maxSafeRecv.toFixed(4)} token</div>`
+            : "";
+
     if (spend <= 0) {
         pv.innerHTML = `<div class="agg-preview-top" style="color:#ff4d4f;">⛔ Spend 0 — ${trendAdj?.reason || "data tidak cukup"}</div>`;
     } else {
@@ -848,11 +893,23 @@ window._onChipClick = function(btn, p) {
             <div class="agg-preview-sub" style="margin-top:2px;color:#555;">
                 ${p}% dari <b style="color:#58a6ff;">${(modal.__sdaMax||0).toFixed(4)} SDA</b>
             </div>
+            ${liqWarnHtml}
             ${trendNote}
             <div class="agg-preview-sub" style="margin-top:6px;color:#444;">
                 Klik 🔍 Lihat Simulasi untuk estimasi profit
             </div>
         `;
+    }
+
+    // aktifkan / matikan START
+    const startBtn = document.getElementById('aggAutoStartBtn');
+
+    // kalau liq sangat tipis, matikan START
+    if (startBtn && liqTooLow) {
+        startBtn.style.opacity       = '0.3';
+        startBtn.style.pointerEvents = 'none';
+        startBtn.textContent         = '⚠ Liq Terlalu Tipis';
+        return;
     }
 
     // kalau cache sudah ada, langsung render full preview
@@ -861,8 +918,6 @@ window._onChipClick = function(btn, p) {
         window.runAutoPreview(modal);
     }
 
-    // aktifkan START berdasar spend — tidak perlu tunggu simulasi
-    const startBtn = document.getElementById('aggAutoStartBtn');
     if (startBtn) {
         const canStart = spend > 0 && (trendAdj?.safetyLevel !== 'blocked');
         startBtn.style.opacity       = canStart ? '1'    : '0.4';
@@ -1035,6 +1090,43 @@ const savingsPct = Number(
         String(r.paySymbol || "").toLowerCase() === "sda"
     );
     console.log("[AUTO MODAL SDA BASE]", JSON.stringify(sdaBaseRow || {}, null, 2));
+
+    // =====================================
+    // VALIDASI DATA FRESHNESS
+    // Deteksi kalau savingsPct tidak match dengan mode
+    // reverse harusnya margin negatif, buy harusnya positif
+    // kalau terbalik = data stale dari swap sebelumnya
+    // =====================================
+    const isModeReverse  = mode === "reverse";
+    const dataStale      =
+        (isModeReverse && savingsPct > 50)  ||
+        (!isModeReverse && savingsPct < -50);
+
+    if (dataStale) {
+        // tampilkan peringatan, jangan buka modal dengan data salah
+        el.innerHTML = `
+            <div class="agg-auto-backdrop" onclick="window._closeAutoModal();"></div>
+            <div class="agg-auto-box" style="display:flex;flex-direction:column;align-items:center;
+                justify-content:center;gap:12px;padding:24px;text-align:center;">
+                <div style="font-size:32px;">⚠️</div>
+                <div style="font-size:14px;font-weight:700;color:#ffcc00;">Data Belum Fresh</div>
+                <div style="font-size:12px;color:#555;line-height:1.6;">
+                    Margin tercatat <b style="color:#ff7a00;">${savingsPct > 0 ? "+" : ""}${savingsPct.toFixed(1)}%</b>
+                    tapi mode adalah <b style="color:#fff;">${mode.toUpperCase()}</b>.<br>
+                    Kemungkinan data dari scan sebelumnya.<br>
+                    Tunggu scan selesai lalu buka Auto lagi.
+                </div>
+                <button onclick="window._closeAutoModal();"
+                    style="width:100%;height:44px;border:1px solid #333;border-radius:14px;
+                    background:#1a1a1a;color:#fff;font-size:13px;font-weight:600;cursor:pointer;">
+                    ✕ Tutup & Scan Ulang
+                </button>
+            </div>
+        `;
+        document.body.appendChild(el);
+        if (typeof acquireWakeLock === "function") await acquireWakeLock();
+        return;
+    }
 
     // catat margin fresh saat modal dibuka — ini titik data pertama yang valid
     window._recordMargin?.(pairKey, savingsPct);
