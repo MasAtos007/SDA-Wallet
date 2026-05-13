@@ -120,14 +120,14 @@ window._adjustSpendByTrend = function(pairKey, rawSpend, currentMargin, isRevers
         }
 
         // margin reverse makin dalam (makin negatif) = peluang makin besar = aman
-        if (slope <= 0) {
-            return {
-                spend: rawSpend,
-                reason: `Reverse makin dalam ↓ — spend penuh`,
-                safetyLevel: "safe",
-                multiplier: 1.0
-            };
-        }
+      if (slope <= 0) {
+    return {
+        spend: rawSpend * 0.35,
+        reason: `Reverse volatile ↓ — spend dikurangi`,
+        safetyLevel: "caution",
+        multiplier: 0.35
+    };
+}
 
         // slope positif ringan tapi masih cukup dalam
         if (predicted < -2) {
@@ -731,7 +731,7 @@ function _getSdaMaxFromCache(payToken, receiveToken, liveBalance, capEnabled) {
 
         // PRICE IMPACT CAP: maksimal swap 15% dari pool size
         // supaya tidak bablas karena price impact besar
-        const PRICE_IMPACT_CAP = 0.15;
+        const PRICE_IMPACT_CAP = 0.03;
 
         const sdaForMaxLiq = (maxSafeRecv > 0 && sdaPerReceive > 0)
             ? Math.min(
@@ -754,7 +754,12 @@ function _getSdaMaxFromCache(payToken, receiveToken, liveBalance, capEnabled) {
 
         // safePct berdasar magnitude — mode reverse tetap dapat % yang proporsional
         let safePct;
-        if      (absSavings <= 0)  safePct = 10;
+        if (absSavings <= 0.5) {
+    safePct = 5;
+}
+else if (absSavings < 1) {
+    safePct = 10;
+}
         else if (absSavings < 1)   safePct = 15;
         else if (absSavings < 2)   safePct = 25;
         else if (absSavings < 3)   safePct = 35;
@@ -834,7 +839,14 @@ function _calcFinalSpend(
         const maxSdaByLiq = maxSafeRecv * sdaPerRecv * 0.90;
         // tambahan: cap di 20% pool size untuk jaga price impact
         const safeImpactCap = maxSafeRecv * sdaPerRecv * 0.20;
-        const effectiveCap = Math.min(maxSdaByLiq, safeImpactCap * 5); // max 100% tapi impact-aware
+        const effectiveCap = Math.min(
+    maxSdaByLiq,
+    safeImpactCap
+);
+
+if (spend > effectiveCap) {
+    spend = effectiveCap;
+} // max 100% tapi impact-aware
         if (spend > maxSdaByLiq) spend = maxSdaByLiq;
     }
 
@@ -877,15 +889,30 @@ window.openAutoSpendModal = async function(mode, payToken, receiveToken, maxAmou
         String(payToken || "").toLowerCase()
     );
 
-    const cached     = _getSdaMaxFromCache(payToken, receiveToken, liveBalance, capEnabled);
-    let   sdaMax     = cached.sdaMax || 0;
+    const cached = _getSdaMaxFromCache(
+    payToken,
+    receiveToken,
+    liveBalance,
+    capEnabled
+);
 
-    // savingsPct: liveRow prioritas utama, cached sebagai fallback
-    const savingsPct = Number(
-        liveRow?.savingsPct ??
-        cached.savingsPct ??
-        0
+let sdaMax = cached.sdaMax || 0;
+
+// =====================================
+// SYNC DENGAN ROW LIVE TERBARU
+// =====================================
+const latestRow = (AGGREGATOR?._lastResults || [])
+    .find(r =>
+        String(r.payToken || "").toLowerCase() ===
+        String(payToken || "").toLowerCase()
     );
+
+const savingsPct = Number(
+    latestRow?.savingsPct ??
+    latestRow?.marginPct ??
+    cached.savingsPct ??
+    0
+);
     const rawLiqMax  = cached.sdaForMaxLiq || 0;
     const paySymbol  = cached.paySymbol || _safeSymbol(payToken);
     const recvSymbol = cached.receiveSymbol || _safeSymbol(receiveToken);
@@ -1167,6 +1194,31 @@ window.runAutoPreview = async function(modalEl) {
     const pairKey     = modalEl.__pairKey || "";
     const trendCheck  = window._shouldAbortByTrend?.(pairKey, savingsPct) || { abort: false };
     const trendData   = window._getMarginTrend?.(pairKey);
+    
+  // =====================================
+// PREVIEW CACHE
+// fetch berat cuma sekali
+// =====================================
+
+const previewCache = modalEl.__previewCache ?? null;
+
+const cacheFresh =
+    previewCache !== null &&
+    typeof previewCache.ts === "number" &&
+    (Date.now() - previewCache.ts < 20000) &&
+    previewCache.baseSpend > 0;
+
+// invalidate cache kalau sdaMax atau savingsPct berubah signifikan
+if (
+    cacheFresh &&
+    previewCache.snapshotSdaMax !== undefined &&
+    (
+        Math.abs(previewCache.snapshotSdaMax - sdaMax) > 0.01 ||
+        Math.abs(previewCache.snapshotMargin - savingsPct) > 0.5
+    )
+) {
+    modalEl.__previewCache = null;
+}
 
     if (!route?.intermediateToken || !route?.finalToken) {
         previewEl.innerHTML = `<div class="agg-preview-top" style="color:#ff4d4f;">&#x26A0; Route tidak valid</div>`;
@@ -1218,28 +1270,103 @@ window.runAutoPreview = async function(modalEl) {
         const firstSym   = isReverse ? recvSymbol              : paySymbol;
         const secondSym  = isReverse ? paySymbol               : recvSymbol;
 
-        let estStep1 = 0;
-        try {
-            estStep1 = await PRICE_ENGINE.getAmountOut("native", step1Token, spend) || 0;
-        } catch(e) { console.warn("[PREVIEW] step1:", e); }
+let estStep1 = 0;
+let estStep2 = 0;
 
-        let estStep2 = 0;
-        try {
-            if (estStep1 > 0) {
-                estStep2 = await PRICE_ENGINE.getAmountOut(step1Token, step2Token, estStep1 * 0.997) || 0;
-            }
-        } catch(e) { console.warn("[PREVIEW] step2:", e); }
+// =====================================
+// PAKAI CACHE JIKA ADA
+// =====================================
+
+if (
+    cacheFresh &&
+    previewCache.baseSpend > 0
+) {
+
+    const ratio =
+        spend / previewCache.baseSpend;
+
+    estStep1 =
+        previewCache.estStep1 * ratio;
+
+    estStep2 =
+        previewCache.estStep2 * ratio;
+
+} else {
+
+    try {
+
+        estStep1 =
+            await PRICE_ENGINE.getAmountOut(
+                "native",
+                step1Token,
+                spend
+            ) || 0;
+
+    } catch(e) {
+
+        console.warn(
+            "[PREVIEW] step1:",
+            e
+        );
+    }
+
+    try {
+
+        if (estStep1 > 0) {
+
+            estStep2 =
+                await PRICE_ENGINE.getAmountOut(
+                    step1Token,
+                    step2Token,
+                    estStep1 * 0.992
+                ) || 0;
+        }
+
+    } catch(e) {
+
+        console.warn(
+            "[PREVIEW] step2:",
+            e
+        );
+    }
+}
 
         const liqCheckAmt = isReverse ? estStep1 : estStep2;
         const exceedsLiq  = maxSafeRecv > 0 && liqCheckAmt > maxSafeRecv;
 
         // hitung price impact step 2
-        // jika estStep2 << estStep1 * expectedRate, berarti impact besar
         const step2Ratio = estStep1 > 0 ? estStep2 / estStep1 : 0;
         const step1Ratio = spend > 0 ? estStep1 / spend : 0;
 
-        // deteksi slippage berlebih: step2 dapat < 85% dari yang diharapkan
-        const highImpact = step2Ratio > 0 && step2Ratio < 0.85;
+        // sim belum ada di titik ini — pakai cache kalau ada
+        const simForImpact = cacheFresh ? {
+            estimatedPct: previewCache.estimatedPct
+        } : null;
+
+        let impactLimit = 0.97;
+        if (isReverse && Math.abs(savingsPct) > 10) {
+            impactLimit = 0.35;
+        }
+        else if (Math.abs(savingsPct) > 5) {
+            impactLimit = 0.55;
+        }
+        else if (Math.abs(savingsPct) > 2) {
+            impactLimit = 0.75;
+        }
+
+        const effectiveProfit =
+            simForImpact?.estimatedPct ?? -999;
+
+// impact dianggap bahaya kalau:
+// - ratio sangat jelek
+// - DAN profit final negatif
+
+const highImpact =
+    step2Ratio > 0 &&
+    (
+        step2Ratio < impactLimit &&
+        effectiveProfit < 0
+    );
 
         const impactHtml = highImpact
             ? `<div style="margin-top:6px;padding:6px 8px;background:rgba(255,170,0,.1);
@@ -1259,18 +1386,98 @@ window.runAutoPreview = async function(modalEl) {
                     &#x2714; Liq OK: ~${maxSafeRecv.toFixed(4)} ${isReverse ? firstSym : secondSym}</div>`
             : "";
 
-        const sim = isReverse
-            ? await window.simulateFullCycle(route.finalToken, route.intermediateToken, spend)
-            : await window.simulateFullCycle(route.intermediateToken, route.finalToken, spend);
+        let sim = null;
+
+// =====================================
+// CACHE SIMULATION
+// =====================================
+
+if (
+    cacheFresh &&
+    previewCache.baseSpend > 0
+) {
+
+    const ratio =
+        spend / previewCache.baseSpend;
+
+    sim = {
+
+        estimatedBack:
+            previewCache.estimatedBack * ratio,
+
+        estimatedProfit:
+            previewCache.estimatedProfit * ratio,
+
+        estimatedPct:
+            previewCache.estimatedPct
+    };
+
+} else {
+
+    sim = isReverse
+
+        ? await window.simulateFullCycle(
+            route.finalToken,
+            route.intermediateToken,
+            spend
+        )
+
+        : await window.simulateFullCycle(
+            route.intermediateToken,
+            route.finalToken,
+            spend
+        );
+
+    // =====================================
+    // SIMPAN CACHE
+    // =====================================
+
+    if (sim) {
+        modalEl.__previewCache = {
+            ts: Date.now(),
+            baseSpend: spend,
+            estStep1,
+            estStep2,
+            estimatedBack:   sim.estimatedBack,
+            estimatedProfit: sim.estimatedProfit,
+            estimatedPct:    sim.estimatedPct,
+            snapshotSdaMax:  sdaMax,
+            snapshotMargin:  savingsPct
+        };
+    }
+}
 
         if (startBtn) {
-            const ok = !exceedsLiq && !highImpact && spend > 0 && !!sim;
-            startBtn.style.opacity       = ok ? "1"    : "0.4";
-            startBtn.style.pointerEvents = ok ? "auto" : "none";
-            if (highImpact && !exceedsLiq) {
-                startBtn.textContent = "⚠ Impact Tinggi — Kurangi %";
-            }
-        }
+
+    const REQUIRED_PCT = isReverse ? 2.5 : 1.2;
+
+    const ok =
+        !exceedsLiq &&
+        !highImpact &&
+        spend > 0 &&
+        !!sim &&
+        sim.estimatedPct > REQUIRED_PCT;
+
+    startBtn.style.opacity       = ok ? "1" : "0.4";
+    startBtn.style.pointerEvents = ok ? "auto" : "none";
+
+    if (highImpact && !exceedsLiq) {
+    startBtn.textContent =
+        isReverse
+            ? "⚠ Reverse Volatile"
+            : "⚠ Impact Tinggi";
+}
+else if (sim?.estimatedPct <= REQUIRED_PCT) {
+
+        startBtn.textContent =
+            "⚠ Profit Tipis";
+
+    } else {
+
+        startBtn.textContent =
+            "⚡ START AUTO";
+    }
+}
 
         if (!sim) {
             previewEl.innerHTML = `
@@ -1283,7 +1490,16 @@ window.runAutoPreview = async function(modalEl) {
             return;
         }
 
-        const profitColor = sim.estimatedProfit >= 0 ? "#00d084" : "#ff4d4f";
+        const EXECUTION_BUFFER = 0.992;
+
+sim.estimatedProfit *= EXECUTION_BUFFER;
+sim.estimatedBack   *= EXECUTION_BUFFER;
+sim.estimatedPct    *= EXECUTION_BUFFER;
+
+const profitColor =
+    sim.estimatedProfit >= 0
+        ? "#00d084"
+        : "#ff4d4f";
         const sign        = sim.estimatedProfit >= 0 ? "+"        : "";
         
         // kunci START jika tren berbahaya
