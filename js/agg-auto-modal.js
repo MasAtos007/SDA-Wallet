@@ -748,30 +748,43 @@ function _getSdaMaxFromCache(payToken, receiveToken, liveBalance, capEnabled) {
             absSavings < 7 ? 0.82 :
                              0.88;
 
-        // =====================================
-        // MARGIN FACTOR: seberapa besar pool yang boleh dipakai
-        // makin besar margin = makin banyak yang worthwhile di-spend
-        // =====================================
-        const marginFactor =
-            absSavings >= 20 ? 1.00 :
-            absSavings >= 15 ? 0.85 :
-            absSavings >= 10 ? 0.70 :
-            absSavings >=  7 ? 0.55 :
-            absSavings >=  5 ? 0.40 :
-            absSavings >=  3 ? 0.28 :
-            absSavings >=  2 ? 0.18 :
-            absSavings >=  1 ? 0.10 :
-                               0.05;
+  // =====================================
+// AGGRESSIVE POOL USAGE
+// target: margin turun cepat
+// =====================================
 
-        // sdaForMaxLiq = MIN dari:
-        // 1. actualPoolSda × liqBuffer  → BATAS KERAS dari liq nyata
-        // 2. sdaEquiv × marginFactor × liqBuffer → batas dari margin
-        // liq nyata selalu jadi batas atas — tidak bisa dilanggar
-        const fromLiq    = actualPoolSda * liqBuffer;
-        const fromMargin = sdaEquiv * marginFactor * liqBuffer;
-        const sdaForMaxLiq = actualPoolSda > 0
-            ? Math.min(fromLiq, fromMargin)
-            : fromMargin;
+const marginFactor =
+    absSavings >= 20 ? 0.95 :
+    absSavings >= 15 ? 0.85 :
+    absSavings >= 10 ? 0.70 :
+    absSavings >=  7 ? 0.55 :
+    absSavings >=  5 ? 0.40 :
+    absSavings >=  3 ? 0.28 :
+    absSavings >=  2 ? 0.18 :
+    absSavings >=  1 ? 0.10 :
+                       0.05;
+
+// basis utama sekarang liquidity nyata
+const dynamicPoolUsage =
+    absSavings >= 20 ? 0.85 :
+    absSavings >= 15 ? 0.70 :
+    absSavings >= 10 ? 0.45 :
+    absSavings >=  7 ? 0.30 :
+    absSavings >=  5 ? 0.22 :
+    absSavings >=  3 ? 0.15 :
+    absSavings >=  2 ? 0.10 :
+                       0.05;
+
+const fromLiq = actualPoolSda * dynamicPoolUsage * liqBuffer;
+
+// fallback kalau pool gagal detect
+const fromMargin = sdaEquiv * marginFactor;
+
+// prioritaskan liquidity nyata
+const sdaForMaxLiq =
+    actualPoolSda > 0
+        ? fromLiq
+        : fromMargin;
 
         console.log("[MODAL LIQ CALC]", {
             fromLiq:       fromLiq.toFixed(4),
