@@ -607,13 +607,22 @@ async function refreshSingleRoute(
         const baseIdx = _lastResults.findIndex(x =>
             x.payToken === "native" || x.isSDA === true
         );
+
+        const baseRow = {
+            ...baselineUpdated,
+            payToken:   "native",
+            paySymbol:  "SDA",
+            payLogo:    "img/sda.png",
+            isSDA:      true,
+            savings:    0,
+            savingsPct: 0
+        };
+
         if (baseIdx >= 0) {
-            _lastResults[baseIdx] = {
-                ..._lastResults[baseIdx],
-                ...baselineUpdated,
-                savings: 0,
-                savingsPct: 0
-            };
+            _lastResults[baseIdx] = baseRow;
+        } else {
+            // baseline hilang — tambahkan kembali
+            _lastResults.unshift(baseRow);
         }
     }
 
@@ -655,16 +664,17 @@ async function refreshSingleRoute(
             if (row.payToken === "native" || row.isSDA) {
                 row.savings    = 0;
                 row.savingsPct = 0;
+                _lastResults[i] = row;
                 return;
             }
             const equiv = Number(row.sdaEquiv || 0);
             if (equiv <= 0) return;
 
-            // savingsPct: positif = lebih murah dari SDA (bagus)
-            // negatif = lebih mahal dari SDA
+            // positif = token ini lebih MURAH dari SDA = profit
+            // negatif = token ini lebih MAHAL dari SDA = rugi
             const pct = ((baseline.sdaEquiv - equiv) / baseline.sdaEquiv) * 100;
             row.savingsPct = Math.abs(pct) < 0.01 ? 0 : pct;
-            row.savings    = (row.savingsPct / 100) * baseline.sdaEquiv;
+            row.savings    = baseline.sdaEquiv - equiv;
             _lastResults[i] = row;
         });
     }
@@ -2903,13 +2913,15 @@ function refreshRouteDataAfterAuto(
             if (baseline?.sdaEquiv > 0) {
                 _lastResults.forEach((row, i) => {
                     if (row.payToken === "native" || row.isSDA) {
-                        row.savings = 0; row.savingsPct = 0; return;
+                        row.savings = 0; row.savingsPct = 0;
+                        _lastResults[i] = row;
+                        return;
                     }
                     const equiv = Number(row.sdaEquiv || 0);
                     if (equiv <= 0) return;
                     const pct = ((baseline.sdaEquiv - equiv) / baseline.sdaEquiv) * 100;
                     row.savingsPct = Math.abs(pct) < 0.01 ? 0 : pct;
-                    row.savings    = (row.savingsPct / 100) * baseline.sdaEquiv;
+                    row.savings    = baseline.sdaEquiv - equiv;
                     _lastResults[i] = row;
                 });
             }
