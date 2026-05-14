@@ -1,4 +1,4 @@
-const CACHE_NAME = "sda-wallet-v84";
+const CACHE_NAME = "sda-wallet-v85";
 
 const ASSETS = [
   "./",
