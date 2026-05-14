@@ -714,7 +714,7 @@
                 <div class="swap-sub">Review before execution</div>
 
                 <div class="info" id="confirmSwapDetails">
-                <div id="swapLoadingTokens"></div>
+                
                     Loading...
                 </div>
 
@@ -738,10 +738,18 @@
 
 <div id="swapLoadingOverlay" class="swap-loading-overlay" style="display:none;">
   <div class="swap-loading-box">
+
+    <!-- TOKEN ICON AREA -->
+    <div id="swapLoadingTokens"></div>
+
+    <!-- PROGRESS -->
     <div class="swap-progress-bar">
       <div id="swapProgressFill"></div>
     </div>
+
+    <!-- TEXT -->
     <div id="swapLoadingText">Preparing Swap...</div>
+
   </div>
 </div>
 
@@ -985,8 +993,7 @@
 <script src="js/sessionprofit.js"></script>
 <script src="js/agg-auto-modal.js"></script>
 <script src="js/auto-modal-sync-patch.js"></script>
-<script src="js/patch-skip-confirm.js"></script>
-<script src="js/patch-v2.js"></script>
+
 <script src="sw.js"></script>
 
 <script>
