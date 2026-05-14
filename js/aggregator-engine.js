@@ -749,42 +749,64 @@ function unlockAutoButtons() {
         btn.style.pointerEvents = "";
     });
 }
-    // =====================================
-    // CORE SCAN
-    // =====================================
-    async function scanCheapestPayer(receiveToken, amountOut) {
-        if (!receiveToken) return [];
+// =====================================
+// CORE SCAN
+// =====================================
+async function scanCheapestPayer(
+    receiveToken,
+    amountOut
+) {
 
-        const tokenList = typeof getAllTokens === "function"
-    ? getAllTokens()
-    : JSON.parse(localStorage.getItem("customTokens") || "[]");
+    if (!receiveToken) {
+        return [];
+    }
 
-const selectedCandidates = JSON.parse(
-    localStorage.getItem("aggregatorCandidates") || "[]"
-);
+    // =================================
+    // RESET STOP FLAG
+    // =================================
+    _stopRequested = false;
 
-const selectedSet = new Set(
-    selectedCandidates.map(a => String(a).toLowerCase())
-);
+    const tokenList =
+        typeof getAllTokens === "function"
+            ? getAllTokens()
+            : JSON.parse(
+                localStorage.getItem(
+                    "customTokens"
+                ) || "[]"
+            );
 
-const smartList =
-    getSmartCandidates();
+    const selectedCandidates =
+        JSON.parse(
+            localStorage.getItem(
+                "aggregatorCandidates"
+            ) || "[]"
+        );
 
-const smartSet = new Set(
-    smartList.map(x =>
-        String(x.token).toLowerCase()
-    )
-);
+    const selectedSet = new Set(
+        selectedCandidates.map(a =>
+            String(a).toLowerCase()
+        )
+    );
 
-let filteredCustom = tokenList.filter(
-    t => {
+    const smartList =
+        getSmartCandidates();
+
+    const smartSet = new Set(
+        smartList.map(x =>
+            String(x.token).toLowerCase()
+        )
+    );
+
+    let filteredCustom =
+        tokenList.filter(t => {
 
         if (!t.address) {
             return false;
         }
 
         const addr =
-            String(t.address).toLowerCase();
+            String(t.address)
+                .toLowerCase();
 
         if (selectedSet.has(addr)) {
             return true;
@@ -795,221 +817,328 @@ let filteredCustom = tokenList.filter(
         }
 
         return false;
+    });
+
+    const uniqueMap = new Map();
+
+    filteredCustom.forEach(t => {
+
+        if (!t?.address) return;
+
+        const key =
+            String(t.address)
+                .toLowerCase();
+
+        if (!uniqueMap.has(key)) {
+            uniqueMap.set(key, t);
+        }
+    });
+
+    const candidates = [
+
+        {
+            address: "native",
+            symbol: "SDA",
+            logo: "img/sda.png"
+        },
+
+        ...Array.from(
+            uniqueMap.values()
+        ).filter(t =>
+
+            t.address &&
+
+            !_same(
+                t.address,
+                receiveToken
+            ) &&
+
+            !_same(
+                t.address,
+                WSDA()
+            ) &&
+
+            t.symbol !== "WSDA"
+        )
+    ];
+
+    const targetAmt =
+        amountOut > 0
+            ? amountOut
+            : 1;
+
+    const panelEl =
+        document.getElementById(
+            "aggPanel"
+        );
+
+    // =================================
+    // EMPTY CANDIDATE
+    // =================================
+    if (!filteredCustom.length) {
+
+        if (panelEl) {
+
+            const smartCount =
+                smartList.length;
+
+            panelEl.innerHTML = `
+                <div style="
+                    padding:14px;
+                    color:#888;
+                    font-size:12px;
+                    line-height:1.5;
+                ">
+
+                    Tidak ada kandidat manual dipilih.
+
+                    <br><br>
+
+                    Smart Kandidat:
+
+                    <b style="color:#00d084">
+                        ${smartCount}
+                    </b>
+
+                    <br><br>
+
+                    Jalankan auto profit dulu
+                    agar sistem belajar token terbaik.
+
+                </div>
+            `;
+        }
+
+        return [{
+
+            payToken: "native",
+
+            paySymbol: "SDA",
+
+            payLogo: "img/sda.png",
+
+            unitsNeeded: targetAmt,
+
+            sdaEquiv: targetAmt,
+
+            savings: 0,
+
+            savingsPct: 0,
+
+            hops: 1,
+
+            isSDA: true,
+
+            maxSafeReceive: null,
+
+            liquidityWarn: false
+        }];
     }
-);
 
-const uniqueMap = new Map();
+    // =================================
+    // DEBUG LOGGER
+    // =================================
+    const dbg = (msg) => {
 
-filteredCustom.forEach(t => {
+        // STOP = jangan update UI lagi
+        if (_stopRequested) {
+            return;
+        }
 
-    if (!t?.address) return;
+        if (!panelEl) {
+            return;
+        }
 
-    const key =
-        String(t.address).toLowerCase();
+        panelEl.innerHTML += `
+            <div style="
+                font-size:10px;
+                color:#555;
+                padding:1px 12px;
+            ">
+                ${msg}
+            </div>
+        `;
+    };
 
-    if (!uniqueMap.has(key)) {
-        uniqueMap.set(key, t);
-    }
-});
+    // =================================
+    // INIT PANEL
+    // =================================
+    if (
+        panelEl &&
+        !_stopRequested
+    ) {
 
-const candidates = [
-    {
-        address: "native",
-        symbol: "SDA",
-        logo: "img/sda.png"
-    },
+        const manualCount =
+            filteredCustom.filter(t =>
 
-    ...Array.from(uniqueMap.values()).filter(t =>
-        t.address &&
-        !_same(t.address, receiveToken) &&
-        !_same(t.address, WSDA()) &&
-        t.symbol !== "WSDA"
-    )
-];
+                selectedSet.has(
+                    String(t.address)
+                        .toLowerCase()
+                )
 
-const targetAmt =
-    amountOut > 0
-        ? amountOut
-        : 1;
+            ).length;
 
-const panelEl =
-    document.getElementById("aggPanel");
-
-if (!filteredCustom.length) {
-
-    if (panelEl) {
-
-        const smartCount =
-            smartList.length;
+        const smartOnlyCount =
+            filteredCustom.length -
+            manualCount;
 
         panelEl.innerHTML = `
+
             <div style="
-                padding:14px;
+                padding:10px 12px;
+                font-size:11px;
                 color:#888;
-                font-size:12px;
                 line-height:1.5;
             ">
-                Tidak ada kandidat manual dipilih.
-                <br><br>
 
-                Smart Kandidat:
-                <b style="color:#00d084">
-                    ${smartCount}
+                Scan
+                <b>${candidates.length}</b>
+
+                kandidat untuk
+
+                <b>
+                    ${symbolOf(receiveToken)}
                 </b>
 
-                <br><br>
+                <br>
 
-                Jalankan auto profit dulu
-                agar sistem belajar token terbaik.
+                Manual:
+                ${manualCount}
+
+                - Smart:
+                ${smartOnlyCount}
+
+                - SDA baseline
+
             </div>
         `;
     }
 
-    return [{
-        payToken: "native",
-        paySymbol: "SDA",
-        payLogo: "img/sda.png",
+    let baselineSDACost = null;
 
-        unitsNeeded: targetAmt,
-        sdaEquiv: targetAmt,
+    // =================================
+    // BASELINE SDA
+    // =================================
+    try {
 
-        savings: 0,
-        savingsPct: 0,
+        // STOP = hentikan fetch
+        if (_stopRequested) {
+            return results || [];
+        }
 
-        hops: 1,
-        isSDA: true,
+        const sdaOut =
+            await withTimeout(
 
-        maxSafeReceive: null,
-        liquidityWarn: false
-    }];
-}
+                PRICE_ENGINE.getAmountOut(
+                    "native",
+                    receiveToken,
+                    1
+                ),
 
-const dbg = (msg) => {
+                SCAN_TIMEOUT
+            );
 
-    if (!panelEl) return;
-
-    panelEl.innerHTML += `
-        <div style="
-            font-size:10px;
-            color:#555;
-            padding:1px 12px;
-        ">
-            ${msg}
-        </div>
-    `;
-};
-
-if (panelEl) {
-
-    const manualCount =
-        filteredCustom.filter(t =>
-            selectedSet.has(
-                String(t.address).toLowerCase()
-            )
-        ).length;
-
-    const smartOnlyCount =
-        filteredCustom.length - manualCount;
-
-    panelEl.innerHTML = `
-        <div style="
-            padding:10px 12px;
-            font-size:11px;
-            color:#888;
-            line-height:1.5;
-        ">
-            Scan
-            <b>${candidates.length}</b>
-            kandidat
-            untuk
-            <b>${symbolOf(receiveToken)}</b>
-
-            <br>
-
-            Manual:
-            ${manualCount}
-
-            - Smart:
-            ${smartOnlyCount}
-
-            - SDA baseline
-        </div>
-    `;
-}
-
-let baselineSDACost = null;
-
-try {
-
-    const sdaOut =
-        await withTimeout(
-            PRICE_ENGINE.getAmountOut(
-                "native",
-                receiveToken,
-                1
-            ),
-            SCAN_TIMEOUT
+        dbg(
+            `SDA -> ${symbolOf(receiveToken)}: ${sdaOut}`
         );
 
-    dbg(
-        `SDA -> ${symbolOf(receiveToken)}: ${sdaOut}`
-    );
+        if (sdaOut > 0) {
 
-    if (sdaOut > 0) {
-        baselineSDACost =
-            targetAmt / sdaOut;
+            baselineSDACost =
+                targetAmt / sdaOut;
+        }
+
+    } catch(e) {
+
+        dbg(
+            `baseline err: ${e.message}`
+        );
     }
 
-} catch(e) {
+    const results = [];
 
-    dbg(
-        `baseline err: ${e.message}`
-    );
-}
+    // =================================
+    // MAIN LOOP
+    // =================================
+    for (
 
-const results = [];
+        let i = 0;
 
-for (
-    let i = 0;
-    i < candidates.length;
-    i += BATCH_SIZE
-) {
+        i < candidates.length;
 
-    const batch =
-        candidates.slice(
-            i,
-            i + BATCH_SIZE
-        );
+        i += BATCH_SIZE
 
-    const batchRes =
-        await Promise.all(
+    ) {
+
+        // STOP = hentikan seluruh scan
+        if (_stopRequested) {
+
+            console.log(
+                "[AGG] Scan stopped"
+            );
+
+            break;
+        }
+
+        const batch =
+            candidates.slice(
+                i,
+                i + BATCH_SIZE
+            );
+
+        const batchRes =
+            await Promise.all(
+
             batch.map(async (token) => {
+
+                // =====================
+                // STOP FETCH TOKEN
+                // =====================
+                if (_stopRequested) {
+                    return null;
+                }
 
                 try {
 
                     const rateOut =
                         await withTimeout(
+
                             PRICE_ENGINE.getAmountOut(
                                 token.address,
                                 receiveToken,
                                 1
                             ),
+
                             SCAN_TIMEOUT
                         );
+
+                    // STOP setelah fetch
+                    if (_stopRequested) {
+                        return null;
+                    }
 
                     dbg(
                         `${token.symbol} -> ${symbolOf(receiveToken)}: ${rateOut}`
                     );
 
-                    if (!rateOut || rateOut <= 0) {
+                    if (
+                        !rateOut ||
+                        rateOut <= 0
+                    ) {
 
-    return {
-        payToken: token.address,
-        paySymbol: token.symbol,
-        failed: true,
-        reason: "No route"
-    };
-}
+                        return {
+                            payToken:
+                                token.address,
+
+                            paySymbol:
+                                token.symbol,
+
+                            failed: true,
+
+                            reason:
+                                "No route"
+                        };
+                    }
 
                     const unitsNeeded =
                         targetAmt / rateOut;
@@ -1019,17 +1148,32 @@ for (
                             ? 1
                             : null;
 
+                    // =================
+                    // FETCH SDA RATE
+                    // =================
                     if (!sdaPerToken) {
+
+                        // STOP sebelum fetch
+                        if (_stopRequested) {
+                            return null;
+                        }
 
                         const out2 =
                             await withTimeout(
+
                                 PRICE_ENGINE.getAmountOut(
                                     "native",
                                     token.address,
                                     1
                                 ),
+
                                 SCAN_TIMEOUT
                             );
+
+                        // STOP setelah fetch
+                        if (_stopRequested) {
+                            return null;
+                        }
 
                         dbg(
                             `SDA -> ${token.symbol}: ${out2}`
@@ -1067,7 +1211,8 @@ for (
                     const netSDAEq =
                         totalSDAEq / feeAdj;
 
-                    let savingsPct = null;
+                    let savingsPct =
+                        null;
 
                     if (
                         baselineSDACost &&
@@ -1089,6 +1234,7 @@ let maxSafeReceive = null;
 let liquidityWarn  = false;
 
 try {
+
     const liq = await PRICE_ENGINE.getPoolLiquidity(
         token.address,
         receiveToken
@@ -1096,35 +1242,42 @@ try {
 
     if (liq) {
 
-if (liq.maxSwapOut) {
+        if (liq.maxSwapOut) {
 
-    console.log(
-        "[AGG DEBUG]",
-        symbolOf(receiveToken),
-        "raw maxSwapOut:",
-        liq.maxSwapOut,
-        "decimals:",
-        getTokenDecimals(receiveToken)
-    );
+            console.log(
+                "[AGG DEBUG]",
+                symbolOf(receiveToken),
+                "raw maxSwapOut:",
+                liq.maxSwapOut,
+                "decimals:",
+                getTokenDecimals(receiveToken)
+            );
 
-    maxSafeReceive = formatTokenAmount(
-        liq.maxSwapOut,
-        getTokenDecimals(receiveToken)
-    );
-}
-
-        else if (liq.maxSwapIn) {
-            maxSafeReceive =
-    formatTokenAmount(liq.maxSwapIn, getTokenDecimals(token.address))
-    * rateOut;
+            maxSafeReceive = formatTokenAmount(
+                liq.maxSwapOut,
+                getTokenDecimals(receiveToken)
+            );
         }
 
-        if (maxSafeReceive && targetAmt > maxSafeReceive) {
+        else if (liq.maxSwapIn) {
+
+            maxSafeReceive =
+                formatTokenAmount(
+                    liq.maxSwapIn,
+                    getTokenDecimals(token.address)
+                ) * rateOut;
+        }
+
+        if (
+            maxSafeReceive &&
+            targetAmt > maxSafeReceive
+        ) {
             liquidityWarn = true;
         }
     }
 
 } catch (e) {
+
     console.warn(
         "[AGG] Liquidity check fail:",
         token.symbol,
@@ -1134,81 +1287,151 @@ if (liq.maxSwapOut) {
 
 
 return {
-    payToken:  token.address,
-    paySymbol: token.symbol || symbolOf(token.address),
-    payLogo:   token.logo   || logoOf(token.address),
+
+    payToken: token.address,
+
+    paySymbol:
+        token.symbol ||
+        symbolOf(token.address),
+
+    payLogo:
+        token.logo ||
+        logoOf(token.address),
 
     unitsNeeded,
+
     sdaEquiv: netSDAEq,
 
     savings: _isNat(token.address)
-    ? 0
-    : (
-        baselineSDACost
-            ? baselineSDACost - netSDAEq
-            : null
-    ),
+        ? 0
+        : (
+            baselineSDACost
+                ? baselineSDACost - netSDAEq
+                : null
+        ),
 
     savingsPct: _isNat(token.address)
-    ? 0
-    : savingsPct,
+        ? 0
+        : savingsPct,
+
     hops,
 
-    isSDA: _isNat(token.address),
+    isSDA:
+        _isNat(token.address),
 
     maxSafeReceive,
     liquidityWarn
 };
-                } catch(e) {
-                    dbg(`${token.symbol} err: ${e.message}`);
-                    return null;
-                }
-            }));
 
-            results.push(...batchRes.filter(Boolean));
-            if (results.length && _panelOpen) _renderIncremental(results, receiveToken, targetAmt);
+} catch(e) {
 
-            // Cek stop request — simpan hasil sementara langsung ke cache
-            if (_stopRequested) {
-                console.log("[AGG] Scan dihentikan manual, simpan hasil sementara");
-                break;
-            }
+    dbg(`${token.symbol} err: ${e.message}`);
 
-            if (i + BATCH_SIZE < candidates.length) await new Promise(r => setTimeout(r, BATCH_DELAY));
-        }
+    return null;
+}
 
-        results.sort((a, b) => {
+})
+);
 
-    const aProfit = a.savings ?? -999999;
-    const bProfit = b.savings ?? -999999;
+results.push(...batchRes.filter(Boolean));
+
+
+// =====================================
+// RENDER LIVE HANYA SAAT SCAN AKTIF
+// =====================================
+if (
+    results.length &&
+    _panelOpen &&
+    !_stopRequested
+) {
+
+    _renderIncremental(
+        results,
+        receiveToken,
+        targetAmt
+    );
+}
+
+
+// =====================================
+// STOP REQUEST
+// =====================================
+if (_stopRequested) {
+
+    console.log(
+        "[AGG] Scan dihentikan manual"
+    );
+
+    // Jangan render ulang
+    // Jangan update background
+    // Jangan overwrite panel
+
+    break;
+}
+
+
+// =====================================
+// DELAY BATCH
+// =====================================
+if (i + BATCH_SIZE < candidates.length) {
+
+    await new Promise(r =>
+        setTimeout(r, BATCH_DELAY)
+    );
+}
+
+}
+
+results.sort((a, b) => {
+
+    const aProfit =
+        a.savings ?? -999999;
+
+    const bProfit =
+        b.savings ?? -999999;
 
     if (bProfit !== aProfit) {
         return bProfit - aProfit;
     }
 
-    const aLiq = a.maxSafeReceive ?? 0;
-    const bLiq = b.maxSafeReceive ?? 0;
+    const aLiq =
+        a.maxSafeReceive ?? 0;
+
+    const bLiq =
+        b.maxSafeReceive ?? 0;
 
     if (bLiq !== aLiq) {
         return bLiq - aLiq;
     }
 
-    return (b.savingsPct ?? -999) - (a.savingsPct ?? -999);
+    return (
+        (b.savingsPct ?? -999) -
+        (a.savingsPct ?? -999)
+    );
 
 });
 
+
 return results
+
     .filter(r =>
+
         r &&
         r.sdaEquiv &&
         isFinite(r.sdaEquiv)
     )
+
     .sort((a, b) => {
 
-        const aSafe = !a.liquidityWarn;
-        const bSafe = !b.liquidityWarn;
+        const aSafe =
+            !a.liquidityWarn;
 
-        // Hapus prioritas safe — tampilkan semua, urut by profit
+        const bSafe =
+            !b.liquidityWarn;
+
+        // Hapus prioritas safe
+        // tampilkan semua
+
         // if (aSafe && !bSafe) return -1;
         // if (!aSafe && bSafe) return 1;
 
@@ -1230,82 +1453,184 @@ return results
 
         return bLiq - aLiq;
     })
+
     .slice(0, 30);
-    }
 
-    // =====================================
-    // RENDER
-    // =====================================
-    function renderPanel(results, receiveToken, targetAmt) {
-        const el = document.getElementById("aggPanel");
-        if (!el) return;
+}
 
-        if (!results?.length) {
-            el.innerHTML = `<div style="padding:16px;text-align:center;color:#888;font-size:12px;">
-                Tidak ada data — coba token lain</div>`;
-            return;
-        }
 
-        const recvSym = symbolOf(receiveToken);
-        const best    = results[0];
+// =====================================
+// RENDER
+// =====================================
+function renderPanel(
+    results,
+    receiveToken,
+    targetAmt
+) {
+
+    const el =
+        document.getElementById(
+            "aggPanel"
+        );
+
+    if (!el) return;
+
+    if (!results?.length) {
 
         el.innerHTML = `
-            <div class="agg-header-info">
-                Untuk dapat <b>${targetAmt} ${recvSym}</b> &bull;
-                paling murah: <b style="color:#00d084">${best.paySymbol}</b>
+            <div style="
+                padding:16px;
+                text-align:center;
+                color:#888;
+                font-size:12px;
+            ">
+                Tidak ada data — coba token lain
             </div>
-            ${results.map((r, idx) => _buildRow(r, idx, receiveToken, targetAmt)).join("")}
         `;
+
+        return;
     }
 
-    function _renderIncremental(results, receiveToken, targetAmt) {
+    const recvSym =
+        symbolOf(receiveToken);
+
+    const best =
+        results[0];
+
+    el.innerHTML = `
+        <div class="agg-header-info">
+
+            Untuk dapat
+            <b>${targetAmt} ${recvSym}</b>
+
+            &bull;
+
+            paling murah:
+
+            <b style="color:#00d084">
+                ${best.paySymbol}
+            </b>
+
+        </div>
+
+        ${results.map((r, idx) =>
+
+            _buildRow(
+                r,
+                idx,
+                receiveToken,
+                targetAmt
+            )
+
+        ).join("")}
+    `;
+}
+
+
+// =====================================
+// INCREMENTAL RENDER
+// =====================================
+function _renderIncremental(
+    results,
+    receiveToken,
+    targetAmt
+) {
+
+    // STOP = jangan render lagi
+    if (_stopRequested) {
+        return;
+    }
 
     const sorted = [...results].sort((a, b) => {
-        const aPlus = (a.savingsPct ?? -999) > 0;
-        const bPlus = (b.savingsPct ?? -999) > 0;
 
-        if (aPlus && !bPlus) return -1;
-        if (!aPlus && bPlus) return 1;
+        const aPlus =
+            (a.savingsPct ?? -999) > 0;
 
-        if (aPlus && bPlus) {
-            return a.sdaEquiv - b.sdaEquiv;
+        const bPlus =
+            (b.savingsPct ?? -999) > 0;
+
+        if (aPlus && !bPlus) {
+            return -1;
         }
 
-        return (a.savingsPct ?? 0) - (b.savingsPct ?? 0);
+        if (!aPlus && bPlus) {
+            return 1;
+        }
+
+        if (aPlus && bPlus) {
+            return (
+                a.sdaEquiv -
+                b.sdaEquiv
+            );
+        }
+
+        return (
+            (a.savingsPct ?? 0) -
+            (b.savingsPct ?? 0)
+        );
     });
 
-    const profitable = sorted.filter(r =>
-        (r.savings ?? 0) >= MIN_AUTO_PROFIT_SDA
+
+    const profitable =
+        sorted.filter(r =>
+
+        (r.savings ?? 0) >=
+        MIN_AUTO_PROFIT_SDA
     );
 
-    const reverseCandidates = sorted.filter(r =>
+
+    const reverseCandidates =
+        sorted.filter(r =>
+
         (r.savingsPct ?? 0) <= -10
     );
 
-    const neutral = sorted.filter(r =>
+
+    const neutral =
+        sorted.filter(r =>
+
         (r.savingsPct ?? 0) <= 0 &&
+
         (r.savingsPct ?? 0) > -10
     );
 
-    // Gabungkan semua termasuk liquidityWarn (merah) — jangan disembunyikan
+
+    // Gabungkan semua
+    // termasuk liquidityWarn merah
     const allCombined = [
+
         ...profitable,
         ...reverseCandidates,
         ...neutral
     ];
 
+
     // Deduplicate by payToken
     const seen = new Set();
-    const deduped = allCombined.filter(r => {
-        const key = String(r.payToken).toLowerCase();
-        if (seen.has(key)) return false;
+
+    const deduped =
+        allCombined.filter(r => {
+
+        const key =
+            String(r.payToken)
+                .toLowerCase();
+
+        if (seen.has(key)) {
+            return false;
+        }
+
         seen.add(key);
+
         return true;
     });
 
+
     renderPanel(
+
         deduped.slice(0, 25),
+
         receiveToken,
+
         targetAmt
     );
 }
