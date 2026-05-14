@@ -125,14 +125,55 @@ function setLoading(state){
     btn.innerHTML = state ? `Swapping...` : `Review Swap`;
 }
 
-function showSwapLoading(text="Preparing Swap...", percent=20){
+function showSwapLoading(text="Preparing Swap...", percent=20, tokenIn, tokenOut){
     const overlay = document.getElementById("swapLoadingOverlay");
-    const fill = document.getElementById("swapProgressFill");
-    const txt = document.getElementById("swapLoadingText");
+    const fill    = document.getElementById("swapProgressFill");
+    const txt     = document.getElementById("swapLoadingText");
 
     if(overlay) overlay.style.display = "flex";
-    if(fill) fill.style.width = percent + "%";
-    if(txt) txt.innerText = text;
+    if(fill)    fill.style.width = percent + "%";
+    if(txt)     txt.innerText = text;
+
+    // ── Token icons ──────────────────────────────────────
+    const iconWrap = document.getElementById("swapLoadingTokens");
+    if (!iconWrap) return;
+
+    const _in  = tokenIn  || swapState?.payToken;
+    const _out = tokenOut || swapState?.receiveToken;
+
+    const inNative  = isNative(_in);
+    const outNative = isNative(_out);
+
+    const inData  = inNative  ? null : getTokenData(_in);
+    const outData = outNative ? null : getTokenData(_out);
+
+    const inLogo  = resolveLogoPath(inData,  inNative);
+    const outLogo = resolveLogoPath(outData, outNative);
+
+    const inSym  = inNative  ? "SDA" : (inData?.symbol  || "?");
+    const outSym = outNative ? "SDA" : (outData?.symbol || "?");
+
+    iconWrap.innerHTML = `
+        <div style="display:flex;align-items:center;gap:10px;justify-content:center;margin-bottom:10px;">
+            <div style="text-align:center;">
+                <img src="${inLogo}"
+                     onerror="this.src='img/default.png'"
+                     style="width:38px;height:38px;border-radius:50%;object-fit:contain;
+                            border:2px solid rgba(255,255,255,.1);">
+                <div style="font-size:10px;color:#aaa;margin-top:3px;">${inSym}</div>
+            </div>
+            <div style="display:flex;flex-direction:column;align-items:center;gap:2px;">
+                <div style="font-size:18px;animation:swapArrowPulse 1s infinite;">→</div>
+            </div>
+            <div style="text-align:center;">
+                <img src="${outLogo}"
+                     onerror="this.src='img/default.png'"
+                     style="width:38px;height:38px;border-radius:50%;object-fit:contain;
+                            border:2px solid rgba(255,255,255,.1);">
+                <div style="font-size:10px;color:#aaa;margin-top:3px;">${outSym}</div>
+            </div>
+        </div>
+    `;
 }
 
 function hideSwapLoading(){
