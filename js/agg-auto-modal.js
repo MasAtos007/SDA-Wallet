@@ -1206,11 +1206,20 @@ const savingsPct = Number(
                 </div>
             </div>
 
-            <!-- MARGIN NOTE -->
-            <div style="font-size:11px;color:#666;margin-bottom:10px;padding:6px 10px;
-                background:#0a0a0a;border-radius:8px;border-left:3px solid ${marginColor};">
-                Auto safe default: <b style="color:${marginColor}">${nearest}%</b>
-                &mdash; margin ${savingsPct.toFixed(1)}%
+            <!-- MARGIN NOTE + FETCH BADGE -->
+            <div style="display:flex;align-items:center;justify-content:space-between;
+                gap:8px;margin-bottom:10px;">
+                <div style="flex:1;font-size:11px;color:#666;padding:6px 10px;
+                    background:#0a0a0a;border-radius:8px;border-left:3px solid ${marginColor};">
+                    Auto safe default: <b style="color:${marginColor}">${nearest}%</b>
+                    &mdash; margin ${savingsPct.toFixed(1)}%
+                </div>
+                <div id="_fetchRateBadge"
+                    style="font-size:10px;color:#00d084;border:1px solid #00d084;
+                    border-radius:6px;padding:4px 8px;font-weight:600;white-space:nowrap;
+                    flex-shrink:0;">
+                    ⚡ Fetch 0/${window._fetchTracker?.limit || 60}
+                </div>
             </div>
 
             <div style="flex:1;overflow-y:auto;overflow-x:hidden;">
@@ -1359,6 +1368,67 @@ window._startAuto = function() {
     }
 };
 
+// =====================================
+// FETCH RATE LIMITER TRACKER
+// =====================================
+window._fetchTracker = window._fetchTracker || {
+    calls: [],
+    limit: 560,       // sesuai limit RPC sebenarnya
+    windowMs: 60000,
+    warnAt: 0.80      // warning di 80%
+};
+
+window._trackFetch = function(label) {
+    const now     = Date.now();
+    const tracker = window._fetchTracker;
+    tracker.calls = tracker.calls.filter(t => now - t < tracker.windowMs);
+    tracker.calls.push(now);
+
+    const count     = tracker.calls.length;
+    const pct       = count / tracker.limit;
+    const remaining = tracker.limit - count;
+
+    // update badge di modal
+    const badge = document.getElementById("_fetchRateBadge");
+    if (badge) {
+        const color =
+            pct >= 1.0  ? "#ff4d4f" :
+            pct >= 0.75 ? "#ff7a00" :
+            pct >= 0.5  ? "#ffcc00" : "#00d084";
+        badge.textContent       = `⚡ Fetch ${count}/${tracker.limit} — sisa ${remaining}`;
+        badge.style.color       = color;
+        badge.style.borderColor = color;
+    }
+
+    if (pct >= 1.0) {
+        console.warn(`[FETCH LIMIT] HABIS — ${count}/${tracker.limit}`);
+        // toast hanya sekali per 30 detik
+        const now2 = Date.now();
+        if (!tracker._lastToast || now2 - tracker._lastToast > 30000) {
+            tracker._lastToast = now2;
+            showToast?.("⛔ RPC limit hampir habis — scan melambat!", "error");
+        }
+        return false;
+    }
+    if (pct >= tracker.warnAt) {
+        const now2 = Date.now();
+        if (!tracker._lastWarn || now2 - tracker._lastWarn > 60000) {
+            tracker._lastWarn = now2;
+            showToast?.(`⚠ RPC ${count}/${tracker.limit} — ${remaining} sisa menit ini`, "warning");
+        }
+    }
+    return true;
+};
+
+// override fetch global — auto track semua request
+if (!window._fetchOverridden) {
+    window._fetchOverridden = true;
+    const _origFetch = window.fetch.bind(window);
+    window.fetch = function(...args) {
+        window._trackFetch(String(args[0] || "").slice(0, 60));
+        return _origFetch(...args);
+    };
+}
 // =====================================
 // PREVIEW
 // =====================================
