@@ -886,7 +886,9 @@ window._onChipClick = function(btn, p) {
     const maxSdaByLiq  = (maxSafeRecv > 0 && sdaPerRecv > 0)
         ? maxSafeRecv * sdaPerRecv
         : 0;
-    const liqTooLow    = maxSdaByLiq > 0 && maxSdaByLiq < 0.05;
+    // kalau margin tinggi (>10%), liq tipis masih oke — margin besar = worth the risk
+const absSavingsPct = Math.abs(modal.__savingsPct || 0);
+const liqTooLow     = maxSdaByLiq > 0 && maxSdaByLiq < 0.05 && absSavingsPct < 10;
     const liqWarnHtml  = liqTooLow
         ? `<div style="margin-top:6px;padding:5px 8px;background:rgba(255,77,79,.12);
             border:1px solid #ff4d4f;border-radius:8px;font-size:11px;color:#ff4d4f;">
@@ -1093,6 +1095,8 @@ const savingsPct = Number(
         `${String(payToken).toLowerCase()}_${String(receiveToken).toLowerCase()}`;
 
     el.__pairKey = pairKey;
+    
+    el.__previewCache  = null;
     
     console.log("[AUTO MODAL RAW liveRow]", JSON.stringify(liveRow || latestRow || {}, null, 2));
 
@@ -1672,19 +1676,14 @@ if (
 
 } else {
 
-    sim = isReverse
-
-        ? await window.simulateFullCycle(
-            route.finalToken,
-            route.intermediateToken,
-            spend
-        )
-
-        : await window.simulateFullCycle(
-            route.intermediateToken,
-            route.finalToken,
-            spend
-        );
+    // route selalu: SDA → intermediateToken → finalToken → SDA
+// baik buy maupun reverse, urutannya sama dari sisi simulasi
+// perbedaan buy vs reverse ada di MANA marginnya, bukan urutan token
+sim = await window.simulateFullCycle(
+    route.intermediateToken,
+    route.finalToken,
+    spend
+);
 
     // =====================================
     // SIMPAN CACHE
@@ -1707,14 +1706,16 @@ if (
 
         if (startBtn) {
 
-    const REQUIRED_PCT = isReverse ? 2.5 : 1.2;
+    const REQUIRED_PCT     = isReverse ? 0.3 : 0.2;   // blokir hanya kalau hampir 0
+const REQUIRED_ABS_SDA = 0.001;                     // blokir kalau profit < 0.001 SDA
 
-    const ok =
-        !exceedsLiq &&
-        !highImpact &&
-        spend > 0 &&
-        !!sim &&
-        sim.estimatedPct > REQUIRED_PCT;
+const ok =
+    !exceedsLiq &&
+    !highImpact &&
+    spend > 0 &&
+    !!sim &&
+    sim.estimatedPct   > REQUIRED_PCT &&
+    sim.estimatedProfit > REQUIRED_ABS_SDA;
 
     startBtn.style.opacity       = ok ? "1" : "0.4";
     startBtn.style.pointerEvents = ok ? "auto" : "none";
