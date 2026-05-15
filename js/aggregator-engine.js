@@ -2259,6 +2259,10 @@ async function autoRouteBuy(
 
         await acquireWakeLock();
 
+        // AWF OPEN
+        const simResult = await window.simulateFullCycle(intermediateToken, finalToken, spendSda).catch(()=>null);
+        AWF.show("buy", intermediateToken, finalToken, spendSda, simResult?.estimatedPct || 0);
+
         // =====================================
         // STEP 1: SDA -> INTERMEDIATE
         // =====================================
@@ -2266,6 +2270,7 @@ async function autoRouteBuy(
         const balInterBefore =
             await getWalletTokenBalance(intermediateToken);
 
+        AWF.updateStep(0, `Membeli ${symbolOf(intermediateToken)}...`);
         showToast?.(
             `1/3 Buy ${symbolOf(intermediateToken)}...`,
             "info"
@@ -2303,6 +2308,7 @@ async function autoRouteBuy(
                 finalToken
             );
 
+        AWF.updateStep(1, `Membeli ${symbolOf(finalToken)}...`);
         showToast?.(
             `2/3 Buy ${symbolOf(finalToken)}...`,
             "info"
@@ -2389,6 +2395,9 @@ async function autoRouteBuy(
             );
         }
 
+        const simLive = await window.simulateFullCycle(intermediateToken, finalToken, spendSda).catch(()=>null);
+        if (simLive) AWF.updateMargin(simLive.estimatedPct);
+        AWF.updateStep(2, `Menjual ke SDA...`);
         showToast?.(
             `3/3 Sell to SDA...`,
             "info"
@@ -2622,6 +2631,8 @@ window._saveTradeResult?.({
         setAutoRunning(false);
 
         unlockAutoButtons();
+
+        AWF.hide();
     }
 }
 
@@ -2723,6 +2734,10 @@ async function autoRouteReverse(
 
         await acquireWakeLock();
 
+        // AWF OPEN
+        const simResult = await window.simulateFullCycle(intermediateToken, finalToken, spendSda).catch(()=>null);
+        AWF.show("reverse", intermediateToken, finalToken, spendSda, simResult?.estimatedPct || 0);
+
         // =====================================
         // STEP 1: SDA -> FINAL
         // =====================================
@@ -2732,6 +2747,7 @@ async function autoRouteReverse(
                 finalToken
             );
 
+        AWF.updateStep(0, `Membeli ${symbolOf(finalToken)}...`);
         showToast?.(
             `1/3 Buy ${symbolOf(finalToken)}...`,
             "info"
@@ -2796,6 +2812,7 @@ async function autoRouteReverse(
                 intermediateToken
             );
 
+        AWF.updateStep(1, `Swap ke ${symbolOf(intermediateToken)}...`);
         showToast?.(
             `2/3 Swap to ${symbolOf(intermediateToken)}...`,
             "info"
@@ -2948,6 +2965,8 @@ if (
     return;
 }
 
+        AWF.updateMargin(livePct);
+        AWF.updateStep(2, `Menjual ke SDA...`);
         showToast?.(
             `3/3 Sell to SDA...`,
             "info"
@@ -3120,6 +3139,8 @@ showToast?.(
         setAutoRunning(false);
 
         unlockAutoButtons();
+
+        AWF.hide();
     }
 }
 
