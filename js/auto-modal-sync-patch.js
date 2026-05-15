@@ -302,6 +302,19 @@
                 window.AGGREGATOR._lastScanKey = "pre_swap_" + Date.now();
             }
 
+            // simpan untuk post-swap tracking
+            window._lastAutoSpendAmount = (() => {
+                const m = document.getElementById("aggAutoModal");
+                if (!m) return 0;
+                const { spend } = _calcFinalSpend(
+                    m.__sdaMax || 0, window.AUTO_SPEND_PERCENT || 10,
+                    m.__sdaPerRecv || 0, m.__maxSafeRecv || 0,
+                    window.AUTO_CAP_ENABLED !== false,
+                    Number(window.AUTO_MAX_GLOBAL_SDA || 10),
+                    m.__pairKey || "", m.__savingsPct || 0, m.__isReverse || false
+                );
+                return spend || 0;
+            })();
             return _origStart?.call(this);
         };
 
@@ -312,15 +325,32 @@
         // PATCH 7: Post-swap auto rescan
         // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
         function _triggerPostSwapRescan(source) {
-            console.log(`[PATCH v3] Post-swap rescan (${source}) dalam 2 detik...`);
-            setTimeout(() => {
-                if (!window.AGGREGATOR) return;
-                window.AGGREGATOR._lastScanKey = "post_swap_" + Date.now();
-                if (window.AGGREGATOR._panelOpen) {
-                    window.AGGREGATOR.triggerScan?.();
+    console.log(`[PATCH v3] Post-swap rescan (${source}) dalam 2 detik...`);
+
+    // simpan spend & pairKey sebelum modal hilang
+    const _lastModal     = document.getElementById("aggAutoModal");
+    const _activePairKey = _lastModal?.__pairKey || window._activeAutoRoute?.pairKey || "";
+    const _lastSpend     = window._lastAutoSpendAmount || 0;
+
+    setTimeout(() => {
+        if (!window.AGGREGATOR) return;
+        window.AGGREGATOR._lastScanKey = "post_swap_" + Date.now();
+        if (window.AGGREGATOR._panelOpen) {
+            const scanResult = window.AGGREGATOR.triggerScan?.();
+            Promise.resolve(scanResult).then(() => {
+                if (!_activePairKey) return;
+                const payTokenAddr = _activePairKey.split("_")[0];
+                const freshRow = (window.AGGREGATOR._lastResults || []).find(r =>
+                    String(r.payToken || "").toLowerCase() === payTokenAddr
+                );
+                if (freshRow) {
+                    const marginAfter = Number(freshRow.savingsPct ?? freshRow.marginPct ?? 0);
+                    window._recordPostSwapMargin?.(_activePairKey, marginAfter, _lastSpend);
                 }
-            }, 2000);
+            });
         }
+    }, 2000);
+}
 
         function _wrapAutoRoute(methodName) {
             const orig = window.AGGREGATOR[methodName];
@@ -583,5 +613,216 @@
         console.log("[PATCH v3] âœ… Semua patch berhasil diterapkan (v3)");
 
     }); // end waitReady
+
+})();
+
+// =====================================
+// ADAPTIVE SPEND ESCALATION ENGINE v1
+// Belajar dari history: kalau tiap eksekusi drop-nya kecil,
+// spend berikutnya dinaikkan sampai bisa close margin lebih cepat
+// =====================================
+(function () {
+
+    // ─── CONFIG ───────────────────────────────────────────────
+    const MIN_DROP_HISTORY  = 2;      // butuh minimal N trade untuk eskalasi
+    const MAX_ESCALATION    = 4.0;    // maksimum multiplier terhadap rawSpend
+    const CLOSE_TARGET_PCT  = 0.85;   // target: tutup 85% sisa margin per cycle
+    const DECAY_FACTOR      = 0.7;    // weight recent trade lebih tinggi
+
+    // ─── HITUNG RATA-RATA DROP RATE ───────────────────────────
+    // drop rate = seberapa besar margin turun per 1 SDA yang dipakai
+    // unit: pct_margin_drop / SDA_spent
+    function _calcAvgDropRate(pairKey) {
+        const rec = window._tradeResults?.[pairKey];
+        if (!rec || !rec.trades || rec.trades.length < MIN_DROP_HISTORY) return null;
+
+        // ambil N trade terakhir yang sukses dan ada margin info
+        const recent = rec.trades
+            .filter(t => t.profitSda !== undefined && t.spendSda > 0 && t.marginAtTrade !== undefined)
+            .slice(-8);
+
+        if (recent.length < MIN_DROP_HISTORY) return null;
+
+        // weighted average — trade terbaru punya bobot lebih tinggi
+        let totalWeight = 0;
+        let weightedRate = 0;
+
+        recent.forEach((t, i) => {
+            const weight = Math.pow(DECAY_FACTOR, recent.length - 1 - i);
+            // estimasi drop dari spend: pakai profitSda sebagai proxy perubahan margin
+            // kalau margin sebelumnya ada, hitung drop langsung
+            const estDropRate = Math.abs(t.profitSda) / t.spendSda;
+            weightedRate += estDropRate * weight;
+            totalWeight  += weight;
+        });
+
+        return totalWeight > 0 ? weightedRate / totalWeight : null;
+    }
+
+    // ─── REKAM MARGIN SESUDAH SWAP ────────────────────────────
+    // Panggil ini setelah swap selesai dan scan terbaru ada
+    window._recordPostSwapMargin = function (pairKey, marginAfter, spendSda) {
+        if (!pairKey || !isFinite(marginAfter)) return;
+
+        const hist = window._marginHistory?.[pairKey] || [];
+        if (hist.length < 1) return;
+
+        const marginBefore = hist[hist.length - 1]?.margin;
+        if (marginBefore === undefined) return;
+
+        const drop = Math.abs(marginBefore) - Math.abs(marginAfter);
+
+        // simpan ke tradeResults sebagai context tambahan
+        const rec = window._tradeResults?.[pairKey];
+        if (rec && rec.trades.length > 0) {
+            const last = rec.trades[rec.trades.length - 1];
+            last.marginBefore = marginBefore;
+            last.marginAfter  = marginAfter;
+            last.realDrop     = drop;
+            try {
+                localStorage.setItem("_tradeResults", JSON.stringify(window._tradeResults));
+            } catch(e) {}
+        }
+
+        console.log(`[ESCALATOR] ${pairKey}: drop nyata = ${drop.toFixed(3)}% dari margin ${marginBefore.toFixed(2)}% → ${marginAfter.toFixed(2)}%`);
+    };
+
+    // ─── KALKULASI SPEND ESKALASI ─────────────────────────────
+    // Cari spend yang diperlukan agar margin langsung close,
+    // berdasarkan efisiensi historis
+    window._calcEscalatedSpend = function (pairKey, rawSpend, currentMargin, sdaMax, isReverse) {
+
+        const dropRate = _calcAvgDropRate(pairKey);
+
+        if (!dropRate || dropRate <= 0) {
+            return {
+                spend: rawSpend,
+                reason: "Belum ada history — pakai spend default",
+                escalated: false,
+                multiplier: 1.0
+            };
+        }
+
+        // Estimasi: berapa SDA yang dibutuhkan untuk nutup currentMargin?
+        // dropRate = margin_drop / sda_spent
+        // targetSpend = currentMargin_target / dropRate
+        const targetClose   = Math.abs(currentMargin) * CLOSE_TARGET_PCT;
+        const targetSpend   = targetClose / dropRate;
+        const multiplier    = targetSpend / rawSpend;
+        const clampedMult   = Math.min(multiplier, MAX_ESCALATION);
+        const escalatedSpend = Math.min(rawSpend * clampedMult, sdaMax);
+
+        console.log(`[ESCALATOR] ${pairKey}: dropRate=${dropRate.toFixed(4)}, ` +
+            `targetClose=${targetClose.toFixed(2)}%, ` +
+            `targetSpend=${targetSpend.toFixed(4)}, ` +
+            `mult=${clampedMult.toFixed(2)}x, ` +
+            `escalated=${escalatedSpend.toFixed(4)} SDA`);
+
+        if (escalatedSpend <= rawSpend * 1.05) {
+            return {
+                spend: rawSpend,
+                reason: "Spend sudah optimal — tidak perlu eskalasi",
+                escalated: false,
+                multiplier: 1.0
+            };
+        }
+
+        return {
+            spend: escalatedSpend,
+            reason: `Eskalasi ${clampedMult.toFixed(1)}x — est. close dalam 1 cycle`,
+            escalated: true,
+            multiplier: clampedMult,
+            dropRate,
+            targetClose,
+            targetSpend
+        };
+    };
+
+    // ─── PATCH: _calcFinalSpend dengan eskalasi ───────────────
+    // Override fungsi lama agar eskalasi diterapkan setelah trend adj
+    const _origCalcFinalSpend = window._calcFinalSpend;
+
+    // bungkus _calcFinalSpend global
+    // (fungsi ini di-define di scope modul, jadi kita patch via modal chain)
+    const _origStartAuto = window._startAuto;
+
+    window._startAuto = function () {
+        const modal = document.getElementById("aggAutoModal");
+        if (!modal) return _origStartAuto?.call(this);
+
+        const pairKey      = modal.__pairKey || "";
+        const currentMargin = modal.__savingsPct || 0;
+        const sdaMax       = modal.__sdaMax || 0;
+        const isReverse    = modal.__isReverse || false;
+
+        if (pairKey && Math.abs(currentMargin) > 0 && sdaMax > 0) {
+            const esc = window._calcEscalatedSpend(
+                pairKey,
+                sdaMax * (window.AUTO_SPEND_PERCENT / 100),
+                currentMargin,
+                sdaMax,
+                isReverse
+            );
+
+            if (esc.escalated) {
+                // update __sdaMax sementara agar _calcFinalSpend pakai spend yang sudah dieskalasi
+                // (percent tetap sama, sdaMax yang dinaikkan efektif)
+                const impliedMax = esc.spend / (window.AUTO_SPEND_PERCENT / 100);
+                if (impliedMax > modal.__sdaMax && impliedMax <= modal.__balance) {
+                    console.log(`[ESCALATOR] sdaMax override: ${modal.__sdaMax.toFixed(4)} → ${impliedMax.toFixed(4)}`);
+                    modal.__sdaMax = impliedMax;
+                }
+                showToast?.(`⚡ ${esc.reason}`, "info");
+            }
+        }
+
+        return _origStartAuto?.call(this);
+    };
+
+    console.log("[ESCALATOR v1] ✅ Adaptive Spend Escalation aktif");
+
+    // ─── PATCH: dynamicPoolUsage untuk margin kecil ───────────
+    // BUG UTAMA: margin kecil dapat pool usage paling rendah
+    // FIX: balik logika — margin kecil butuh pool usage lebih tinggi
+    //
+    // Ini tidak bisa di-patch langsung (fungsi dalam closure),
+    // jadi kita override via _getSdaMaxFromCache setelah load
+    //
+    // Alternatif: tambahkan multiplier pasca-kalkulasi
+    const _origGetSdaMax = window._getSdaMaxFromCache;
+    if (typeof _origGetSdaMax === "function") {
+        window._getSdaMaxFromCache = function (payToken, receiveToken, liveBalance, capEnabled) {
+            const result = _origGetSdaMax(payToken, receiveToken, liveBalance, capEnabled);
+
+            if (!result || result.sdaMax <= 0) return result;
+
+            const absSavings = Math.abs(result.savingsPct);
+
+            // Kalau margin kecil tapi ada history yang bagus,
+            // bolehkan penggunaan lebih besar dari pool
+            // (fungsi asli terlalu konservatif untuk margin <2%)
+            if (absSavings > 0 && absSavings < 3) {
+                const pairKey = result.pairKey;
+                const dropRate = _calcAvgDropRate(pairKey);
+
+                if (dropRate && dropRate > 0) {
+                    // kita punya data historis — percaya data, naikkan sdaMax
+                    const targetClose  = absSavings * CLOSE_TARGET_PCT;
+                    const neededSpend  = targetClose / dropRate;
+                    const cappedNeeded = Math.min(neededSpend, liveBalance, 
+                        Number(window.AUTO_MAX_GLOBAL_SDA || 10));
+
+                    if (cappedNeeded > result.sdaMax) {
+                        console.log(`[ESCALATOR] sdaMax upgrade: ${result.sdaMax.toFixed(4)} → ${cappedNeeded.toFixed(4)} (pairKey=${pairKey})`);
+                        result.sdaMax        = cappedNeeded;
+                        result.sdaForMaxLiq  = cappedNeeded;
+                    }
+                }
+            }
+
+            return result;
+        };
+        console.log("[ESCALATOR v1] _getSdaMaxFromCache patched ✓");
+    }
 
 })();
