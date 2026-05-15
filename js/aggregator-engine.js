@@ -2324,6 +2324,8 @@ async function autoRouteBuy(
 
         } catch (step2Err) {
 
+            AWF.showError(1, `Swap ${symbolOf(intermediateToken)} → ${symbolOf(finalToken)} gagal`);
+            await new Promise(r => setTimeout(r, 2000));
             showToast?.(
                 "Step 2 gagal — emergency recovery...",
                 "warning"
@@ -2828,6 +2830,8 @@ async function autoRouteReverse(
 
         } catch (step2Err) {
 
+            AWF.showError(1, `Swap ${symbolOf(finalToken)} → ${symbolOf(intermediateToken)} gagal`);
+            await new Promise(r => setTimeout(r, 2000));
             showToast?.(
                 "Step 2 gagal — emergency recovery...",
                 "warning"
