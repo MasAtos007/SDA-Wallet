@@ -130,7 +130,16 @@ window._adjustSpendByTrend = function(pairKey, rawSpend, currentMargin, isRevers
 }
 
         // slope positif ringan tapi masih cukup dalam
+        // kalau margin masih sangat dalam (< -20%), jangan penalti
         if (predicted < -2) {
+            if (currentMargin < -20) {
+                return {
+                    spend: rawSpend,
+                    reason: `Reverse dalam — spend penuh`,
+                    safetyLevel: "safe",
+                    multiplier: 1.0
+                };
+            }
             return {
                 spend: rawSpend * 0.75,
                 reason: `Reverse mulai menutup — spend -25%`,
@@ -140,6 +149,16 @@ window._adjustSpendByTrend = function(pairKey, rawSpend, currentMargin, isRevers
         }
 
         // slope positif, prediksi hampir 0 = mau habis
+        // kalau margin masih sangat dalam, tetap spend penuh
+        if (currentMargin < -20) {
+            return {
+                spend: rawSpend,
+                reason: `Reverse sangat dalam — spend penuh`,
+                safetyLevel: "safe",
+                multiplier: 1.0
+            };
+        }
+
         return {
             spend: rawSpend * 0.40,
             reason: `Reverse hampir habis — spend -60%`,
