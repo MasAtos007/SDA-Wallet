@@ -1784,7 +1784,9 @@ return `
 
         ${
     !r.isSDA &&
-    r.savingsPct !== null
+    r.savingsPct !== null &&
+    r.maxSafeReceive !== null &&
+    r.maxSafeReceive !== undefined
 ? `
 <button class="agg-auto-btn"
 onclick="
