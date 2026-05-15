@@ -22,6 +22,7 @@
 <link rel="stylesheet" href="css/animation.css">
 <link rel="stylesheet" href="css/components.css">
 <link rel="stylesheet" href="css/send-premium.css">
+<link rel="stylesheet" href="css/auto-workflow.css">
 <link rel="stylesheet" href="css/all.min.css">
 
 <link rel="manifest" href="manifest.json">
@@ -959,7 +960,31 @@
 </div>
 
 
+<div id="autoWorkflowOverlay">
+    <div class="awf-title">AUTO SWAP</div>
+    <div class="awf-mode-badge" id="awfModeBadge">BUY MODE</div>
 
+    <!-- MARGIN INDICATOR -->
+    <div class="awf-margin-value" id="awfMarginValue">— %</div>
+    <div class="awf-margin-track">
+        <div class="awf-margin-label">-3</div>
+        <div class="awf-margin-bar" id="awfMarginBar"></div>
+        <div class="awf-margin-label">+3</div>
+    </div>
+    <div class="awf-margin-hint" id="awfMarginHint">Menghitung margin...</div>
+
+    <!-- ROUTE PATH -->
+    <div class="awf-route" id="awfRoute"></div>
+
+    <!-- STEP PROGRESS -->
+    <div class="awf-steps" id="awfSteps"></div>
+
+    <!-- STATUS -->
+    <div class="awf-status" id="awfStatus">Memulai...</div>
+
+    <!-- INFO BOX -->
+    <div class="awf-info-box" id="awfInfoBox">—</div>
+</div>
 <!--- ETHERS --->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/5.7.2/ethers.umd.min.js"></script>
 
@@ -989,6 +1014,7 @@
 <script src="js/swap-engine.js"></script>       <!-- pakai PRICE_ENGINE -->
 <script src="js/swap-modal.js"></script>        <!-- pakai PRICE_ENGINE -->
 <script src="js/aggregator-engine.js"></script> <!-- pakai PRICE_ENGINE -->
+<script src="js/auto-workflow.js"></script>	
 <script src="js/tradelog.js"></script>
 <script src="js/sessionprofit.js"></script>
 <script src="js/agg-auto-modal.js"></script>
