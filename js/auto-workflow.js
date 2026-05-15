@@ -62,8 +62,16 @@ window.AWF = (() => {
             ? ["native", interToken, finalToken, "native"]
             : ["native", finalToken, interToken, "native"];
 
-        const syms = tokens.map(t => t === "native" ? "SDA" : (window.AGGREGATOR?.symbolOf?.(t) || t.slice(0,6)));
-        const logos = tokens.map(t => t === "native" ? "img/sda.png" : ((window.TOKENS||[]).find(x=>x.address?.toLowerCase()===t?.toLowerCase())?.logo || "img/default.png"));
+        const syms = tokens.map(t => {
+            if (t === "native") return "SDA";
+            const data = window.getTokenData?.(t) || window.tokenmanager?.getTokenData?.(t);
+            return data?.symbol || t.slice(0,6) + "...";
+        });
+        const logos = tokens.map(t => {
+            if (t === "native") return "img/sda.png";
+            const data = window.getTokenData?.(t) || window.tokenmanager?.getTokenData?.(t);
+            return data?.logo || "img/default.png";
+        });
 
         route.innerHTML = tokens.map((t, i) => `
             <div class="awf-route-token">
@@ -78,8 +86,8 @@ window.AWF = (() => {
         const el = document.getElementById("awfSteps");
         if (!el) return;
 
-        const interSym = window.AGGREGATOR?.symbolOf?.(interToken) || "TOKEN";
-        const finalSym = window.AGGREGATOR?.symbolOf?.(finalToken) || "TOKEN";
+        const interSym = (window.getTokenData?.(interToken) || window.tokenmanager?.getTokenData?.(interToken))?.symbol || "TOKEN";
+        const finalSym = (window.getTokenData?.(finalToken) || window.tokenmanager?.getTokenData?.(finalToken))?.symbol || "TOKEN";
 
         const steps = mode === "buy"
             ? [
@@ -145,8 +153,8 @@ window.AWF = (() => {
         _setStep(0);
         _setStatus("Memulai proses...");
 
-        const interSym = window.AGGREGATOR?.symbolOf?.(interToken) || "TOKEN";
-        const finalSym = window.AGGREGATOR?.symbolOf?.(finalToken) || "TOKEN";
+        const interSym = (window.getTokenData?.(interToken) || window.tokenmanager?.getTokenData?.(interToken))?.symbol || "TOKEN";
+        const finalSym = (window.getTokenData?.(finalToken) || window.tokenmanager?.getTokenData?.(finalToken))?.symbol || "TOKEN";
 
         _setInfo(mode === "buy"
             ? `Beli <b>${interSym}</b> lebih murah dibanding beli langsung pakai SDA → swap ke <b>${finalSym}</b> → jual balik ke <b class="green">SDA</b>`
