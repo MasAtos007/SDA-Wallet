@@ -83,20 +83,20 @@ window.AWF = (() => {
 
         const steps = mode === "buy"
             ? [
-                { label: `Beli\n${interSym}` },
-                { label: `Beli\n${finalSym}` },
-                { label: `Jual\nke SDA` }
+                { label: `Beli<br>${interSym}` },
+                { label: `Beli<br>${finalSym}` },
+                { label: `Jual ke<br>SDA` }
               ]
             : [
-                { label: `Beli\n${finalSym}` },
-                { label: `Swap ke\n${interSym}` },
-                { label: `Jual\nke SDA` }
+                { label: `Beli<br>${finalSym}` },
+                { label: `Swap ke<br>${interSym}` },
+                { label: `Jual ke<br>SDA` }
               ];
 
         el.innerHTML = steps.map((s, i) => `
             <div class="awf-step">
                 <div class="awf-step-dot" id="awfDot${i}">${i+1}</div>
-                <div class="awf-step-label" id="awfStepLbl${i}">${s.label.replace("\n","<br>")}</div>
+                <div class="awf-step-label" id="awfStepLbl${i}">${s.label}</div>
             </div>
         `).join("");
     }
@@ -149,8 +149,8 @@ window.AWF = (() => {
         const finalSym = window.AGGREGATOR?.symbolOf?.(finalToken) || "TOKEN";
 
         _setInfo(mode === "buy"
-            ? `Beli <b>${interSym}</b> lebih murah, lalu swap ke <b>${finalSym}</b>, kemudian jual kembali ke <b class="green">SDA</b>`
-            : `Beli <b>${finalSym}</b> dulu, swap ke <b>${interSym}</b>, lalu jual ke <b class="green">SDA</b>`
+            ? `Beli <b>${interSym}</b> lebih murah dibanding beli langsung pakai SDA → swap ke <b>${finalSym}</b> → jual balik ke <b class="green">SDA</b>`
+            : `Beli <b>${finalSym}</b> → swap ke <b>${interSym}</b> → jual ke <b class="green">SDA</b> (reverse route)`
         );
 
         overlay.classList.add("show");
@@ -170,5 +170,15 @@ window.AWF = (() => {
         if (overlay) overlay.classList.remove("show");
     }
 
-    return { show, hide, updateStep, updateMargin };
+    function showError(stepIdx, msg) {
+        const dot = document.getElementById(`awfDot${stepIdx}`);
+        const lbl = document.getElementById(`awfStepLbl${stepIdx}`);
+        if (dot) { dot.className = "awf-step-dot"; dot.style.background = "#ff4d4f"; dot.style.borderColor = "#ff4d4f"; dot.style.color = "#fff"; dot.textContent = "✕"; }
+        if (lbl) { lbl.className = "awf-step-label"; lbl.style.color = "#ff4d4f"; }
+        _setStatus(`⚠️ ${msg}`);
+        const info = document.getElementById("awfInfoBox");
+        if (info) { info.innerHTML = `<span style="color:#ff4d4f;font-weight:700;">GAGAL STEP ${stepIdx+1}</span><br>${msg}<br><br><span style="color:#aaa;font-size:11px;">Pair ini ditandai — hindari sementara</span>`; }
+    }
+
+    return { show, hide, updateStep, updateMargin, showError };
 })();
