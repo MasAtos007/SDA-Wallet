@@ -779,41 +779,32 @@ function _getSdaMaxFromCache(payToken, receiveToken, liveBalance, capEnabled) {
         });
 
         // =====================================
-        // LIQ BUFFER berdasar magnitude margin
+        // LIQ BUFFER — dari settings
         // =====================================
-        const liqBuffer =
-            absSavings < 1 ? 0.55 :
-            absSavings < 2 ? 0.65 :
-            absSavings < 4 ? 0.75 :
-            absSavings < 7 ? 0.82 :
-                             0.88;
+        const liqBuffer = window._autoModalSettings?.getLiqBuffer(absSavings) ?? (
+            absSavings < 1 ? 0.55 : absSavings < 2 ? 0.65 :
+            absSavings < 4 ? 0.75 : absSavings < 7 ? 0.82 : 0.88
+        );
 
-  // =====================================
-// AGGRESSIVE POOL USAGE
-// target: margin turun cepat
-// =====================================
+        // =====================================
+        // MARGIN FACTOR — dari settings
+        // =====================================
+        const marginFactor = window._autoModalSettings?.getMarginFactor(absSavings) ?? (
+            absSavings >= 20 ? 0.95 : absSavings >= 15 ? 0.85 :
+            absSavings >= 10 ? 0.70 : absSavings >=  7 ? 0.55 :
+            absSavings >=  5 ? 0.40 : absSavings >=  3 ? 0.28 :
+            absSavings >=  2 ? 0.18 : absSavings >=  1 ? 0.10 : 0.05
+        );
 
-const marginFactor =
-    absSavings >= 20 ? 0.95 :
-    absSavings >= 15 ? 0.85 :
-    absSavings >= 10 ? 0.70 :
-    absSavings >=  7 ? 0.55 :
-    absSavings >=  5 ? 0.40 :
-    absSavings >=  3 ? 0.28 :
-    absSavings >=  2 ? 0.18 :
-    absSavings >=  1 ? 0.10 :
-                       0.05;
-
-// basis utama sekarang liquidity nyata
-const dynamicPoolUsage =
-    absSavings >= 20 ? 0.85 :
-    absSavings >= 15 ? 0.70 :
-    absSavings >= 10 ? 0.45 :
-    absSavings >=  7 ? 0.30 :
-    absSavings >=  5 ? 0.22 :
-    absSavings >=  3 ? 0.15 :
-    absSavings >=  2 ? 0.10 :
-                       0.05;
+        // =====================================
+        // DYNAMIC POOL USAGE — dari settings
+        // =====================================
+        const dynamicPoolUsage = window._autoModalSettings?.getDynamicPoolUsage(absSavings) ?? (
+            absSavings >= 20 ? 0.85 : absSavings >= 15 ? 0.70 :
+            absSavings >= 10 ? 0.45 : absSavings >=  7 ? 0.30 :
+            absSavings >=  5 ? 0.22 : absSavings >=  3 ? 0.15 :
+            absSavings >=  2 ? 0.10 : 0.05
+        );
 
 const fromLiq = actualPoolSda * dynamicPoolUsage * liqBuffer;
 
@@ -844,16 +835,13 @@ const sdaForMaxLiq =
 
         const sdaMax = effectiveMax;
 
-        // chip default berdasar magnitude margin
-        const safePct =
-            absSavings <= 0.5 ?  5 :
-            absSavings <  1   ? 10 :
-            absSavings <  2   ? 20 :
-            absSavings <  3   ? 30 :
-            absSavings <  5   ? 50 :
-            absSavings <  8   ? 70 :
-            absSavings < 10   ? 80 :
-                               100;
+        // chip default — dari settings
+        const safePct = window._autoModalSettings?.getSafePct(absSavings) ?? (
+            absSavings <= 0.5 ? 5  : absSavings < 1  ? 10 :
+            absSavings < 2    ? 20 : absSavings < 3  ? 30 :
+            absSavings < 5    ? 50 : absSavings < 8  ? 70 :
+            absSavings < 10   ? 80 : 100
+        );
 
         const pairKey = `${String(payToken).toLowerCase()}_${String(receiveToken).toLowerCase()}`;
 
@@ -987,6 +975,236 @@ const liqTooLow     = maxSdaByLiq > 0 && maxSdaByLiq < 0.05 && absSavingsPct < 1
             : '⚡ START AUTO';
     }
 };
+// =====================================
+// CUSTOM SPEND HANDLER
+// =====================================
+window._onCustomSpend = function(customSda, modal) {
+    if (!modal) return;
+    const pv = document.getElementById('aggAutoPreview');
+    if (pv) pv.style.display = 'block';
+
+    const capEnabled  = window.AUTO_CAP_ENABLED !== false;
+    const globalMax   = Number(window.AUTO_MAX_GLOBAL_SDA || 10);
+    const pairKey     = modal.__pairKey    || "";
+    const savingsPct  = modal.__savingsPct || 0;
+    const isReverse   = modal.__isReverse  || false;
+    const balance     = modal.__balance    || 0;
+
+    let spend = customSda;
+    if (capEnabled && spend > globalMax) spend = globalMax;
+    if (spend > balance) spend = balance;
+
+    const trendAdj = pairKey
+        ? window._adjustSpendByTrend(pairKey, spend, savingsPct, isReverse)
+        : null;
+    const finalSpend = trendAdj ? trendAdj.spend : spend;
+
+    const safetyColor = {
+        safe: "#00d084", caution: "#ff7a00",
+        reduced: "#ff4d4f", blocked: "#ff4d4f"
+    }[trendAdj?.safetyLevel || "safe"] || "#00d084";
+
+    const capNote = capEnabled && customSda > globalMax
+        ? `<div style="font-size:11px;color:#ff7a00;margin-top:4px;">⚠ Dibatasi global cap: max ${globalMax} SDA</div>`
+        : customSda > balance
+        ? `<div style="font-size:11px;color:#ff4d4f;margin-top:4px;">⚠ Melebihi balance — dipotong ke ${balance.toFixed(4)} SDA</div>`
+        : "";
+    const trendNote = trendAdj?.reason
+        ? `<div style="font-size:11px;color:${safetyColor};margin-top:4px;">⚠ ${trendAdj.reason}</div>`
+        : "";
+
+    if (pv) {
+        pv.innerHTML = finalSpend <= 0
+            ? `<div class="agg-preview-top" style="color:#ff4d4f;">⛔ Spend 0 — ${trendAdj?.reason || "tidak valid"}</div>`
+            : `
+                <div class="agg-preview-top">Custom spend</div>
+                <div class="agg-preview-value" style="color:${safetyColor};">${finalSpend.toFixed(4)} SDA</div>
+                <div class="agg-preview-sub" style="margin-top:2px;color:#555;">
+                    Input manual: <b style="color:#58a6ff;">${customSda.toFixed(4)} SDA</b>
+                </div>
+                ${capNote}${trendNote}
+                <div class="agg-preview-sub" style="margin-top:6px;color:#444;">
+                    Klik 🔍 Lihat Simulasi untuk estimasi profit
+                </div>
+            `;
+    }
+
+    modal.__customSpend = finalSpend > 0 ? finalSpend : null;
+
+    const startBtn = document.getElementById('aggAutoStartBtn');
+    if (startBtn) {
+        const canStart = finalSpend > 0 && trendAdj?.safetyLevel !== 'blocked';
+        startBtn.style.opacity       = canStart ? '1' : '0.4';
+        startBtn.style.pointerEvents = canStart ? 'auto' : 'none';
+        startBtn.textContent = finalSpend <= 0 ? '⛔ Spend 0'
+            : `⚡ START AUTO (Custom ${finalSpend.toFixed(4)} SDA)`;
+    }
+};
+
+// =====================================
+// AUTO MODAL SETTINGS
+// =====================================
+window._autoModalSettings = (() => {
+    const KEY = "_autoModalSettings";
+    const DEF = {
+        liqBuffer:        [ {lt:1,v:.55},{lt:2,v:.65},{lt:4,v:.75},{lt:7,v:.82},{lt:Infinity,v:.88} ],
+        marginFactor:     [ {ge:20,v:.95},{ge:15,v:.85},{ge:10,v:.70},{ge:7,v:.55},{ge:5,v:.40},{ge:3,v:.28},{ge:2,v:.18},{ge:1,v:.10},{ge:0,v:.05} ],
+        dynamicPoolUsage: [ {ge:20,v:.85},{ge:15,v:.70},{ge:10,v:.45},{ge:7,v:.30},{ge:5,v:.22},{ge:3,v:.15},{ge:2,v:.10},{ge:0,v:.05} ],
+        safePct:          [ {le:.5,v:5},{le:1,v:10},{le:2,v:20},{le:3,v:30},{le:5,v:50},{le:8,v:70},{le:10,v:80},{le:Infinity,v:100} ]
+    };
+    function load() {
+        try { const s=localStorage.getItem(KEY); return s?JSON.parse(s):JSON.parse(JSON.stringify(DEF)); }
+        catch(e) { return JSON.parse(JSON.stringify(DEF)); }
+    }
+    function save(c) { try { localStorage.setItem(KEY,JSON.stringify(c)); } catch(e){} }
+    function reset() { localStorage.removeItem(KEY); showToast?.("Settings direset","info"); }
+    function getLiqBuffer(abs) {
+        for(const r of load().liqBuffer) if(abs<r.lt) return r.v;
+        return .88;
+    }
+    function getMarginFactor(abs) {
+        for(const r of load().marginFactor) if(abs>=r.ge) return r.v;
+        return .05;
+    }
+    function getDynamicPoolUsage(abs) {
+        for(const r of load().dynamicPoolUsage) if(abs>=r.ge) return r.v;
+        return .05;
+    }
+    function getSafePct(abs) {
+        for(const r of load().safePct) if(abs<=r.le) return r.v;
+        return 100;
+    }
+    return { load, save, reset, getLiqBuffer, getMarginFactor, getDynamicPoolUsage, getSafePct };
+})();
+
+// =====================================
+// OPEN SETTINGS MODAL
+// =====================================
+window._openAutoSettings = function() {
+    document.getElementById("_autoSettingsModal")?.remove();
+    const cfg = window._autoModalSettings.load();
+
+    function rowsHtml(arr, prefix, mode) {
+            function friendlyLabel(mode, r, i, total) {
+                const isLast = i === total - 1;
+                if (mode === "lt") {
+                    if (i === 0)    return "Margin sangat tipis  (< 1%)";
+                    if (r.lt === 2) return "Margin tipis  (1–2%)";
+                    if (r.lt === 4) return "Margin kecil  (2–4%)";
+                    if (r.lt === 7) return "Margin sedang  (4–7%)";
+                    if (isLast)     return "Margin besar  (≥ 7%)";
+                }
+                if (mode === "ge") {
+                    if (r.ge === 20) return "Margin luar biasa  (≥ 20%)";
+                    if (r.ge === 15) return "Margin sangat besar  (15–20%)";
+                    if (r.ge === 10) return "Margin besar  (10–15%)";
+                    if (r.ge === 7)  return "Margin lumayan  (7–10%)";
+                    if (r.ge === 5)  return "Margin cukup  (5–7%)";
+                    if (r.ge === 3)  return "Margin kecil  (3–5%)";
+                    if (r.ge === 2)  return "Margin tipis  (2–3%)";
+                    if (r.ge === 1)  return "Margin sangat tipis  (1–2%)";
+                    if (r.ge === 0)  return "Margin hampir nol  (< 1%)";
+                }
+                if (mode === "le") {
+                    if (r.le === .5)  return "Margin nyaris nol  (≤ 0.5%)";
+                    if (r.le === 1)   return "Margin sangat tipis  (0.5–1%)";
+                    if (r.le === 2)   return "Margin tipis  (1–2%)";
+                    if (r.le === 3)   return "Margin kecil  (2–3%)";
+                    if (r.le === 5)   return "Margin sedang  (3–5%)";
+                    if (r.le === 8)   return "Margin bagus  (5–8%)";
+                    if (r.le === 10)  return "Margin besar  (8–10%)";
+                    if (isLast)       return "Margin luar biasa  (> 10%)";
+                }
+                return "Row " + (i+1);
+            }
+
+            return arr.map((r, i) => {
+                const isSafePct = mode === "le" && r.le > 1;
+                const step      = isSafePct ? 5   : 0.01;
+                const min       = 0;
+                const max       = isSafePct ? 100 : 1;
+                const label     = friendlyLabel(mode, r, i, arr.length);
+                const id        = prefix + "_" + i;
+                const isp       = isSafePct ? "true" : "false";
+                const dispVal   = isSafePct ? r.v + "%" : r.v;
+
+                return `<tr>
+                    <td style="padding:6px 6px;color:#aaa;font-size:11px;line-height:1.4;">${label}</td>
+                    <td style="padding:6px 6px;text-align:right;white-space:nowrap;">
+                        <div style="display:inline-flex;align-items:center;gap:4px;">
+                            <button type="button"
+                                onclick="var el=document.getElementById('${id}');var s=${step},mn=${min},isp=${isp};el.value=Math.max(mn,Math.round((parseFloat(el.value)-s)*1000)/1000);document.getElementById('${id}_disp').textContent=isp?el.value+'%':el.value;"
+                                style="width:26px;height:26px;background:#1a1a1a;border:1px solid #333;border-radius:6px;color:#fff;font-size:15px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;">−</button>
+                            <span id="${id}_disp"
+                                style="min-width:42px;text-align:center;font-size:12px;font-weight:600;color:#fff;">${dispVal}</span>
+                            <input type="hidden" id="${id}" value="${r.v}">
+                            <button type="button"
+                                onclick="var el=document.getElementById('${id}');var s=${step},mx=${max},isp=${isp};el.value=Math.min(mx,Math.round((parseFloat(el.value)+s)*1000)/1000);document.getElementById('${id}_disp').textContent=isp?el.value+'%':el.value;"
+                                style="width:26px;height:26px;background:#1a1a1a;border:1px solid #333;border-radius:6px;color:#fff;font-size:15px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;">+</button>
+                        </div>
+                    </td>
+                </tr>`;
+            }).join("");
+        }
+
+    function section(title, color, arr, prefix, mode) {
+        return `
+            <div style="font-size:12px;font-weight:700;color:${color};margin:10px 0 5px;">${title}</div>
+            <table style="width:100%;border-collapse:collapse;margin-bottom:4px;">
+                <tbody>${rowsHtml(arr,prefix,mode)}</tbody>
+            </table>`;
+    }
+
+    const modal = document.createElement("div");
+    modal.id = "_autoSettingsModal";
+    modal.innerHTML = `
+        <div style="position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:999998;"
+            onclick="document.getElementById('_autoSettingsModal').remove();"></div>
+        <div style="position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);
+            background:#0d0d0d;border:1px solid #1a1a1a;border-radius:16px;
+            width:min(420px,95vw);max-height:85vh;overflow-y:auto;z-index:999999;padding:16px;">
+
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+                <div style="font-size:14px;font-weight:700;color:#fff;">⚙ Threshold Settings</div>
+                <button onclick="document.getElementById('_autoSettingsModal').remove()"
+                    style="background:none;border:none;color:#555;font-size:20px;cursor:pointer;">✕</button>
+            </div>
+            <div style="font-size:11px;color:#444;margin-bottom:8px;">
+                Edit nilai threshold kalkulasi spend. Klik Simpan untuk terapkan.
+            </div>
+
+            ${section("Liq Buffer","#58a6ff",cfg.liqBuffer,"liq","lt")}
+            ${section("Margin Factor","#ff7a00",cfg.marginFactor,"mf","ge")}
+            ${section("Dynamic Pool Usage","#00d084",cfg.dynamicPoolUsage,"dpu","ge")}
+            ${section("Default Chip % (safePct)","#ffcc00",cfg.safePct,"sp","le")}
+
+            <div style="display:flex;gap:8px;margin-top:12px;">
+                <button style="flex:1;padding:10px;background:#1a1a1a;border:1px solid #333;
+                    border-radius:10px;color:#00d084;font-size:12px;cursor:pointer;font-weight:600;"
+                    onclick="
+                        const c = window._autoModalSettings.load();
+                        c.liqBuffer.forEach((r,i)=>{ const el=document.getElementById('liq_'+i); if(el) r.v=parseFloat(el.value)||r.v; });
+                        c.marginFactor.forEach((r,i)=>{ const el=document.getElementById('mf_'+i); if(el) r.v=parseFloat(el.value)||r.v; });
+                        c.dynamicPoolUsage.forEach((r,i)=>{ const el=document.getElementById('dpu_'+i); if(el) r.v=parseFloat(el.value)||r.v; });
+                        c.safePct.forEach((r,i)=>{ const el=document.getElementById('sp_'+i); if(el) r.v=parseFloat(el.value)||r.v; });
+                        window._autoModalSettings.save(c);
+                        document.getElementById('_autoSettingsModal').remove();
+                        showToast?.('Settings disimpan','success');
+                        window._rebuildAutoModal?.();
+                    ">
+                    💾 Simpan & Terapkan
+                </button>
+                <button style="flex:1;padding:10px;background:#1a1a1a;border:1px solid #333;
+                    border-radius:10px;color:#ff4d4f;font-size:12px;cursor:pointer;"
+                    onclick="if(confirm('Reset ke default?')){ window._autoModalSettings.reset(); document.getElementById('_autoSettingsModal').remove(); window._rebuildAutoModal?.(); }">
+                    🗑 Reset Default
+                </button>
+            </div>
+        </div>
+    `;
+    document.body.appendChild(modal);
+};
+
 // =====================================
 // REBUILD SETELAH TOGGLE CAP
 // =====================================
@@ -1250,23 +1468,61 @@ const savingsPct = Number(
                 </div>
             </div>
 
-            <!-- MARGIN NOTE + FETCH BADGE -->
-            <div style="display:flex;align-items:center;justify-content:space-between;
-                gap:8px;margin-bottom:10px;">
+            <!-- MARGIN NOTE -->
+            <div style="display:flex;align-items:center;gap:6px;margin-bottom:10px;">
                 <div style="flex:1;font-size:11px;color:#666;padding:6px 10px;
                     background:#0a0a0a;border-radius:8px;border-left:3px solid ${marginColor};">
                     Auto safe default: <b style="color:${marginColor}">${nearest}%</b>
                     &mdash; margin ${savingsPct.toFixed(1)}%
                 </div>
-                <div id="_fetchRateBadge"
-                    style="font-size:10px;color:#00d084;border:1px solid #00d084;
-                    border-radius:6px;padding:4px 8px;font-weight:600;white-space:nowrap;
-                    flex-shrink:0;">
-                    ⚡ Fetch 0/${window._fetchTracker?.limit || 60}
-                </div>
+                <button onclick="window._openAutoSettings()"
+                    title="Settings threshold"
+                    style="height:34px;width:34px;flex-shrink:0;background:#0a0a0a;
+                    border:1px solid #222;border-radius:8px;color:#58a6ff;
+                    font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;">
+                    ⚙
+                </button>
             </div>
 
             <div style="flex:1;overflow-y:auto;overflow-x:hidden;">
+            <!-- CUSTOM SPEND INPUT -->
+            <div style="margin-bottom:10px;">
+                <div class="agg-auto-sub" style="margin-bottom:5px;">Custom Spend Manual (SDA)</div>
+                <div style="display:flex;gap:6px;align-items:center;">
+                    <input type="number" id="aggCustomSpendInput"
+                        placeholder="0.0000 SDA (opsional)"
+                        min="0" step="0.01"
+                        style="flex:1;background:#0a0a0a;border:1px solid #222;border-radius:10px;
+                        color:#fff;padding:8px 10px;font-size:12px;box-sizing:border-box;
+                        outline:none;"
+                        oninput="
+                            const v = parseFloat(this.value);
+                            const m = document.getElementById('aggAutoModal');
+                            if(!isNaN(v) && v > 0) {
+                                m.__customSpend = v;
+                                document.querySelectorAll('.agg-auto-chip').forEach(x=>x.classList.remove('active'));
+                                window._onCustomSpend(v, m);
+                            } else {
+                                m.__customSpend = null;
+                            }
+                        ">
+                    <button onclick="
+                        document.getElementById('aggCustomSpendInput').value='';
+                        const m=document.getElementById('aggAutoModal');
+                        m.__customSpend=null;
+                        window._onChipClick(
+                            document.querySelectorAll('.agg-auto-chip')[
+                                [10,20,30,40,50,60,70,80,90,100].indexOf(window.AUTO_SPEND_PERCENT)
+                            ] || document.querySelectorAll('.agg-auto-chip')[0],
+                            window.AUTO_SPEND_PERCENT
+                        );"
+                        style="height:36px;width:36px;flex-shrink:0;background:#0a0a0a;
+                        border:1px solid #222;border-radius:10px;color:#555;
+                        font-size:15px;cursor:pointer;">
+                        ✕
+                    </button>
+                </div>
+            </div>
             <!-- CHIPS -->
             <div class="agg-auto-sub" style="margin-bottom:6px;">% dari Max Liq</div>
             <div class="agg-auto-toggle-row">
@@ -1362,11 +1618,14 @@ window._startAuto = function() {
 
     const isReverse = document.getElementById("aggAutoModal")?.__isReverse || false;
 
-    const { spend, trendAdj } = _calcFinalSpend(
-        sdaMax, percent, sdaPerRecv, maxSafeRecv,
-        capEnabled, globalMax,
-        pairKey, currentMargin, isReverse
-    );
+    const customOverride = modal.__customSpend;
+    const { spend, trendAdj } = customOverride && isFinite(customOverride) && customOverride > 0
+        ? { spend: Math.min(customOverride, modal.__balance || Infinity), trendAdj: null }
+        : _calcFinalSpend(
+            sdaMax, percent, sdaPerRecv, maxSafeRecv,
+            capEnabled, globalMax,
+            pairKey, currentMargin, isReverse
+        );
 
     if (!isFinite(spend) || spend <= 0) {
         showToast?.(
