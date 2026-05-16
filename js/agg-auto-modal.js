@@ -746,7 +746,28 @@ function _getSdaMaxFromCache(payToken, receiveToken, liveBalance, capEnabled) {
 
         // nilai SDA aktual yang tersedia di pool intermediate
         // INI BATAS KERAS — spend tidak boleh melebihi ini
-        const actualPoolSda = maxSafeRecv * sdaPerIntermediate;
+        // maxSafeRecv 
+        const sdaBaseRow = results.find(r =>
+            _isNat?.(r.payToken) || r.isSDA === true ||
+            String(r.payToken || "").toLowerCase() === "native"
+        );
+
+        
+        const sdaPerFinalToken = (sdaBaseRow && sdaBaseRow.sdaEquiv > 0 && sdaBaseRow.unitsNeeded > 0)
+            ? sdaBaseRow.sdaEquiv / sdaBaseRow.unitsNeeded
+            : 0;
+
+        // actualPoolSda l
+        const actualPoolSda = sdaPerFinalToken > 0
+            ? maxSafeRecv * sdaPerFinalToken
+            : sdaEquiv;  // fallback kalau baseline tidak ada
+
+        console.log("[MODAL RATE]", {
+            maxSafeRecv,
+            sdaPerFinalToken: sdaPerFinalToken.toFixed(6),
+            actualPoolSda: actualPoolSda.toFixed(4),
+            source: sdaPerFinalToken > 0 ? "sdaBaseRow" : "fallback"
+        });
 
         console.log("[MODAL RATE]", {
             paySymbol,
