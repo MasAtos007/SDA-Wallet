@@ -1503,7 +1503,7 @@ const savingsPct = Number(
             <!-- CUSTOM SPEND INPUT -->
             <div style="margin-bottom:10px;">
                 <div class="agg-auto-sub" style="margin-bottom:5px;">Custom Spend Manual (SDA)</div>
-                <div style="display:flex;gap:6px;align-items:center;">
+                <div style="display:grid;grid-template-columns:1fr auto auto;gap:6px;align-items:center;">
                     <input type="number" id="aggCustomSpendInput"
                         placeholder="0.0000 SDA (opsional)"
                         min="0" step="0.01"
@@ -1521,6 +1521,31 @@ const savingsPct = Number(
                                 m.__customSpend = null;
                             }
                         ">
+                    <button onclick="
+                        const m = document.getElementById('aggAutoModal');
+                        const lastResults = window.AGGREGATOR?._lastResults || [];
+                        const scanRow = lastResults.find(r =>
+                            String(r.payToken||'').toLowerCase() ===
+                            String(m.__route?.intermediateToken||'').toLowerCase()
+                        );
+                        const ratePerToken = (scanRow?.sdaEquiv > 0 && scanRow?.unitsNeeded > 0)
+                            ? scanRow.sdaEquiv / scanRow.unitsNeeded
+                            : 0;
+                        const realLiqSda = ratePerToken > 0
+                            ? m.__maxSafeRecv * ratePerToken
+                            : m.__sdaMax || 0;
+                        const maxVal = Math.min(realLiqSda, m.__balance || realLiqSda);
+                        if (maxVal <= 0) return;
+                        const inp = document.getElementById('aggCustomSpendInput');
+                        inp.value = maxVal.toFixed(4);
+                        m.__customSpend = maxVal;
+                        document.querySelectorAll('.agg-auto-chip').forEach(x=>x.classList.remove('active'));
+                        window._onCustomSpend(maxVal, m);"
+                        style="height:36px;padding:0 8px;flex-shrink:0;background:#0a0a0a;
+                        border:1px solid #00d084;border-radius:10px;color:#00d084;
+                        font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap;">
+                        MAX
+                    </button>
                     <button onclick="
                         document.getElementById('aggCustomSpendInput').value='';
                         const m=document.getElementById('aggAutoModal');
