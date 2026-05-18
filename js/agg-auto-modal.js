@@ -748,9 +748,11 @@ function _getSdaMaxFromCache(payToken, receiveToken, liveBalance, capEnabled) {
         // INI BATAS KERAS — spend tidak boleh melebihi ini
         // maxSafeRecv 
         const sdaBaseRow = results.find(r =>
-            _isNat?.(r.payToken) || r.isSDA === true ||
-            String(r.payToken || "").toLowerCase() === "native"
-        );
+    r.isSDA === true ||
+    r.payToken === "native" ||
+    r.paySymbol === "SDA" ||
+    String(r.payToken || "").toLowerCase() === "native"
+);
 
         
         const sdaPerFinalToken = (sdaBaseRow && sdaBaseRow.sdaEquiv > 0 && sdaBaseRow.unitsNeeded > 0)
@@ -759,8 +761,12 @@ function _getSdaMaxFromCache(payToken, receiveToken, liveBalance, capEnabled) {
 
         // actualPoolSda l
         const actualPoolSda = sdaPerFinalToken > 0
-            ? maxSafeRecv * sdaPerFinalToken
-            : sdaEquiv;  // fallback kalau baseline tidak ada
+    ? maxSafeRecv * sdaPerFinalToken
+    : maxSafeRecv > 0 && sdaEquiv > 0 && unitsNeeded > 0
+        ? maxSafeRecv * (sdaEquiv / unitsNeeded)  // estimasi dari row sendiri
+        : sdaEquiv;
+        
+        
 
         console.log("[MODAL RATE]", {
             maxSafeRecv,
@@ -812,10 +818,7 @@ const fromLiq = actualPoolSda * dynamicPoolUsage * liqBuffer;
 const fromMargin = sdaEquiv * marginFactor;
 
 // prioritaskan liquidity nyata
-const sdaForMaxLiq =
-    actualPoolSda > 0
-        ? fromLiq
-        : fromMargin;
+const sdaForMaxLiq = actualPoolSda > 0 ? fromLiq : fromMargin;
 
         console.log("[MODAL LIQ CALC]", {
             fromLiq:       fromLiq.toFixed(4),
@@ -829,11 +832,26 @@ const sdaForMaxLiq =
         const GLOBAL_MAX   = Number(window.AUTO_MAX_GLOBAL_SDA || 10);
         const protectionOn = window.AUTO_CAP_ENABLED !== false;
 
-        const effectiveMax = protectionOn
-            ? Math.min(sdaForMaxLiq, GLOBAL_MAX, liveBalance)
-            : Math.min(sdaForMaxLiq, liveBalance);
+        // hitung sdaMax langsung dari margin + liq
+        // empiric: 1 SDA spend → ~9% margin drop
+        // target nutup 80% margin dalam 1 cycle
+        const _dropRate = 9.0;
+        const spendFromMargin = absSavings > 0
+            ? (absSavings * 0.80) / _dropRate
+            : sdaForMaxLiq;
 
-        const sdaMax = effectiveMax;
+        // batasi maksimal 50% dari liq real (maxSafeRecv × rate kasar)
+        const liqCapSda = maxSafeRecv > 0 && sdaEquiv > 0 && unitsNeeded > 0
+            ? (maxSafeRecv * (sdaEquiv / unitsNeeded)) * 0.50
+            : sdaForMaxLiq;
+
+        const smartMax = Math.min(spendFromMargin, liqCapSda);
+
+        const effectiveMax = protectionOn
+            ? Math.min(smartMax, GLOBAL_MAX, liveBalance)
+            : Math.min(smartMax, liveBalance);
+
+        const sdaMax = effectiveMax > 0 ? effectiveMax : sdaForMaxLiq;
 
         // chip default — dari settings
         const safePct = window._autoModalSettings?.getSafePct(absSavings) ?? (
@@ -885,7 +903,7 @@ window._onChipClick = function(btn, p) {
     const pv = document.getElementById('aggAutoPreview');
     pv.style.display = 'block';
 
-    const { spend, trendAdj } = _calcFinalSpend(
+    const { spend: rawSpend, trendAdj } = _calcFinalSpend(
         modal.__sdaMax    || 0,
         p,
         modal.__sdaPerRecv  || 0,
@@ -896,6 +914,9 @@ window._onChipClick = function(btn, p) {
         modal.__savingsPct || 0,
         modal.__isReverse  || false
     );
+
+    // hard guard: spend tidak boleh melebihi sdaMax apapun yang terjadi
+    const spend = Math.min(rawSpend, modal.__sdaMax || rawSpend);
 
     const safetyColor = {
         safe:    "#00d084",
@@ -914,9 +935,8 @@ window._onChipClick = function(btn, p) {
     const maxSdaByLiq  = (maxSafeRecv > 0 && sdaPerRecv > 0)
         ? maxSafeRecv * sdaPerRecv
         : 0;
-    // kalau margin tinggi (>10%), liq tipis masih oke — margin besar = worth the risk
-const absSavingsPct = Math.abs(modal.__savingsPct || 0);
-const liqTooLow     = maxSdaByLiq > 0 && maxSdaByLiq < 0.05 && absSavingsPct < 10;
+    const absSavingsPct = Math.abs(modal.__savingsPct || 0);
+    const liqTooLow     = maxSdaByLiq > 0 && maxSdaByLiq < 0.05 && absSavingsPct < 10;
     const liqWarnHtml  = liqTooLow
         ? `<div style="margin-top:6px;padding:5px 8px;background:rgba(255,77,79,.12);
             border:1px solid #ff4d4f;border-radius:8px;font-size:11px;color:#ff4d4f;">
@@ -938,9 +958,6 @@ const liqTooLow     = maxSdaByLiq > 0 && maxSdaByLiq < 0.05 && absSavingsPct < 1
             </div>
             ${liqWarnHtml}
             ${trendNote}
-            <div class="agg-preview-sub" style="margin-top:6px;color:#444;">
-                Klik 🔍 Lihat Simulasi untuk estimasi profit
-            </div>
         `;
     }
 
@@ -955,11 +972,9 @@ const liqTooLow     = maxSdaByLiq > 0 && maxSdaByLiq < 0.05 && absSavingsPct < 1
         return;
     }
 
-    // kalau cache sudah ada, langsung render full preview
-    if (modal.__previewCache) {
-        document.getElementById('aggSimBtn').style.display = 'none';
-        window.runAutoPreview(modal);
-    }
+    // langsung preview dari scan data — instant, tanpa RPC
+    document.getElementById('aggSimBtn').style.display = 'none';
+    window.runAutoPreview(modal);
 
     if (startBtn) {
         const canStart = spend > 0 && (trendAdj?.safetyLevel !== 'blocked');
@@ -1535,12 +1550,12 @@ const savingsPct = Number(
             <!-- PREVIEW -->
             <div id="aggAutoPreview" class="agg-auto-preview" style="display:none;"></div>
             <button id="aggSimBtn"
-                onclick="document.getElementById('aggAutoPreview').style.display='block';document.getElementById('aggSimBtn').style.display='none';window.runAutoPreview(document.getElementById('aggAutoModal'));"
-                style="width:100%;height:40px;border:1px solid #1a1a1a;border-radius:12px;
-                background:#0a0a0a;color:#58a6ff;font-size:13px;font-weight:600;
-                cursor:pointer;margin-bottom:4px;">
-                🔍 Lihat Simulasi
-            </button>
+    onclick="document.getElementById('aggAutoPreview').style.display='block';document.getElementById('aggSimBtn').style.display='none';window.runAutoPreview(document.getElementById('aggAutoModal'));"
+    style="width:100%;height:40px;border:1px solid #1a1a1a;border-radius:12px;
+    background:#0a0a0a;color:#555;font-size:11px;font-weight:600;
+    cursor:pointer;margin-bottom:4px;display:none;">
+    🔍 Konfirmasi via RPC (opsional)
+</button>
 
             </div><!-- end scroll area -->
             <!-- BUTTONS -->
@@ -1619,8 +1634,15 @@ window._startAuto = function() {
     const isReverse = document.getElementById("aggAutoModal")?.__isReverse || false;
 
     const customOverride = modal.__customSpend;
+
+    // pakai spend yang sudah ditampilkan di preview
+    // supaya angka yang user lihat = angka yang dieksekusi
+    const previewSpend = modal.__lastPreviewSpend;
+
     const { spend, trendAdj } = customOverride && isFinite(customOverride) && customOverride > 0
         ? { spend: Math.min(customOverride, modal.__balance || Infinity), trendAdj: null }
+        : previewSpend && isFinite(previewSpend) && previewSpend > 0
+        ? { spend: previewSpend, trendAdj: null }
         : _calcFinalSpend(
             sdaMax, percent, sdaPerRecv, maxSafeRecv,
             capEnabled, globalMax,
@@ -1735,54 +1757,27 @@ if (!window._fetchOverridden) {
 // =====================================
 // PREVIEW
 // =====================================
-window.runAutoPreview = async function(modalEl) {
+window.runAutoPreview = function(modalEl) {
 
     const previewEl = modalEl?.querySelector("#aggAutoPreview");
     const startBtn  = modalEl?.querySelector("#aggAutoStartBtn");
     if (!previewEl) return;
 
-    const route       = modalEl?.__route;
-    const sdaMax      = modalEl.__sdaMax        || 0;
-    const savingsPct  = modalEl.__savingsPct    || 0;
-    const paySymbol   = modalEl.__paySymbol     || "?";
+    const route       = modalEl.__route;
+    const sdaMax      = modalEl.__sdaMax     || 0;
+    const savingsPct  = modalEl.__savingsPct || 0;
+    const paySymbol   = modalEl.__paySymbol  || "?";
     const recvSymbol  = modalEl.__receiveSymbol || "?";
-    const isReverse   = modalEl.__isReverse     || false;
-    const maxSafeRecv = modalEl.__maxSafeRecv   || 0;
-    const sdaPerRecv  = modalEl.__sdaPerRecv    || 0;
+    const isReverse   = modalEl.__isReverse  || false;
+    const maxSafeRecv = modalEl.__maxSafeRecv || 0;
+    const sdaPerRecv  = modalEl.__sdaPerRecv  || 0;
     const capEnabled  = window.AUTO_CAP_ENABLED !== false;
     const globalMax   = Number(window.AUTO_MAX_GLOBAL_SDA || 10);
     const percent     = window.AUTO_SPEND_PERCENT || 10;
     const pairKey     = modalEl.__pairKey || "";
-    const trendCheck  = window._shouldAbortByTrend?.(pairKey, savingsPct) || { abort: false };
-    const trendData   = window._getMarginTrend?.(pairKey);
-    
-  // =====================================
-// PREVIEW CACHE
-// fetch berat cuma sekali
-// =====================================
-
-const previewCache = modalEl.__previewCache ?? null;
-
-const cacheFresh =
-    previewCache !== null &&
-    typeof previewCache.ts === "number" &&
-    (Date.now() - previewCache.ts < 20000) &&
-    previewCache.baseSpend > 0;
-
-// invalidate cache kalau sdaMax atau savingsPct berubah signifikan
-if (
-    cacheFresh &&
-    previewCache.snapshotSdaMax !== undefined &&
-    (
-        Math.abs(previewCache.snapshotSdaMax - sdaMax) > 0.01 ||
-        Math.abs(previewCache.snapshotMargin - savingsPct) > 0.5
-    )
-) {
-    modalEl.__previewCache = null;
-}
 
     if (!route?.intermediateToken || !route?.finalToken) {
-        previewEl.innerHTML = `<div class="agg-preview-top" style="color:#ff4d4f;">&#x26A0; Route tidak valid</div>`;
+        previewEl.innerHTML = `<div class="agg-preview-top" style="color:#ff4d4f;">⚠ Route tidak valid</div>`;
         return;
     }
 
@@ -1793,363 +1788,169 @@ if (
         pairKey, savingsPct, isReverse
     );
 
-    // warna & label tombol START berdasar safety level
-    const safetyLevel = trendAdj?.safetyLevel || "safe";
-    const btnConfig = {
-        safe:    { color: "",        text: "⚡ START AUTO" },
-        caution: { color: "#ff7a00", text: "⚡ START AUTO (Spend -25%)" },
-        reduced: { color: "#ff4d4f", text: "⚡ START AUTO (Spend -50%)" },
-        blocked: { color: "",        text: "⛔ DIBLOKIR — Tren Bahaya" }
-    }[safetyLevel] || { color: "", text: "⚡ START AUTO" };
-
-    if (startBtn) {
-        const ok = spend > 0;
-        startBtn.style.opacity       = ok ? "1"    : "0.35";
-        startBtn.style.pointerEvents = ok ? "auto" : "none";
-        startBtn.style.background    = btnConfig.color || "";
-        startBtn.textContent         = btnConfig.text;
-    }
+    // simpan spend ke modal supaya _startAuto pakai angka yang sama
+    if (modalEl) modalEl.__lastPreviewSpend = spend;
 
     if (spend <= 0) {
         previewEl.innerHTML = `
-            <div class="agg-preview-top" style="color:#ff4d4f;">&#x26A0; Liq tidak cukup / margin terlalu tipis</div>
-            <div class="agg-preview-sub" style="margin-top:6px;">Pair: ${paySymbol} &rarr; ${recvSymbol}</div>
-            <div class="agg-preview-sub" style="color:#666;margin-top:4px;">Margin vs SDA: ${savingsPct.toFixed(2)}%</div>
-        `;
+            <div class="agg-preview-top" style="color:#ff4d4f;">
+                ⚠ Spend 0 — ${trendAdj?.reason || "data tidak cukup"}
+            </div>`;
+        if (startBtn) {
+            startBtn.style.opacity = "0.4";
+            startBtn.style.pointerEvents = "none";
+            startBtn.textContent = "⛔ Spend 0";
+        }
         return;
     }
 
-    previewEl.innerHTML = `
-        <div class="agg-preview-top">Akan spend</div>
-        <div class="agg-preview-value" style="color:#00d084;">${spend.toFixed(4)} SDA</div>
-        <div class="agg-preview-sub" style="margin-top:4px;color:#444;">Simulasi full cycle...</div>
-    `;
-
-    try {
-        const step1Token = isReverse ? route.finalToken        : route.intermediateToken;
-        const step2Token = isReverse ? route.intermediateToken : route.finalToken;
-        const firstSym   = isReverse ? recvSymbol              : paySymbol;
-        const secondSym  = isReverse ? paySymbol               : recvSymbol;
-
-let estStep1 = 0;
-let estStep2 = 0;
-
-// =====================================
-// PAKAI CACHE JIKA ADA
-// =====================================
-
-if (
-    cacheFresh &&
-    previewCache.baseSpend > 0
-) {
-
-    const ratio =
-        spend / previewCache.baseSpend;
-
-    estStep1 =
-        previewCache.estStep1 * ratio;
-
-    estStep2 =
-        previewCache.estStep2 * ratio;
-
-} else {
-
-    try {
-
-        estStep1 =
-            await PRICE_ENGINE.getAmountOut(
-                "native",
-                step1Token,
-                spend
-            ) || 0;
-
-    } catch(e) {
-
-        console.warn(
-            "[PREVIEW] step1:",
-            e
-        );
-    }
-
-    try {
-
-        if (estStep1 > 0) {
-
-            estStep2 =
-                await PRICE_ENGINE.getAmountOut(
-                    step1Token,
-                    step2Token,
-                    estStep1 * 0.992
-                ) || 0;
-        }
-
-    } catch(e) {
-
-        console.warn(
-            "[PREVIEW] step2:",
-            e
-        );
-    }
-}
-
-        const liqCheckAmt = isReverse ? estStep1 : estStep2;
-        const exceedsLiq  = maxSafeRecv > 0 && liqCheckAmt > maxSafeRecv;
-
-        // hitung price impact step 2
-        const step2Ratio = estStep1 > 0 ? estStep2 / estStep1 : 0;
-        const step1Ratio = spend > 0 ? estStep1 / spend : 0;
-
-        // sim belum ada di titik ini — pakai cache kalau ada
-        const simForImpact = cacheFresh ? {
-            estimatedPct: previewCache.estimatedPct
-        } : null;
-
-        let impactLimit = 0.97;
-        if (isReverse && Math.abs(savingsPct) > 10) {
-            impactLimit = 0.35;
-        }
-        else if (Math.abs(savingsPct) > 5) {
-            impactLimit = 0.55;
-        }
-        else if (Math.abs(savingsPct) > 2) {
-            impactLimit = 0.75;
-        }
-
-        const effectiveProfit =
-            simForImpact?.estimatedPct ?? -999;
-
-// impact dianggap bahaya kalau:
-// - ratio sangat jelek
-// - DAN profit final negatif
-
-const highImpact =
-    step2Ratio > 0 &&
-    (
-        step2Ratio < impactLimit &&
-        effectiveProfit < 0
+    // ── ambil dari _lastResults, 0 RPC ──
+    const lastResults = window.AGGREGATOR?._lastResults || [];
+    const scanRow = lastResults.find(r =>
+        String(r.payToken || "").toLowerCase() ===
+        String(route.intermediateToken || "").toLowerCase()
     );
 
-        const impactHtml = highImpact
-            ? `<div style="margin-top:6px;padding:6px 8px;background:rgba(255,170,0,.1);
-                border:1px solid #ff7a00;border-radius:8px;font-size:11px;color:#ff7a00;">
-                ⚠ Price impact tinggi — step 2 dapat ${(step2Ratio*100).toFixed(1)}% dari step 1<br>
-                <b>Kurangi % spend untuk kurangi slippage</b>
+    // est token step1: spend SDA → intermediate
+    // rate: unitsNeeded / sdaEquiv = token per SDA
+    const rateTokenPerSda = (scanRow?.unitsNeeded > 0 && scanRow?.sdaEquiv > 0)
+        ? scanRow.unitsNeeded / scanRow.sdaEquiv
+        : 0;
+    const estStep1 = rateTokenPerSda > 0 ? spend * rateTokenPerSda : 0;
+
+    // reverse: savings negatif dibalik jadi positif
+    // buy: savings positif langsung dipakai
+    const baseProfit = isReverse
+        ? Math.abs(scanRow?.savings ?? 0)
+        : (scanRow?.savings ?? 0);
+    const baseSda   = scanRow?.sdaEquiv ?? spend;
+
+    // buffer realistis: fee 3 hop × 0.3% + slippage 0.5% = ~1.4%
+    // real profit sekitar 36% dari estimasi scan — pakai 0.40 sebagai buffer
+    const REAL_BUFFER = 0.40;
+    const profitEst = baseSda > 0
+        ? (baseProfit / baseSda) * spend * REAL_BUFFER
+        : 0;
+    const estBack = spend + profitEst;
+
+    // cek liq
+    const exceedsLiq = maxSafeRecv > 0 && estStep1 > maxSafeRecv;
+
+    // tren
+    const trendData  = window._getMarginTrend?.(pairKey);
+    const trendCheck = window._shouldAbortByTrend?.(pairKey, savingsPct) || { abort: false };
+
+    // warna
+    const profitColor = profitEst >= 0 ? "#00d084" : "#ff4d4f";
+    const sign        = profitEst >= 0 ? "+" : "";
+    const safetyColor = {
+        safe:    "#00d084",
+        caution: "#ff7a00",
+        reduced: "#ff4d4f",
+        blocked: "#ff4d4f"
+    }[trendAdj?.safetyLevel || "safe"] || "#00d084";
+
+    // liq html
+    const liqHtml = maxSafeRecv > 0
+        ? exceedsLiq
+            ? `<div style="margin-top:6px;padding:6px 8px;
+                background:rgba(255,77,79,.1);border:1px solid #ff4d4f;
+                border-radius:8px;font-size:11px;color:#ff4d4f;">
+                ⚠ Est. melebihi liq aman ~${maxSafeRecv.toFixed(4)} ${recvSymbol}
+                <br><b>Kurangi % spend</b></div>`
+            : `<div style="margin-top:4px;font-size:11px;color:#888;">
+                ✔ Liq OK: ~${maxSafeRecv.toFixed(4)} ${recvSymbol}</div>`
+        : "";
+
+    // tren html
+    const trendHtml = trendData ? (() => {
+        const arrow  = trendData.slope > 0.2 ? "↑" : trendData.slope < -0.2 ? "↓" : "→";
+        const tcolor = trendData.slope > 0.2 ? "#00d084" : trendData.slope < -0.2 ? "#ff4d4f" : "#aaa";
+        const warn   = trendCheck.abort
+            ? `<div style="margin-top:4px;font-size:11px;color:#ff4d4f;">⛔ ${trendCheck.reason}</div>`
+            : trendData.predicted < savingsPct
+                ? `<div style="margin-top:4px;font-size:11px;color:#ff7a00;">
+                    ⚠ Prediksi: ${trendData.predicted.toFixed(2)}%</div>`
+                : `<div style="margin-top:4px;font-size:11px;color:#555;">
+                    Prediksi: ${trendData.predicted.toFixed(2)}%</div>`;
+        return `
+            <div style="margin-top:8px;padding:7px 10px;background:#0a0a0a;
+                border:1px solid #1a1a1a;border-radius:9px;">
+                <div style="font-size:10px;color:#555;margin-bottom:3px;">
+                    Tren (${trendData.dataPoints} data)
+                </div>
+                <div style="font-size:13px;font-weight:700;color:${tcolor};">
+                    ${arrow} ${trendData.current.toFixed(2)}% → ${trendData.predicted.toFixed(2)}%
+                </div>
+                ${warn}
+            </div>`;
+    })() : "";
+
+    const trendNote = trendAdj?.reason
+        ? `<div style="font-size:11px;color:${safetyColor};margin-top:4px;">⚠ ${trendAdj.reason}</div>`
+        : "";
+
+    const capNote = (capEnabled && spend < sdaMax * (percent / 100))
+        ? `<div class="agg-preview-sub" style="color:#ff7a00;margin-top:4px;">
+            ⚠ Dibatasi oleh protection (${globalMax} SDA max)</div>`
+        : "";
+
+    // aktifkan/matikan START
+    const ok = spend > 0
+        && profitEst > 0
+        && !exceedsLiq
+        && !trendCheck.abort
+        && trendAdj?.safetyLevel !== "blocked";
+
+    if (startBtn) {
+        startBtn.style.opacity       = ok ? "1" : "0.4";
+        startBtn.style.pointerEvents = ok ? "auto" : "none";
+        startBtn.style.background    = trendAdj?.safetyLevel === "caution" ? "#ff7a00"
+                                     : trendAdj?.safetyLevel === "reduced" ? "#ff4d4f" : "";
+        startBtn.textContent = trendCheck.abort                        ? "⛔ DITAHAN — Tren Turun"
+            : exceedsLiq                                               ? "⚠ Liq Terlewati"
+            : profitEst <= 0                                           ? "⚠ Profit Negatif"
+            : trendAdj?.safetyLevel === "blocked"                      ? "⛔ DIBLOKIR — Tren Bahaya"
+            : trendAdj?.safetyLevel === "caution"                      ? "⚡ START AUTO (Spend -25%)"
+            : trendAdj?.safetyLevel === "reduced"                      ? "⚡ START AUTO (Spend -50%)"
+            : "⚡ START AUTO";
+    }
+
+    // render
+    previewEl.innerHTML = `
+        <div class="agg-preview-top">Akan spend</div>
+        <div class="agg-preview-value" style="color:${safetyColor};">
+            ${spend.toFixed(4)} SDA
+        </div>
+        <div class="agg-preview-sub" style="margin-top:2px;color:#555;">
+            ${percent}% dari <b style="color:#58a6ff;">${sdaMax.toFixed(4)} SDA</b>
+        </div>
+
+        ${estStep1 > 0
+            ? `<div class="agg-preview-sub" style="margin-top:4px;">
+                ≈ <b style="color:#fff;">${estStep1.toFixed(4)}</b> ${isReverse ? recvSymbol : paySymbol}
                </div>`
-            : "";
+            : ""}
 
-        const liqHtml = maxSafeRecv > 0
-            ? exceedsLiq
-                ? `<div style="margin-top:6px;padding:6px 8px;background:rgba(255,77,79,.1);
-                    border:1px solid #ff4d4f;border-radius:8px;font-size:11px;color:#ff4d4f;">
-                    &#x26A0; Est. ${liqCheckAmt.toFixed(4)} melebihi liq aman ${maxSafeRecv.toFixed(4)} ${isReverse ? firstSym : secondSym}<br>
-                    <b>Kurangi % agar swap tidak gagal</b></div>`
-                : `<div style="margin-top:4px;font-size:11px;color:#888;">
-                    &#x2714; Liq OK: ~${maxSafeRecv.toFixed(4)} ${isReverse ? firstSym : secondSym}</div>`
-            : "";
+        ${liqHtml}
+        ${capNote}
+        ${trendNote}
 
-        let sim = null;
-
-// =====================================
-// CACHE SIMULATION
-// =====================================
-
-if (
-    cacheFresh &&
-    previewCache.baseSpend > 0
-) {
-
-    const ratio =
-        spend / previewCache.baseSpend;
-
-    sim = {
-
-        estimatedBack:
-            previewCache.estimatedBack * ratio,
-
-        estimatedProfit:
-            previewCache.estimatedProfit * ratio,
-
-        estimatedPct:
-            previewCache.estimatedPct
-    };
-
-} else {
-
-    // route selalu: SDA → intermediateToken → finalToken → SDA
-// baik buy maupun reverse, urutannya sama dari sisi simulasi
-// perbedaan buy vs reverse ada di MANA marginnya, bukan urutan token
-sim = await window.simulateFullCycle(
-    route.intermediateToken,
-    route.finalToken,
-    spend
-);
-
-    // =====================================
-    // SIMPAN CACHE
-    // =====================================
-
-    if (sim) {
-        modalEl.__previewCache = {
-            ts: Date.now(),
-            baseSpend: spend,
-            estStep1,
-            estStep2,
-            estimatedBack:   sim.estimatedBack,
-            estimatedProfit: sim.estimatedProfit,
-            estimatedPct:    sim.estimatedPct,
-            snapshotSdaMax:  sdaMax,
-            snapshotMargin:  savingsPct
-        };
-    }
-}
-
-        if (startBtn) {
-
-    const REQUIRED_PCT     = isReverse ? 0.3 : 0.2;   // blokir hanya kalau hampir 0
-const REQUIRED_ABS_SDA = 0.001;                     // blokir kalau profit < 0.001 SDA
-
-const ok =
-    !exceedsLiq &&
-    !highImpact &&
-    spend > 0 &&
-    !!sim &&
-    sim.estimatedPct   > REQUIRED_PCT &&
-    sim.estimatedProfit > REQUIRED_ABS_SDA;
-
-    startBtn.style.opacity       = ok ? "1" : "0.4";
-    startBtn.style.pointerEvents = ok ? "auto" : "none";
-
-    if (highImpact && !exceedsLiq) {
-    startBtn.textContent =
-        isReverse
-            ? "⚠ Reverse Volatile"
-            : "⚠ Impact Tinggi";
-}
-else if (sim?.estimatedPct <= REQUIRED_PCT) {
-
-        startBtn.textContent =
-            "⚠ Profit Tipis";
-
-    } else {
-
-        startBtn.textContent =
-            "⚡ START AUTO";
-    }
-}
-
-        if (!sim) {
-            previewEl.innerHTML = `
-                <div class="agg-preview-top">Akan spend</div>
-                <div class="agg-preview-value" style="color:#00d084;">${spend.toFixed(4)} SDA</div>
-                <div class="agg-preview-sub" style="margin-top:4px;">&asymp; <b style="color:#fff;">${estStep1.toFixed(4)}</b> ${firstSym}</div>
-                ${liqHtml}
-                <div class="agg-preview-sub" style="color:#ff4d4f;margin-top:8px;">&#x26A0; Simulasi gagal &mdash; likuiditas kurang</div>
-            `;
-            return;
-        }
-
-        const EXECUTION_BUFFER = 0.992;
-
-sim.estimatedProfit *= EXECUTION_BUFFER;
-sim.estimatedBack   *= EXECUTION_BUFFER;
-sim.estimatedPct    *= EXECUTION_BUFFER;
-
-const profitColor =
-    sim.estimatedProfit >= 0
-        ? "#00d084"
-        : "#ff4d4f";
-        const sign        = sim.estimatedProfit >= 0 ? "+"        : "";
-        
-        // kunci START jika tren berbahaya
-        if (trendCheck.abort && startBtn) {
-            startBtn.style.opacity       = "0.3";
-            startBtn.style.pointerEvents = "none";
-            startBtn.textContent         = "⛔ DITAHAN — Tren Turun";
-        }
-
-        // build HTML tren
-        const trendHtml = trendData ? (() => {
-            const arrow  = trendData.slope >  0.2 ? "↑"
-                         : trendData.slope < -0.2 ? "↓" : "→";
-            const tcolor = trendData.slope >  0.2 ? "#00d084"
-                         : trendData.slope < -0.2 ? "#ff4d4f" : "#aaa";
-            const warnBlock = trendCheck.abort
-                ? `<div style="margin-top:4px;padding:5px 8px;background:rgba(255,77,79,.12);
-                    border:1px solid #ff4d4f;border-radius:7px;font-size:11px;color:#ff4d4f;">
-                    ⛔ ${trendCheck.reason}</div>`
-                : trendData.predicted < 1 && trendData.predicted < savingsPct
-                    ? `<div style="margin-top:4px;font-size:11px;color:#ff7a00;">
-                        ⚠ Prediksi: ${trendData.predicted.toFixed(2)}% — waspadai penurunan</div>`
-                    : `<div style="margin-top:4px;font-size:11px;color:#555;">
-                        Prediksi: ${trendData.predicted.toFixed(2)}%</div>`;
-            return `
-                <div style="margin-top:8px;padding:7px 10px;background:#0a0a0a;
-                    border:1px solid #1a1a1a;border-radius:9px;">
-                    <div style="font-size:10px;color:#555;margin-bottom:3px;">Tren Margin (${trendData.dataPoints} data)</div>
-                    <div style="font-size:13px;font-weight:700;color:${tcolor};">
-                        ${arrow} ${trendData.current.toFixed(2)}% → prediksi ${trendData.predicted.toFixed(2)}%
-                    </div>
-                    ${warnBlock}
-                </div>`;
-        })() : "";
-
-        // tampilkan spend yang sudah final (setelah semua cap diterapkan)
-        const capNote = (capEnabled && spend < sdaMax * (percent / 100))
-            ? `<div class="agg-preview-sub" style="color:#ff7a00;margin-top:4px;">
-                &#x26A0; Dibatasi oleh protection (${globalMax} SDA max)
-               </div>`
-            : "";
-
-        previewEl.innerHTML = `
-            <div class="agg-preview-top">Akan spend</div>
-
-            <div class="agg-preview-value" style="color:#00d084;">
-                ${spend.toFixed(4)} SDA
+        <div style="margin-top:10px;padding-top:10px;border-top:1px solid #1a1a1a;">
+            <div class="agg-preview-sub" style="margin-bottom:4px;">
+                Est. back: <b style="color:#fff;">${estBack.toFixed(4)} SDA</b>
             </div>
-
-            <div class="agg-preview-sub" style="margin-top:4px;">
-                &asymp; <b style="color:#fff;">${estStep1.toFixed(4)}</b> ${firstSym}
+            <div style="font-size:15px;font-weight:800;color:${profitColor};">
+                ${sign}${profitEst.toFixed(4)} SDA
+                <span style="font-size:12px;opacity:.8;">
+                    (${sign}${Math.abs(savingsPct).toFixed(2)}%)
+                </span>
             </div>
-
-            <div class="agg-preview-sub" style="margin-top:2px;color:#aaa;">
-                &rarr; est. <b style="color:#fff;">${estStep2.toFixed(4)}</b> ${secondSym}
+            <div class="agg-preview-sub" style="margin-top:4px;color:#555;">
+                Data dari scan — instan
             </div>
+        </div>
 
-            ${liqHtml}
-            ${impactHtml}
-            ${capNote}
-
-            <div class="agg-preview-sub" style="margin-top:4px;color:#666;">
-                Route: SDA &rarr; ${firstSym} &rarr; ${secondSym} &rarr; SDA
-            </div>
-
-            <div class="agg-preview-sub">
-                ${percent}% dari <b style="color:#58a6ff;">${sdaMax.toFixed(4)} SDA</b>
-                &rarr; final <b style="color:#00d084;">${spend.toFixed(4)} SDA</b>
-            </div>
-
-            <div style="margin-top:10px;padding-top:10px;border-top:1px solid #1a1a1a;">
-
-                <div class="agg-preview-sub" style="margin-bottom:4px;">
-                    Est. back: <b style="color:#fff;">${sim.estimatedBack.toFixed(4)} SDA</b>
-                </div>
-
-                <div style="font-size:15px;font-weight:800;color:${profitColor};">
-                    ${sign}${sim.estimatedProfit.toFixed(4)} SDA
-                    <span style="font-size:12px;opacity:.8;">(${sign}${sim.estimatedPct.toFixed(2)}%)</span>
-                </div>
-
-                <div class="agg-preview-sub" style="margin-top:6px;color:${profitColor};">
-                    Margin vs SDA: ${savingsPct > 0 ? "+" : ""}${savingsPct.toFixed(2)}%
-                </div>
-
-            </div>
-
-            ${trendHtml}
-        `;
-
-    } catch(e) {
-        console.warn("[PREVIEW ERROR]", e);
-        previewEl.innerHTML = `<div class="agg-preview-top" style="color:#ff4d4f;">&#x26A0; Preview gagal: ${e.message}</div>`;
-    }
+        ${trendHtml}
+    `;
 };
