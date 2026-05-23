@@ -3,7 +3,8 @@
 // Blockscout API + LocalStorage
 // =============================
 console.log("RIWAYAT JS LOADED");
-const BLOCKSCOUT_API = "https://ledger.chainora.io/api/v2";
+const BLOCKSCOUT_API =
+"https://corsproxy.io/?https://ledger.chainora.io/api/v2";
 
 // =============================
 // NORMALIZE TIMESTAMP
