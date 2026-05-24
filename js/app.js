@@ -19,19 +19,21 @@ const tokenSelectEl  = document.getElementById("tokenSelect");
 // ==========================
 if (walletSelectEl) {
     walletSelectEl.addEventListener("change", () => {
-
-        // simpan index yang dipilih
         const idx = walletSelectEl.value;
         if (idx !== "" && idx !== undefined) {
             localStorage.setItem("selectedWalletIndex", String(idx));
         }
+
+        // Clear riwayat saat ganti wallet
+        localStorage.removeItem("txHistory");
+        renderTxHistory?.();
+        updateBellBadge?.();
 
         updateActiveWalletName?.();
         updateAddressUI?.();
         renderAssets?.();
         loadBalance?.();
         updateSendBalance?.();
-
         setTimeout(() => autoRefreshIfNeeded?.(), 100);
     });
 }
