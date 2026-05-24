@@ -131,6 +131,11 @@ function _selectWallet(index) {
         select.value = String(index);
         select.dispatchEvent(new Event("change"));
     }
+
+    // Reset riwayat saat ganti wallet
+    localStorage.removeItem("txHistory");
+    renderTxHistory?.();
+    updateBellBadge?.();
 }
 
 
