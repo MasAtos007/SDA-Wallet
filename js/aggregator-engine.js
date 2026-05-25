@@ -190,127 +190,144 @@ async function getWalletTokenBalance(token) {
 
 async function showProfitPopup(data) {
 
-    const old =
-        document.getElementById("aggProfitPopup");
-
+    const old = document.getElementById("aggProfitPopup");
     if (old) old.remove();
 
-    const el =
-        document.createElement("div");
-
+    const el = document.createElement("div");
     el.id = "aggProfitPopup";
 
-    const profit =
-        typeof data === "object"
-            ? data.profit
-            : data;
+    const profit   = typeof data === "object" ? data.profit : data;
+    const balance  = data?.balance;
+    const initial  = data?.initial;
+    const positive = profit >= 0;
 
-    const balance =
-        data?.balance;
-
-    const initial =
-        data?.initial;
-
-    const positive =
-        profit >= 0;
+    const accentColor  = positive ? "#00d084" : "#ff4d4f";
+    const accentBg     = positive ? "rgba(0,208,132,.1)" : "rgba(255,77,79,.1)";
+    const accentBorder = positive ? "rgba(0,208,132,.25)" : "rgba(255,77,79,.25)";
+    const label        = positive ? "REAL PROFIT" : "REAL LOSS";
+    const sign         = positive ? "+" : "";
 
     el.innerHTML = `
         <div style="
-            font-size:26px;
-            font-weight:700;
-            margin-bottom:6px;
+            display:flex;flex-direction:column;align-items:center;
+            gap:0;
         ">
-            ${
-                positive ? "+" : ""
-            }${profit.toFixed(4)} SDA
-        </div>
+            <!-- ICON SDA -->
+            <div style="
+                width:56px;height:56px;
+                border-radius:50%;
+                background:rgba(255,255,255,.06);
+                border:1.5px solid rgba(255,255,255,.12);
+                display:flex;align-items:center;justify-content:center;
+                margin-bottom:14px;
+                overflow:hidden;
+            ">
+                <img src="img/sda.png"
+                     onerror="this.style.display='none';this.nextElementSibling.style.display='flex'"
+                     style="width:38px;height:38px;object-fit:contain;border-radius:50%;">
+                <span style="display:none;font-size:18px;font-weight:700;color:#fff">S</span>
+            </div>
 
-        ${
-            balance !== undefined
-                ? `<div style="font-size:13px;opacity:.9;">
-                        Final: ${balance.toFixed(4)} SDA
-                   </div>`
-                : ""
-        }
+            <!-- LABEL ATAS -->
+            <div style="
+                font-size:10px;font-weight:700;letter-spacing:1.2px;
+                color:${accentColor};
+                background:${accentBg};
+                border:1px solid ${accentBorder};
+                padding:3px 10px;border-radius:20px;
+                margin-bottom:12px;
+            ">${label}</div>
 
-        ${
-            initial !== undefined
-                ? `<div style="font-size:12px;opacity:.8;margin-top:4px;">
-                        Start: ${initial.toFixed(4)} SDA
-                   </div>`
-                : ""
-        }
+            <!-- NILAI UTAMA -->
+            <div style="
+                font-size:30px;font-weight:800;
+                color:${accentColor};
+                line-height:1;
+                margin-bottom:4px;
+            ">${sign}${profit.toFixed(4)}</div>
+            <div style="
+                font-size:13px;color:rgba(255,255,255,.4);
+                font-weight:600;letter-spacing:.5px;
+                margin-bottom:${(balance !== undefined || initial !== undefined) ? "14px" : "0"};
+            ">SDA</div>
 
-        <div style="
-            font-size:13px;
-            opacity:.9;
-            margin-top:6px;
-        ">
-            ${
-                positive
-                    ? "REAL PROFIT"
-                    : "REAL LOSS"
-            }
+            <!-- DIVIDER -->
+            ${(balance !== undefined || initial !== undefined) ? `
+            <div style="
+                width:100%;
+                border-top:1px solid rgba(255,255,255,.07);
+                margin-bottom:12px;
+            "></div>` : ""}
+
+            <!-- BALANCE INFO -->
+            ${balance !== undefined || initial !== undefined ? `
+            <div style="
+                width:100%;
+                display:grid;grid-template-columns:${balance !== undefined && initial !== undefined ? "1fr 1fr" : "1fr"};
+                gap:8px;
+            ">
+                ${initial !== undefined ? `
+                <div style="
+                    background:rgba(255,255,255,.04);
+                    border:1px solid rgba(255,255,255,.07);
+                    border-radius:10px;
+                    padding:8px 10px;text-align:center;
+                ">
+                    <div style="font-size:9px;color:rgba(255,255,255,.35);font-weight:600;
+                        letter-spacing:.4px;margin-bottom:4px;">START</div>
+                    <div style="font-size:13px;font-weight:700;color:rgba(255,255,255,.8);">
+                        ${initial.toFixed(4)}</div>
+                    <div style="font-size:9px;color:rgba(255,255,255,.3);">SDA</div>
+                </div>` : ""}
+                ${balance !== undefined ? `
+                <div style="
+                    background:rgba(255,255,255,.04);
+                    border:1px solid rgba(255,255,255,.07);
+                    border-radius:10px;
+                    padding:8px 10px;text-align:center;
+                ">
+                    <div style="font-size:9px;color:rgba(255,255,255,.35);font-weight:600;
+                        letter-spacing:.4px;margin-bottom:4px;">FINAL</div>
+                    <div style="font-size:13px;font-weight:700;color:rgba(255,255,255,.8);">
+                        ${balance.toFixed(4)}</div>
+                    <div style="font-size:9px;color:rgba(255,255,255,.3);">SDA</div>
+                </div>` : ""}
+            </div>` : ""}
         </div>
     `;
 
     Object.assign(el.style, {
-
-        position: "fixed",
-        top: "50%",
-        left: "50%",
-        transform:
-            "translate(-50%,-50%) scale(.8)",
-
-        background:
-            positive
-                ? "rgba(0,180,120,.95)"
-                : "rgba(255,70,70,.95)",
-
-        color: "#fff",
-
-        padding: "22px 26px",
-
-        borderRadius: "18px",
-
-        zIndex: 999999,
-
-        textAlign: "center",
-
-        boxShadow:
-            "0 10px 40px rgba(0,0,0,.35)",
-
-        opacity: "0",
-
-        transition:
-            "all .35s ease",
-
-        backdropFilter:
-            "blur(8px)"
+        position      : "fixed",
+        top           : "50%",
+        left          : "50%",
+        transform     : "translate(-50%,-50%) scale(.85)",
+        background    : "rgba(14,14,18,.96)",
+        border        : `1px solid ${accentBorder}`,
+        color         : "#fff",
+        padding       : "24px 22px 20px",
+        borderRadius  : "22px",
+        zIndex        : "999999",
+        textAlign     : "center",
+        width         : "min(280px, 82vw)",
+        boxShadow     : `0 0 0 1px ${accentBorder}, 0 20px 60px rgba(0,0,0,.6)`,
+        opacity       : "0",
+        transition    : "all .3s cubic-bezier(.34,1.56,.64,1)",
+        backdropFilter: "blur(16px)"
     });
 
     document.body.appendChild(el);
 
     requestAnimationFrame(() => {
-
-        el.style.opacity = "1";
-
-        el.style.transform =
-            "translate(-50%,-50%) scale(1)";
+        el.style.opacity   = "1";
+        el.style.transform = "translate(-50%,-50%) scale(1)";
     });
 
-    await new Promise(r =>
-        setTimeout(r, 2200)
-    );
+    await new Promise(r => setTimeout(r, 2200));
 
-    el.style.opacity = "0";
+    el.style.opacity   = "0";
+    el.style.transform = "translate(-50%,-50%) scale(.92)";
 
-    el.style.transform =
-        "translate(-50%,-50%) scale(.9)";
-
-    await new Promise(r =>
-        setTimeout(r, 400)
-    );
+    await new Promise(r => setTimeout(r, 350));
 
     el.remove();
 }
