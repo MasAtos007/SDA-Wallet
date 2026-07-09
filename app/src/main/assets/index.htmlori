@@ -1,0 +1,2007 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SDA Wallet | Send, Swap & dApps</title>
+
+</style>
+<link rel="stylesheet" href="css/base.css">
+<link rel="stylesheet" href="css/header.css">
+<link rel="stylesheet" href="css/card.css">
+<link rel="stylesheet" href="css/form.css">
+<link rel="stylesheet" href="css/button.css">
+<link rel="stylesheet" href="css/address.css">
+<link rel="stylesheet" href="css/actions.css">
+<link rel="stylesheet" href="css/tabs.css">
+<link rel="stylesheet" href="css/modal.css">
+<link rel="stylesheet" href="css/walletpicker.css">
+<link rel="stylesheet" href="css/lp-modal.css">
+<link rel="stylesheet" href="css/lp-card.css">
+<link rel="stylesheet" href="css/aggregator.css">
+<link rel="stylesheet" href="css/swap-modal.css">
+<link rel="stylesheet" href="css/animation.css">
+<link rel="stylesheet" href="css/components.css">
+<link rel="stylesheet" href="css/send-premium.css">
+<link rel="stylesheet" href="css/confirm-modals.css">
+<link rel="stylesheet" href="css/auto-workflow.css">
+<link rel="stylesheet" href="css/bottom-nav.css">
+<link rel="stylesheet" href="css/balance-hero.css">
+<link rel="stylesheet" href="css/all.min.css">
+
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Arabic:wght@400;600&display=swap" rel="stylesheet">
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#ff7a00">
+
+<!-- PWA support iOS -->
+<link rel="apple-touch-icon" href="img/sda.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
+</head>
+<body>
+	
+<!-- SPLASH SCREEN -->
+<div id="splash">
+
+    <img src="img/logo.png" alt="SDA Logo">
+
+    <div class="splash-title">SDA Wallet</div>
+
+    <div class="splash-subtitle">
+        Community Wallet for SidraChain
+    </div>
+
+    <div class="splash-dev">
+        Developed by Atos
+    </div>
+
+</div>
+
+</div>
+
+<div class="app">
+
+<!-- HEADER -->
+<div class="header">
+    <!-- LEFT -->
+    <div class="header-left">
+        <div class="logo">
+            <img src="img/logo.png" alt="SDA Logo">
+        </div>
+        <div>
+            <div class="title">Sidra Wallet</div>
+            <div id="pkStatusBar" class="pk-indicator" style="display:none;" onclick="openPKModal()">
+                <span class="pk-dot"></span>
+                <span class="pk-text"></span>
+            </div>
+        </div>
+    </div>
+    <!-- RIGHT -->
+    <div class="header-right">
+        <!-- LANGUAGE -->
+        <div class="menu-wrapper">
+            <button class="lang-toggle-btn" onclick="toggleMenu()">
+                <i class="fa-solid fa-globe"></i>
+                <img id="langBtnFlag" src="https://flagcdn.com/w20/id.png" class="lang-flag">
+                <span id="langBtnText">Indonesia</span>
+                <i class="fa-solid fa-chevron-down lang-chevron"></i>
+            </button>
+            <div id="menuDropdown" class="menu-dropdown">
+                <div class="lang-item" onclick="setLanguage('id')">
+                    <img src="https://flagcdn.com/w20/id.png" class="lang-flag"> Indonesia
+                </div>
+                <div class="lang-item lang-item-border" onclick="setLanguage('ar')">
+    <img src="https://flagcdn.com/w20/sa.png" class="lang-flag"> العربية
+</div>
+                <div class="lang-item lang-item-border" onclick="setLanguage('en')">
+                    <img src="https://flagcdn.com/w20/us.png" class="lang-flag"> English
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+<!-- CARD -->
+<div class="card">
+
+<!-- CARD HEADER -->
+<div class="card-header">
+    <div id="activeWalletName">
+    No Wallet Selected
+</div>
+    <div class="card-actions">
+        <i class="fa-solid fa-rotate" onclick="refreshAll()"></i>
+        
+    </div>
+</div>
+
+
+<!-- BALANCE HERO -->
+<div class="balance-hero">
+
+    <div class="balance-hero-top">
+        <div class="balance-hero-label">
+            <span data-lang="total_balance">Total Balance</span>
+            <i class="fa-regular fa-eye" id="balanceEyeToggle" onclick="toggleBalanceVisibility()"></i>
+        </div>
+        <div class="token-dropdown balance-hero-token">
+            <img id="tokenLogoDropdown" src="img/sda.png" class="token-logo" />
+            <select id="tokenSelect"></select>
+        </div>
+    </div>
+
+    <div class="balance-hero-main">
+        <div class="balance-hero-main-row">
+
+            <div class="balance-hero-left">
+                <div class="balance-hero-row">
+                    <img id="tokenLogoBalance" src="img/sda.png" class="token-logo" style="display:none;" />
+                    <div class="balance" id="balance">0.00 SDA</div>
+                </div>
+                <div class="balance-hero-usd" id="balanceUSD"></div>
+                <div id="cacheLabel" style="font-size:11px;color:#888;display:none;" data-lang="cached">cached</div>
+            </div>
+
+            <div class="balance-hero-right">
+                <div class="balance-hero-badge" id="balanceChangeBadge" style="display:none;">
+                    <i class="fa-solid fa-arrow-up"></i> <span id="balanceChangeValue">0%</span>
+                </div>
+                <svg id="balanceSparkline" viewBox="0 0 130 42" preserveAspectRatio="none"></svg>
+            </div>
+
+        </div>
+    </div>
+
+    <div class="balance-hero-actions">
+        <button class="hero-action-btn hero-action-send" id="openSendBtn">
+            <i class="fa-solid fa-paper-plane"></i>
+            <div>
+                <div class="hero-action-title" data-lang="send">Kirim</div>
+                <div class="hero-action-sub" data-lang="hero_send_sub">Kirim token ke wallet lain</div>
+            </div>
+        </button>
+        <button class="hero-action-btn hero-action-receive" onclick="showReceive()">
+            <i class="fa-solid fa-arrow-down"></i>
+            <div>
+                <div class="hero-action-title" data-lang="receive">Terima</div>
+                <div class="hero-action-sub" data-lang="hero_receive_sub">Terima token ke wallet ini</div>
+            </div>
+        </button>
+    </div>
+
+</div>
+
+<!-- card-header lama tetap dipakai untuk activeWalletName + refresh (disembunyikan visual, tetap fungsional) -->
+<div class="card-header" style="display:none;">
+    <div id="activeWalletName">No Wallet Selected</div>
+    <div class="card-actions"><i class="fa-solid fa-rotate" onclick="refreshAll()"></i></div>
+</div>
+
+<div style="margin-top:15px; text-align:center;">
+<div class="text-center-small" data-lang="realtime">
+    Real-time data from Sidra Node
+</div>
+<div class="label" data-lang="select_wallet">Select Wallet</div>
+<div style="display:flex; align-items:center; gap:8px;">
+    <i class="fa-solid fa-wallet"
+       style="color:#ff7a00; font-size:16px;"></i>
+    <select id="walletSelect" style="flex:1;"></select>
+</div>
+
+<!-- ADDRESS + COPY -->
+<div class="address-bar">
+
+    <div id="showAddress" class="address-text"></div>
+
+    <div class="address-actions">
+
+        <i class="fa-solid fa-qrcode" onclick="openQRModal()"></i>
+
+        <i class="fa-regular fa-copy" onclick="copyAddress()"></i>
+
+    </div>
+
+</div>
+
+<!-- WATCH ADDRESS DROPDOWN -->
+<div style="margin-top:8px;">
+
+    <button onclick="toggleWatchPanel()" id="watchToggleBtn" style="
+        width:100%;
+        padding:12px 16px;
+        background:#111;
+        border:1px solid #222;
+        border-radius:12px;
+        color:#888;
+        font-size:13px;
+        font-weight:400;
+        cursor:pointer;
+        display:flex;
+        align-items:center;
+        justify-content:space-between;
+        gap:10px;
+        text-align:left;
+        margin-top:0;
+    ">
+        <div style="display:flex;align-items:center;gap:8px;flex:1;min-width:0;">
+            <i class="fa-solid fa-magnifying-glass" style="
+                color:#555;font-size:13px;
+                background:none;border:none;
+                width:auto;height:auto;padding:0;margin:0;
+            "></i>
+            <div style="min-width:0;">
+                <div style="color:#aaa;font-size:13px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" data-lang="watch_address_title">
+                    Cek Saldo Address Lain
+                </div>
+                <div style="color:#444;font-size:10px;margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" data-lang="watch_address_sub">
+                    Pantau saja · tidak bisa kirim / terima
+                </div>
+            </div>
+        </div>
+        <i id="watchChevron" class="fa-solid fa-chevron-down" style="
+            color:#444;font-size:11px;flex-shrink:0;
+            background:none;border:none;
+            width:auto;height:auto;padding:0;margin:0;
+            transition:transform 0.25s ease;
+        "></i>
+    </button>
+
+    <div id="watchPanel" style="
+        display:none;
+        background:#0d0d0d;
+        border:1px solid #1e1e1e;
+        border-top:none;
+        border-radius:0 0 12px 12px;
+        padding:14px;
+        margin-top:-4px;
+    ">
+        <div class="input-group" style="margin:0 0 8px;">
+            <i class="fa-solid fa-link"></i>
+            <input type="text"
+                   id="address"
+                   data-lang-placeholder="enter_address"
+                   placeholder="0x Address..." />
+        </div>
+
+        <div class="input-group" style="margin:0 0 12px;">
+            <i class="fa-solid fa-tag"></i>
+            <input type="text"
+                   id="walletName"
+                   data-lang-placeholder="wallet_name"
+                   placeholder="Nama (opsional)" />
+        </div>
+
+        <button onclick="saveWallet()" style="
+            margin-top:0;width:100%;
+            padding:11px;
+            background:transparent;
+            border:1px solid #2a2a2a;
+            border-radius:10px;
+            color:#666;
+            font-size:13px;
+            font-weight:400;
+            cursor:pointer;
+            display:flex;align-items:center;justify-content:center;gap:8px;
+        ">
+            <i class="fa-solid fa-floppy-disk" style="
+                background:none;border:none;
+                width:auto;height:auto;padding:0;margin:0;
+                color:#555;font-size:13px;
+            "></i>
+            <span data-lang="watch_save_btn">Simpan untuk dipantau</span>
+        </button>
+    </div>
+
+</div>
+
+
+
+<!-- ACTION CARD ROW -->
+<div class="action-card-row">
+
+    <div class="action-card-item" id="openLpBtn">
+        <div class="action-card-icon icon-purple">
+            <i class="fa-solid fa-droplet"></i>
+        </div>
+        <div class="action-card-text">
+            <div class="action-card-title" data-lang="addliquidity">Add Liquidity</div>
+            <div class="action-card-sub" data-lang="addliquidity_sub">Tambah LP</div>
+        </div>
+    </div>
+
+    <div class="action-card-divider"></div>
+
+    <div class="action-card-item" id="openSwapBtn">
+        <div class="action-card-icon icon-violet">
+            <i class="fa-solid fa-right-left"></i>
+        </div>
+        <div class="action-card-text">
+            <div class="action-card-title" data-lang="swap">Swap</div>
+            <div class="action-card-sub" data-lang="swap_card_sub">Tukar token</div>
+        </div>
+    </div>
+
+    <div class="action-card-divider"></div>
+
+    <div class="action-card-item" onclick="window.sidraBrowser.open()">
+        <div class="action-card-icon icon-blue">
+            <i class="fa-solid fa-globe"></i>
+        </div>
+        <div class="action-card-text">
+            <div class="action-card-title" data-lang="browser">Browser</div>
+            <div class="action-card-sub" data-lang="browser_sub">DApp</div>
+        </div>
+    </div>
+
+</div>
+
+<!-- WALLET MODAL -->
+<div id="walletModal" class="modal">
+
+    <div class="modal-content">
+
+        <!-- HEADER -->
+        <div class="modal-header">
+            <span data-lang="edit_wallet">Edit Wallet</span>
+
+            <!-- CLOSE ICON (FIXED) -->
+            <span onclick="closeWalletSetting()" style="cursor:pointer;">
+                <i class="fa-solid fa-xmark"></i>
+            </span>
+        </div>
+
+        <!-- INPUT -->
+        <input type="text"
+               id="editWalletName"
+               data-lang-placeholder="wallet_name"
+               placeholder="Wallet Name"
+               style="margin-bottom:10px;" />
+
+        <!-- SAVE BUTTON -->
+        <button onclick="saveWalletName()">
+            <i class="fa-solid fa-floppy-disk"></i>
+            <span data-lang="save">Save</span>
+        </button>
+
+        <!-- DELETE BUTTON -->
+        <button onclick="deleteWallet()" style="background:#ff3b3b;">
+            <i class="fa-solid fa-trash"></i>
+            <span data-lang="delete">Delete</span>
+        </button>
+
+    </div>
+
+</div>
+
+<!-- RECEIVE MODAL -->
+<div id="receiveModal" class="modal">
+
+    <div class="modal-content">
+
+        <!-- HEADER -->
+        <div class="modal-header">
+
+            <span>
+                <i class="fa-solid fa-arrow-down"></i>
+                <span data-lang="receive">Receive</span>
+            </span>
+
+            <span class="modal-close" onclick="closeReceiveModal()">
+                <i class="fa-solid fa-xmark"></i>
+            </span>
+
+        </div>
+
+        <!-- QR -->
+        <img id="receiveQR"
+             class="qr-style" />
+
+        <!-- ADDRESS -->
+        <div id="receiveAddress"
+             class="address-modal"
+             onclick="toggleAddress(this)">
+        </div>
+
+        <!-- AMOUNT -->
+        <input type="number"
+               id="receiveAmountQR"
+               data-lang-placeholder="amount_optional"
+               placeholder="Amount (optional)" />
+
+        <!-- RESULT -->
+        <div id="receiveResult" style="display:none;">
+
+            <input id="receiveLink"
+                   readonly
+                   style="font-size:11px; margin-top:8px;" />
+
+            <button onclick="copyReceiveLink()">
+                <i class="fa-solid fa-copy"></i>
+                <span data-lang="copy_link">Copy Link</span>
+            </button>
+
+            <button onclick="shareWA()">
+                <i class="fa-brands fa-whatsapp"></i> WhatsApp
+            </button>
+
+            <button onclick="shareTelegram()">
+                <i class="fa-brands fa-telegram"></i> Telegram
+            </button>
+
+        </div>
+
+    </div>
+
+</div>
+
+<!-- TABS -->
+<div class="tabs">
+
+    <div class="tab active" onclick="switchTab('assets')" data-lang="assets">Assets</div>
+    <div class="tab" onclick="switchTab('tokens')" data-lang="tokens">Tokens</div>
+    <div class="tab" onclick="switchTab('lp')" data-lang="my_lp">My LP</div>
+
+</div>
+
+<div id="tab-assets" class="tab-content active"></div>
+<div id="tab-tokens" class="tab-content"></div>
+<div id="tab-lp" class="tab-content"></div>
+
+<!-- TOAST -->
+<div id="toast" class="toast"></div>
+
+<!-- QR MODAL -->
+<div id="qrModal" class="modal">
+
+    <div class="modal-content">
+
+        <!-- HEADER -->
+        <div class="modal-header" style="align-items:flex-start; gap:10px;">
+
+    <!-- LEFT -->
+    <div style="display:flex; gap:10px; align-items:flex-start;">
+
+        <i class="fa-solid fa-qrcode"
+           style="font-size:18px; color:#ff7a00; margin-top:3px;"></i>
+
+        <div>
+
+            <div style="font-size:14px; font-weight:600;"
+                 data-lang="wallet_qr">
+                Wallet QR Code
+            </div>
+
+            <div style="font-size:11px; color:#888; margin-top:2px; line-height:1.4;"
+                 data-lang="qr_desc">
+                Scan this QR code to add this wallet to your wallet app.
+            </div>
+
+        </div>
+
+    </div>
+
+    <!-- CLOSE ICON -->
+    <i class="fa-solid fa-xmark"
+       onclick="closeQRModal()"
+       style="
+       font-size:16px;
+       padding:8px;
+       border-radius:10px;
+       background:#1a1a1a;
+       cursor:pointer;
+       transition:0.2s;
+       "
+       onmouseover="this.style.background='#ff7a00'; this.style.color='#fff'"
+       onmouseout="this.style.background='#1a1a1a'; this.style.color='#fff'"
+    ></i>
+
+</div>
+
+        <!-- QR IMAGE -->
+        <img id="qrModalImg"
+             style="
+             width:170px;
+             display:block;
+             margin:15px auto;
+             border-radius:12px;
+             background:#111;
+             padding:10px;
+             " />
+
+        <!-- ADDRESS -->
+<div id="qrModalAddress"
+     class="address-text"
+     onclick="toggleAddress(this)">
+</div>
+
+        <!-- BUTTON -->
+        <button onclick="copyAddress()">
+            <i class="fa-solid fa-copy"></i> <span data-lang="copy_address">Copy Address</span>
+        </button>
+
+    </div>
+
+</div>
+
+
+<!-- CONFIRM MODAL -->
+<div id="confirmModal" class="modal">
+
+    <div class="modal-content confirm-box">
+
+        <div class="modal-header">
+            <span id="confirmTitle">Confirm</span>
+            <span onclick="closeConfirmModal()">
+                <i class="fa-solid fa-xmark"></i>
+            </span>
+        </div>
+
+        <div id="confirmMessage" class="confirm-message"></div>
+
+        <div class="confirm-actions">
+
+            <button onclick="confirmYes()" class="btn-confirm-yes">
+                <i class="fa-solid fa-check"></i>
+                <span id="confirmYesText">OK</span>
+            </button>
+
+            <button onclick="closeConfirmModal()" class="btn-confirm-no">
+                <i class="fa-solid fa-xmark"></i>
+                <span id="confirmNoText">Cancel</span>
+            </button>
+
+        </div>
+
+    </div>
+</div>
+
+
+
+
+<!-- PROMPT MODAL -->
+<div id="promptModal" class="modal">
+    <div class="modal-content">
+
+        <div class="modal-header">
+            <span data-lang="edit_wallet">Input</span>
+            <span onclick="document.getElementById('promptModal').style.display='none'">
+                <i class="fa-solid fa-xmark"></i>
+            </span>
+        </div>
+
+        <div id="promptMessage" style="margin-bottom:10px;color:#aaa;font-size:12px;"></div>
+
+        <input id="promptInput" type="text"
+               style="margin-bottom:10px;" />
+
+        <button id="promptOk">
+            <i class="fa-solid fa-check"></i>
+            <span data-lang="save">OK</span>
+        </button>
+
+        <button id="promptCancel" style="background:#444;">
+            <i class="fa-solid fa-xmark"></i>
+            <span data-lang="delete">Cancel</span>
+        </button>
+
+    </div>
+</div>
+
+<div id="sendModal" class="send-modal">
+    <div class="send-container">
+        <div class="send-card">
+
+            <!-- CLOSE -->
+            <div id="closeSendModal" class="close-btn inside">
+                <i class="fa-solid fa-xmark"></i>
+            </div>
+
+            <!-- TITLE COMPACT -->
+            <div class="send-title-row">
+                <i class="fa-solid fa-paper-plane send-title-icon"></i>
+                <div>
+                    <div class="send-title-text" data-lang="send_token">Kirim Token</div>
+                    <div class="send-title-sub" data-lang="send_sub">Transfer token ke wallet lain</div>
+                </div>
+            </div>
+
+            <!-- BODY -->
+            <div class="send-body">
+
+                <!-- CARD: WALLET AKTIF -->
+                <div class="input-card" id="sendWalletInfo">
+                    <div class="s-label" data-lang="send_from_label">Wallet Pengirim</div>
+                    <div class="wallet-row">
+                        <div class="wallet-avatar">
+                            <i class="fa-solid fa-wallet"></i>
+                        </div>
+                        <div style="flex:1;min-width:0;">
+                            <div id="sendWalletName" class="wallet-name">—</div>
+                            <div class="wallet-addr-row">
+                                <div id="sendWalletAddr" class="wallet-addr">—</div>
+                                <i class="fa-regular fa-copy wallet-addr-copy" onclick="copyWalletAddr()" title="Copy"></i>
+                            </div>
+                        </div>
+                        <div id="sendWalletStatus" class="wallet-badge">
+                            <i class="fa-solid fa-lock-open"></i>
+                            <span data-lang="send_ready">Siap</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- CARD: SELECT TOKEN -->
+                <div class="input-card">
+                    <div class="s-label" data-lang="send_token_label">Token</div>
+                    <div class="token-box">
+                        <div class="token-left">
+                            <img id="sendTokenIcon" src="img/sda.png"
+                                 style="width:32px;height:32px;border-radius:50%;margin-right:9px;border:1px solid #2a2d3e;background:#1a1d2b;">
+                            <span id="sendTokenSymbol" style="font-size:16px;font-weight:700;color:#fff;">SDA</span>
+                        </div>
+                        <div style="display:flex;align-items:center;gap:6px;">
+                            <i class="fa-solid fa-chevron-down" style="color:#555;font-size:12px;"></i>
+                            <select id="sendTokenSelect" style="
+                                position:absolute;opacity:0;width:100%;height:100%;
+                                top:0;left:0;cursor:pointer;
+                            "></select>
+                        </div>
+                    </div>
+                    <div class="send-balance-row">
+                        <span class="balance-label" data-lang="send_balance_label">Saldo Tersedia</span>
+                        <div class="balance-values">
+                            <div class="balance-amount">
+                                <span id="sendBalance">0</span>
+                                <img id="sendTokenIconSm" src="img/sda.png"
+                                     style="width:14px;height:14px;border-radius:50%;">
+                                <span id="sendBalanceSym" style="color:#999;font-size:11px;font-weight:600;">SDA</span>
+                            </div>
+                            <div id="sendBalanceUSD" class="balance-usd">≈ $0,00 USD</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- CARD: AMOUNT -->
+                <div class="input-card">
+                    <div class="s-label" data-lang="send_amount_label">Jumlah</div>
+                    <div class="input-box">
+                        <div class="input-icon-box">
+                            <i class="fa-solid fa-database"></i>
+                        </div>
+                        <input
+                            id="amountSend"
+                            inputmode="decimal"
+                            placeholder="0.0"
+                            style="font-size:20px;font-weight:600;min-width:0;flex:1 1 0%;"
+                        >
+                        <button onclick="setSendMax()" class="max-btn">MAX</button>
+                    </div>
+                    <div id="amountUSD" class="amount-usd">≈ $0,00 USD</div>
+                </div>
+
+                <!-- CARD: TO ADDRESS -->
+                <div class="input-card">
+                    <div class="s-label" data-lang="send_to_label">Alamat Tujuan</div>
+                    <div class="input-box">
+                        <div class="input-icon-box">
+                            <i class="fa-solid fa-arrow-right-to-bracket"></i>
+                        </div>
+                        <input
+                            id="toSend"
+                            type="text"
+                            placeholder="0x..."
+                            style="font-size:13px;font-family:monospace;min-width:0;flex:1 1 0%;"
+                        >
+                        <button onclick="pasteToAddress()" class="paste-btn">
+                            <i class="fa-solid fa-paste"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- CARD: SAVED ADDRESSES -->
+                <div class="input-card" style="padding:10px 12px;">
+                    <div class="s-label" data-lang="send_saved_label">Atau pilih dari tersimpan</div>
+                    <div id="savedAddrOverlay" style="display:flex;align-items:center;gap:9px;cursor:pointer;">
+                        <div class="input-icon-box">
+                            <i class="fa-solid fa-user"></i>
+                        </div>
+                        <span id="savedAddrOverlayText" style="flex:1;font-size:13px;color:#444;" data-lang="send_select_addr">Pilih address tersimpan</span>
+                        <i class="fa-solid fa-chevron-down" style="color:#444;font-size:12px;"></i>
+                    </div>
+                    <select id="savedAddressSelect" style="display:none;"></select>
+                </div>
+
+                <!-- SEND BUTTON -->
+                <button class="btn send-btn" onclick="sendTx()">
+                    <i class="fa-solid fa-paper-plane"></i>
+                    <span data-lang="send_now_btn">Kirim Sekarang</span>
+                </button>
+
+                <!-- SECURITY NOTE -->
+                <div class="send-security-note">
+                    <i class="fa-solid fa-shield-halved"></i>
+                    <span data-lang="send_security_note">Transaksi aman dan terenkripsi</span>
+                </div>
+
+            </div>
+        </div>
+    </div>
+</div>
+
+
+
+<!-- WALLET PICKER MODAL (PREMIUM) -->
+<div id="walletPickerModal" class="modal">
+  <div class="wp-sheet">
+
+    <div class="wp-header">
+      <div class="wp-accent-bar"></div>
+      <button class="wp-close-btn" onclick="closeWalletPicker()" aria-label="Tutup">
+        <i class="fa-solid fa-xmark"></i>
+      </button>
+      <p class="wp-title" data-lang="wallet_picker_title">Pilih Address</p>
+      <p class="wp-sub" data-lang="wallet_picker_sub">Pilih wallet untuk transaksi atau lihat saldo</p>
+    </div>
+
+    <div class="wp-list" id="walletPickerList">
+      <!-- diisi oleh JS -->
+    </div>
+
+  </div>
+</div>
+
+
+<!-- =====================================================
+     SEND PROCESSING MODAL (PENDING TX)
+===================================================== -->
+<div id="sendProcessModal" class="tx-loading-overlay" style="display:none;">
+    <div class="tx-loading-box">
+
+        <!-- ICON -->
+        <div class="tx-loading-tokens">
+            <img src="img/sda.png" style="width:38px;height:38px;border-radius:50%;">
+        </div>
+
+        <!-- SPINNER -->
+        <div class="tx-spinner">
+            <svg viewBox="0 0 52 52">
+                <circle class="tx-spinner-track" cx="26" cy="26" r="22"/>
+                <circle class="tx-spinner-fill"  cx="26" cy="26" r="22"/>
+            </svg>
+            <div class="tx-spinner-icon">
+                <i class="fa-solid fa-paper-plane"></i>
+            </div>
+        </div>
+
+        <!-- STATUS -->
+        <div id="sendProcessText" class="tx-loading-text" data-lang="send_processing">
+            Mengirim transaksi...
+        </div>
+
+        <div class="tx-loading-sub" data-lang="send_processing_sub">
+            Menunggu konfirmasi dari jaringan SidraChain
+        </div>
+
+    </div>
+</div>
+
+<div id="sendSuccessModal" role="dialog" aria-modal="true" aria-label="Transaksi Berhasil">
+  <div class="ssm-sheet">
+
+    <!-- Header -->
+    <div class="ssm-header">
+      <div class="ssm-accent-bar"></div>
+
+      <button class="ssm-close-btn" onclick="closeSendSuccessModal()" aria-label="Tutup">
+        <i class="fa-solid fa-xmark"></i>
+      </button>
+
+      <div class="ssm-icon-wrap">
+        <i class="fa-solid fa-circle-check"></i>
+      </div>
+
+      <p class="ssm-label" data-lang="send_success_label">Transaksi Berhasil</p>
+      <p class="ssm-amount" id="ssmAmount">— <span id="ssmSymbol">SDA</span></p>
+      <p class="ssm-usd" id="ssmUsd"></p>
+    </div>
+
+    <!-- Body -->
+    <div class="ssm-body">
+
+      <!-- From -->
+      <div class="ssm-row">
+        <div class="ssm-row-icon orange">
+          <i class="fa-solid fa-arrow-up"></i>
+        </div>
+        <div class="ssm-row-meta">
+          <p class="ssm-row-sublabel" data-lang="tx_from">Dari</p>
+          <p class="ssm-row-name" id="ssmFromName">—</p>
+          <p class="ssm-row-addr" id="ssmFromAddr">—</p>
+        </div>
+        <span class="ssm-badge green" data-lang="tx_sender">Pengirim</span>
+      </div>
+
+      <!-- To -->
+      <div class="ssm-row">
+        <div class="ssm-row-icon blue">
+          <i class="fa-solid fa-arrow-down"></i>
+        </div>
+        <div class="ssm-row-meta">
+          <p class="ssm-row-sublabel" data-lang="tx_to">Ke</p>
+          <p class="ssm-row-name" id="ssmToAddr">—</p>
+        </div>
+        <span class="ssm-badge blue" data-lang="tx_recipient">Penerima</span>
+      </div>
+
+      <!-- Detail grid -->
+      <div class="ssm-detail-grid">
+
+        <div class="ssm-detail-row">
+          <span class="ssm-detail-key">
+            <i class="fa-solid fa-hashtag"></i> Tx Hash
+          </span>
+          <div style="display:flex;align-items:center;gap:6px;">
+            <span class="ssm-detail-val mono" id="ssmHash">—</span>
+            <i class="fa-regular fa-copy" id="ssmCopyIcon"
+               style="font-size:13px;color:#667788;cursor:pointer;"
+               onclick="ssmCopyHash()" title="Salin hash"></i>
+          </div>
+        </div>
+
+        <div class="ssm-detail-row">
+          <span class="ssm-detail-key">
+            <i class="fa-solid fa-cube"></i> Block
+          </span>
+          <span class="ssm-detail-val" id="ssmBlock">—</span>
+        </div>
+
+        <div class="ssm-detail-row">
+          <span class="ssm-detail-key">
+            <i class="fa-solid fa-circle-check"></i> Konfirmasi
+          </span>
+          <span class="ssm-detail-val green" id="ssmConfirm">—</span>
+        </div>
+
+        <div class="ssm-detail-row">
+          <span class="ssm-detail-key">
+            <i class="fa-solid fa-gas-pump"></i> Gas fee
+          </span>
+          <span class="ssm-detail-val" id="ssmGas">—</span>
+        </div>
+
+        <div class="ssm-detail-row">
+          <span class="ssm-detail-key">
+            <i class="fa-regular fa-clock"></i> Waktu
+          </span>
+          <span class="ssm-detail-val" id="ssmTime">—</span>
+        </div>
+
+      </div>
+
+      <!-- Action buttons -->
+      <div class="ssm-actions">
+        <button class="ssm-btn secondary" onclick="ssmCopyHash()">
+          <i class="fa-regular fa-copy"></i> <span data-lang="ssm_copy_hash">Salin Hash</span>
+        </button>
+        <button class="ssm-btn explorer" onclick="ssmOpenExplorer()">
+          <i class="fa-solid fa-arrow-up-right-from-square"></i> Explorer
+        </button>
+      </div>
+
+      <button class="ssm-btn-done" onclick="closeSendSuccessModal()">
+        <span data-lang="ssm_done">Selesai</span>
+      </button>
+
+    </div>
+  </div>
+</div>
+
+<!-- SWAP SUCCESS MODAL -->
+<div id="swapSuccessModal" role="dialog" aria-modal="true" aria-label="Swap Berhasil">
+  <div class="swm-sheet">
+
+    <!-- Header -->
+    <div class="swm-header">
+      <div class="swm-accent-bar"></div>
+      <button class="swm-close-btn" onclick="closeSwapSuccessModal()" aria-label="Tutup">
+        <i class="fa-solid fa-xmark"></i>
+      </button>
+      <div class="swm-icon-wrap">
+        <i class="fa-solid fa-arrows-rotate"></i>
+      </div>
+      <p class="swm-label" data-lang="swap_success_label">Swap Berhasil</p>
+
+      <!-- Token pair display -->
+      <div class="swm-pair-row">
+        <div class="swm-pair-token">
+          <img id="swmFromIcon" src="img/sda.png" onerror="this.src='img/default.png'">
+          <span id="swmFromAmount">—</span>
+          <span class="swm-pair-symbol" id="swmFromSymbol">—</span>
+        </div>
+        <div class="swm-pair-arrow">
+          <i class="fa-solid fa-arrow-right"></i>
+        </div>
+        <div class="swm-pair-token">
+          <img id="swmToIcon" src="img/sda.png" onerror="this.src='img/default.png'">
+          <span id="swmToAmount" class="swm-to-amount">—</span>
+          <span class="swm-pair-symbol" id="swmToSymbol">—</span>
+        </div>
+      </div>
+
+      <p class="swm-rate" id="swmRate">—</p>
+    </div>
+
+    <!-- Body -->
+    <div class="swm-body">
+
+      <!-- Detail grid -->
+      <div class="swm-detail-grid">
+        <div class="swm-detail-row">
+          <span class="swm-detail-key">
+            <i class="fa-solid fa-hashtag"></i> Tx Hash
+          </span>
+          <div style="display:flex;align-items:center;gap:6px;">
+            <span class="swm-detail-val mono" id="swmHash">—</span>
+            <i class="fa-regular fa-copy"
+               style="font-size:13px;color:#667788;cursor:pointer;"
+               onclick="swmCopyHash()" title="Salin hash"></i>
+          </div>
+        </div>
+        <div class="swm-detail-row">
+          <span class="swm-detail-key">
+            <i class="fa-solid fa-cube"></i> Block
+          </span>
+          <span class="swm-detail-val" id="swmBlock">—</span>
+        </div>
+        <div class="swm-detail-row">
+          <span class="swm-detail-key">
+            <i class="fa-solid fa-circle-check"></i> <span data-lang="tx_confirm_label">Konfirmasi</span>
+          </span>
+          <span class="swm-detail-val green" id="swmConfirm">—</span>
+        </div>
+        <div class="swm-detail-row">
+          <span class="swm-detail-key">
+            <i class="fa-solid fa-gas-pump"></i> Gas fee
+          </span>
+          <span class="swm-detail-val" id="swmGas">—</span>
+        </div>
+        <div class="swm-detail-row">
+          <span class="swm-detail-key">
+            <i class="fa-regular fa-clock"></i> <span data-lang="tx_time_label">Waktu</span>
+          </span>
+          <span class="swm-detail-val" id="swmTime">—</span>
+        </div>
+      </div>
+
+      <!-- Action buttons -->
+      <div class="swm-actions">
+        <button class="swm-btn secondary" onclick="swmCopyHash()">
+          <i class="fa-regular fa-copy"></i> <span data-lang="tx_copy_hash">Salin Hash</span>
+        </button>
+        <button class="swm-btn explorer" onclick="swmOpenExplorer()">
+          <i class="fa-solid fa-arrow-up-right-from-square"></i> <span data-lang="tx_explorer">Explorer</span>
+        </button>
+      </div>
+      <button class="swm-btn-done" onclick="closeSwapSuccessModal()">
+        <span data-lang="tx_close">Tutup</span>
+      </button>
+
+    </div>
+  </div>
+</div>
+
+<div id="txModal" class="modal">
+    <div class="modal-content">
+
+        <div class="tx-sticky-top">
+            <div class="modal-header">
+                <span data-lang="tx_history_title">Transaction History</span>
+                <button class="modal-close" onclick="closeTxModal()">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+            <div id="txFilterTabs" class="tx-filter-tabs">
+                <button class="tx-filter-tab active" data-filter="ALL" data-lang="tx_filter_all">All</button>
+                <button class="tx-filter-tab" data-filter="SEND" data-lang="tx_filter_send">Send</button>
+                <button class="tx-filter-tab" data-filter="RECEIVE" data-lang="tx_filter_receive">Receive</button>
+                <button class="tx-filter-tab" data-filter="SWAP" data-lang="tx_filter_swap">Swap</button>
+                <button class="tx-filter-tab" data-filter="ADD_LP" data-lang="tx_filter_add_lp">Add LP</button>
+                <button class="tx-filter-tab" data-filter="REMOVE_LP" data-lang="tx_filter_remove_lp">Remove LP</button>
+                <button class="tx-filter-tab" data-filter="COLLECT_FEE" data-lang="tx_filter_collect">Collect Fee</button>
+            </div>
+        </div>
+
+        <div id="txHistoryList"></div>
+    </div>
+</div>
+
+
+
+<!-- TX DETAIL MODAL -->
+<div id="txDetailModal" class="modal" onclick="if(event.target===this)closeTxDetail()">
+  <div class="ssm-sheet" style="max-height:90vh;overflow-y:auto;">
+
+    <div class="ssm-header">
+      <div class="ssm-accent-bar"></div>
+      <button class="ssm-close-btn" onclick="closeTxDetail()">
+        <i class="fa-solid fa-xmark"></i>
+      </button>
+      <div class="ssm-icon-wrap" id="txdIconWrap">
+        <i class="fa-solid fa-circle-check"></i>
+      </div>
+      <p class="ssm-label" id="txdLabel" data-lang="tx_detail_label">Detail Transaksi</p>
+
+      <!-- TOKEN PAIR (hanya tampil saat SWAP) -->
+      <div id="txdPairRow" class="swm-pair-row" style="display:none;">
+        <div class="swm-pair-token">
+          <img id="txdOutIcon" src="img/sda.png" onerror="this.src='img/default.png'">
+          <span id="txdOutAmount">—</span>
+          <span class="swm-pair-symbol" id="txdOutSymbol">—</span>
+        </div>
+        <div class="swm-pair-arrow">
+          <i class="fa-solid fa-arrow-right"></i>
+        </div>
+        <div class="swm-pair-token">
+          <img id="txdInIcon" src="img/sda.png" onerror="this.src='img/default.png'">
+          <span id="txdInAmount" class="swm-to-amount">—</span>
+          <span class="swm-pair-symbol" id="txdInSymbol">—</span>
+        </div>
+      </div>
+
+      <!-- Amount biasa (sembunyikan saat SWAP) -->
+      <p class="ssm-amount" id="txdAmount">-</p>
+    </div>
+
+    <div class="ssm-body">
+
+      <div class="ssm-row" id="txdFromRow">
+        <div class="ssm-row-icon orange">
+          <i class="fa-solid fa-arrow-up"></i>
+        </div>
+        <div class="ssm-row-meta">
+          <p class="ssm-row-sublabel" data-lang="tx_from">Dari</p>
+          <p class="ssm-row-addr" id="txdFrom">-</p>
+        </div>
+        <span class="ssm-badge green" data-lang="tx_sender">Pengirim</span>
+      </div>
+
+      <div class="ssm-row" id="txdToRow">
+        <div class="ssm-row-icon blue">
+          <i class="fa-solid fa-arrow-down"></i>
+        </div>
+        <div class="ssm-row-meta">
+          <p class="ssm-row-sublabel" data-lang="tx_to">Ke</p>
+          <p class="ssm-row-addr" id="txdTo">-</p>
+        </div>
+        <span class="ssm-badge blue" data-lang="tx_recipient">Penerima</span>
+      </div>
+
+      <div class="ssm-detail-grid">
+
+        <div class="ssm-detail-row">
+          <span class="ssm-detail-key"><i class="fa-solid fa-hashtag"></i> Tx Hash</span>
+          <div style="display:flex;align-items:center;gap:6px;">
+            <span class="ssm-detail-val mono" id="txdHash">-</span>
+            <i class="fa-regular fa-copy" id="txdCopyIcon"
+               style="font-size:13px;color:#667788;cursor:pointer;"
+               onclick="txdCopyHash()" title="Salin hash"></i>
+          </div>
+        </div>
+
+        <div class="ssm-detail-row">
+          <span class="ssm-detail-key"><i class="fa-solid fa-tag"></i> <span data-lang="tx_type_label">Tipe</span></span>
+          <span class="ssm-detail-val" id="txdType">-</span>
+        </div>
+
+        <div class="ssm-detail-row">
+          <span class="ssm-detail-key"><i class="fa-solid fa-cube"></i> Block</span>
+          <span class="ssm-detail-val" id="txdBlock">-</span>
+        </div>
+
+        <div class="ssm-detail-row">
+          <span class="ssm-detail-key"><i class="fa-solid fa-circle-check"></i> <span data-lang="tx_confirm_label">Konfirmasi</span></span>
+          <span class="ssm-detail-val green" id="txdConfirm">-</span>
+        </div>
+
+        <div class="ssm-detail-row">
+          <span class="ssm-detail-key"><i class="fa-regular fa-clock"></i> <span data-lang="tx_time_label">Waktu</span></span>
+          <span class="ssm-detail-val" id="txdTime">-</span>
+        </div>
+
+        <div class="ssm-detail-row">
+          <span class="ssm-detail-key"><i class="fa-solid fa-circle-dot"></i> <span data-lang="tx_status_label">Status</span></span>
+          <span class="ssm-detail-val" id="txdStatus">-</span>
+        </div>
+
+      </div>
+
+      <div class="ssm-actions">
+        <button class="ssm-btn secondary" onclick="txdCopyHash()">
+          <i class="fa-regular fa-copy"></i> <span data-lang="tx_copy_hash">Salin Hash</span>
+        </button>
+        <button class="ssm-btn explorer" onclick="txdOpenExplorer()">
+          <i class="fa-solid fa-arrow-up-right-from-square"></i> <span data-lang="tx_explorer">Explorer</span>
+        </button>
+      </div>
+
+      <button class="ssm-btn-done" onclick="closeTxDetail()"><span data-lang="tx_close">Tutup</span></button>
+
+    </div>
+  </div>
+</div>
+
+<!-- SWAP MODAL -->
+<div id="swapModal" class="swap-modal">
+
+    <div class="swap-container">
+
+        <div class="app">
+
+            <div class="swap-card">
+
+                <!-- CLOSE -->
+                <div id="closeSwapModal" class="close-btn inside">
+                    <i class="fa-solid fa-xmark"></i>
+                </div>
+
+                <div class="swap-title">Swap</div>
+                <div class="swap-sub" data-lang="swap_sub">Trade tokens instantly</div>
+
+                <!-- WALLET -->
+                <div class="wallet-box">
+                    <div class="wallet-left">
+                        <i class="fa-solid fa-wallet"></i>
+                        <div id="swapWalletName">Main Wallet</div>
+                    </div>
+                    <div class="wallet-balance" id="swapWalletBalance">0.00 SDA</div>
+                </div>
+
+                <!-- YOU PAY -->
+                <div class="input-card">
+                    <div class="row">
+                        <div class="label" data-lang="swap_you_pay">YOU PAY</div>
+                        <div class="label" id="payBalance">
+                            0.00 TOKEN <span class="max" id="btnMax">MAX</span>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <input 
+                            class="amount" 
+                            id="payAmount" 
+                            placeholder="0.0"
+                            inputmode="decimal"
+                        >
+
+                        <div class="token" id="payToken">
+                            <img src="img/sda.png" id="payTokenIcon">
+                            <span id="payTokenSymbol">SDA</span>
+                            <i class="fa-solid fa-chevron-down"></i>
+                        </div>
+                    </div>
+                    <div id="payAmountWarning" style="display:none;color:#ff4444;font-size:11px;margin-top:4px;">
+                        <i class="fa-solid fa-triangle-exclamation"></i> <span data-lang="swap_insufficient">Saldo tidak cukup</span>
+                    </div>
+                </div>
+
+                <!-- SWITCH -->
+                <div class="switch" id="switchSwap">
+                    <i class="fa-solid fa-arrows-up-down"></i>
+                </div>
+
+                <!-- YOU RECEIVE -->
+<div class="input-card">
+    <div class="row">
+        <div class="label receive" data-lang="swap_you_receive">YOU RECEIVE</div>
+        <div class="label" id="receiveBalance">0.00</div>
+    </div>
+
+    <div class="row">
+        <input 
+            class="amount" 
+            id="receiveAmount" 
+            placeholder="0.0"
+            inputmode="decimal"
+        >
+
+        <div class="token" id="receiveToken">
+            <img src="img/sda.png" id="receiveTokenIcon" style="display:none;">
+            <i class="fa-solid fa-magnifying-glass" id="receiveTokenSearchIcon" style="color:#888;font-size:14px;"></i>
+            <span id="receiveTokenSymbol" data-lang="swap_select_token">Pilih Token</span>
+            <i class="fa-solid fa-chevron-down"></i>
+        </div>
+    </div>
+    <div id="receiveAmountWarning" style="display:none;color:#ff4444;font-size:11px;margin-top:4px;">
+        <i class="fa-solid fa-triangle-exclamation"></i> <span data-lang="swap_low_liquidity">Likuiditas tidak cukup</span>
+    </div>
+</div>
+
+    <!-- BEST ROUTE INFO -->
+    <div id="bestRoute" style="font-size:12px;color:#aaa;"></div>
+
+
+</div>
+
+                <!-- RATE -->
+                <div class="info" id="swapRate" data-lang="swap_rate_loading">
+        Loading rate...
+    </div>
+
+                <!-- SLIPPAGE -->
+                <div class="slippage">
+        <div data-lang="swap_slippage_tolerance">Slippage tolerance</div>
+                    <div id="slippageVal">--</div>
+                </div>
+
+                <!-- PREVIEW BUTTON -->
+                <button class="btn" id="btnReviewSwap">
+                    <span id="swapBtnText" data-lang="swap_preview_btn">Preview Swap</span>
+                </button>
+
+            </div>
+
+        </div>
+
+    </div>
+
+</div>
+
+
+<!-- =====================================================
+     CONFIRM SWAP MODAL — PREMIUM
+===================================================== -->
+<div id="swapConfirmModal" class="confirm-overlay" style="display:none;">
+    <div class="confirm-backdrop"></div>
+    <div class="confirm-box">
+
+        <!-- HEADER -->
+        <div class="confirm-header">
+            <div class="confirm-title">
+                <i class="fa-solid fa-right-left" style="color:#c77dff;"></i>
+                <span data-lang="swap_confirm_title">Konfirmasi Swap</span>
+            </div>
+            <button class="confirm-close" id="btnCancelConfirm">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+        </div>
+
+        <div class="confirm-sub" data-lang="swap_confirm_sub">Periksa detail sebelum eksekusi</div>
+
+        <!-- TOKEN PAIR -->
+        <div class="confirm-pair">
+
+            <!-- FROM -->
+            <div class="confirm-token-card">
+                <div class="confirm-token-label" data-lang="swap_you_pay_label">Kamu Bayar</div>
+                <div class="confirm-token-row">
+                    <img id="confirmSwapInIcon" src="img/sda.png"
+                         onerror="this.src='img/default.png'"
+                         class="confirm-token-icon">
+                    <div>
+                        <div id="confirmSwapInAmount" class="confirm-token-amount">—</div>
+                        <div id="confirmSwapInSymbol" class="confirm-token-symbol">—</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ARROW -->
+            <div class="confirm-arrow">
+                <i class="fa-solid fa-arrow-down"></i>
+            </div>
+
+            <!-- TO -->
+            <div class="confirm-token-card confirm-token-card-out">
+                <div class="confirm-token-label" data-lang="swap_you_receive_label">Kamu Terima ≈</div>
+                <div class="confirm-token-row">
+                    <img id="confirmSwapOutIcon" src="img/sda.png"
+                         onerror="this.src='img/default.png'"
+                         class="confirm-token-icon">
+                    <div>
+                        <div id="confirmSwapOutAmount" class="confirm-token-amount confirm-token-amount-out">—</div>
+                        <div id="confirmSwapOutSymbol" class="confirm-token-symbol">—</div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- INFO ROWS -->
+        <div class="confirm-info-box">
+            <div class="confirm-info-row">
+                <span data-lang="swap_slippage">Slippage Tolerance</span>
+                <span id="confirmSwapSlippage">2%</span>
+            </div>
+            <div class="confirm-info-row">
+                <span data-lang="swap_gas">Estimasi Gas</span>
+                <span>~1,200,000</span>
+            </div>
+            <div class="confirm-info-row" id="confirmSwapRateRow">
+                <span data-lang="swap_rate">Rate</span>
+                <span id="confirmSwapRate">—</span>
+            </div>
+        </div>
+
+        <!-- WARNING -->
+        <div class="confirm-warning">
+            <i class="fa-solid fa-triangle-exclamation"></i>
+            <span data-lang="swap_warning">Output adalah estimasi. Transaksi akan dibatalkan jika harga berubah lebih dari slippage.</span>
+        </div>
+
+        <!-- BUTTONS -->
+        <button class="confirm-btn-primary" id="btnConfirmSwap">
+            <i class="fa-solid fa-right-left"></i>
+            <span data-lang="swap_confirm_btn">Konfirmasi Swap</span>
+        </button>
+        <button class="confirm-btn-ghost" id="btnCancelConfirmSwap" data-lang="swap_cancel_btn">
+            Batal
+        </button>
+
+    </div>
+</div>
+
+
+<!-- =====================================================
+     CONFIRM SEND MODAL — PREMIUM
+===================================================== -->
+<div id="sendConfirmModal" class="confirm-overlay" style="display:none;">
+    <div class="confirm-backdrop"></div>
+    <div class="confirm-box">
+
+        <!-- HEADER -->
+        <div class="confirm-header">
+            <div class="confirm-title">
+                <i class="fa-solid fa-paper-plane" style="color:#ff7a00;"></i>
+                <span data-lang="send_confirm_title">Konfirmasi Kirim</span>
+            </div>
+            <button class="confirm-close" onclick="closeSendConfirm()">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+        </div>
+
+        <div class="confirm-sub" data-lang="send_confirm_sub">Periksa detail sebelum mengirim</div>
+
+        <!-- TOKEN CARD -->
+        <div class="confirm-send-card">
+            <img id="confirmSendIcon" src="img/sda.png"
+                 onerror="this.src='img/default.png'"
+                 class="confirm-send-icon">
+            <div class="confirm-send-amount-wrap">
+                <div id="confirmSendAmount" class="confirm-send-amount">—</div>
+                <div id="confirmSendSymbol" class="confirm-send-symbol">—</div>
+            </div>
+        </div>
+
+        <!-- INFO ROWS -->
+        <div class="confirm-info-box">
+
+            <div class="confirm-info-row">
+                <span data-lang="send_from_row">Dari</span>
+                <span id="confirmSendFrom" class="confirm-addr">—</span>
+            </div>
+
+            <div class="confirm-info-divider"></div>
+
+            <div class="confirm-info-row">
+                <span data-lang="send_to_row">Ke</span>
+                <span id="confirmSendTo" class="confirm-addr">—</span>
+            </div>
+
+            <div class="confirm-info-divider"></div>
+
+            <div class="confirm-info-row">
+                <span data-lang="swap_gas">Estimasi Gas</span>
+                <span>~100,000</span>
+            </div>
+
+            <div class="confirm-info-row" id="confirmSendNetworkRow">
+                <span>Network</span>
+                <span style="color:#00cc66;">SidraChain</span>
+            </div>
+
+        </div>
+
+        <!-- WARNING -->
+        <div class="confirm-warning">
+            <i class="fa-solid fa-triangle-exclamation"></i>
+            <span data-lang="send_confirm_warning">Transaksi blockchain bersifat permanen dan tidak dapat dibatalkan.</span>
+        </div>
+
+        <!-- BUTTONS -->
+        <button class="confirm-btn-primary confirm-btn-send" id="btnConfirmSend" onclick="executeSendTx()">
+            <i class="fa-solid fa-paper-plane"></i>
+            <span data-lang="send_confirm_btn">Kirim Sekarang</span>
+        </button>
+        <button class="confirm-btn-ghost" onclick="closeSendConfirm()" data-lang="send_cancel_btn">
+            Batal
+        </button>
+
+    </div>
+</div>
+
+
+<!-- =====================================================
+     SWAP / SEND LOADING OVERLAY — PREMIUM
+===================================================== -->
+<div id="swapLoadingOverlay" class="tx-loading-overlay" style="display:none;">
+    <div class="tx-loading-box">
+
+        <!-- TOKEN ICONS -->
+        <div id="swapLoadingTokens" class="tx-loading-tokens"></div>
+
+        <!-- SPINNER RING -->
+        <div class="tx-spinner">
+            <svg viewBox="0 0 52 52">
+                <circle class="tx-spinner-track" cx="26" cy="26" r="22"/>
+                <circle class="tx-spinner-fill"  cx="26" cy="26" r="22"/>
+            </svg>
+            <div class="tx-spinner-icon">
+                <i class="fa-solid fa-right-left"></i>
+            </div>
+        </div>
+
+        <!-- PROGRESS BAR -->
+        <div class="swap-progress-bar">
+            <div id="swapProgressFill" class="swap-progress-fill"></div>
+        </div>
+
+        <!-- STATUS TEXT -->
+        <div id="swapLoadingText" class="tx-loading-text">Mempersiapkan...</div>
+
+        <!-- SUB TEXT -->
+        <div class="tx-loading-sub" data-lang="swap_loading_sub">Jangan tutup aplikasi</div>
+
+    </div>
+</div>
+
+
+<!-- ========================= -->
+<!-- LP MODAL PREMIUM v2      -->
+<!-- ========================= -->
+<div id="lpModal" class="swap-modal">
+    <div class="swap-container lp2-overlay">
+        <div class="lp2-sheet">
+
+            <!-- DRAG HANDLE -->
+            <div class="lp2-drag-handle" aria-hidden="true"></div>
+
+            <!-- SCROLLABLE BODY -->
+            <div class="lp2-scroll-body">
+
+                <!-- HEADER -->
+                <div class="lp2-header">
+                    <div class="lp2-header-left">
+                        <div class="lp2-icon-wrap" aria-hidden="true">
+                            <i class="fa-solid fa-droplet"></i>
+                        </div>
+                        <div>
+                            <div class="lp2-title" data-lang="lp_title">Add Liquidity</div>
+                            <div class="lp2-sub" data-lang="lp_sub">Earn fees from every trade in this pool</div>
+                        </div>
+                    </div>
+                    <button class="lp2-close-btn" id="closeLpModal" aria-label="Close">
+                        <i class="fa-solid fa-xmark"></i>
+                    </button>
+                </div>
+
+                <!-- FEE TIER -->
+                <div class="lp2-row-card lp2-clickable" id="lpFeeSelect">
+                    <div class="lp2-row-left">
+                        <div class="lp2-row-icon lp2-icon-purple" aria-hidden="true">
+                            <i class="fa-solid fa-layer-group"></i>
+                        </div>
+                        <div>
+                            <div class="lp2-row-title" data-lang="lp_fee_tier">Fee Tier</div>
+                            <div class="lp2-row-sub" id="lpFeeDesc" data-lang="lp_fee_standard">Standard · Best for most tokens</div>
+                        </div>
+                    </div>
+                    <div class="lp2-badge lp2-badge-purple">
+                        <span id="lpFeeLabel">0.3%</span>
+                        <i class="fa-solid fa-chevron-down" style="font-size:9px;"></i>
+                    </div>
+                </div>
+
+                <!-- DEPOSIT SECTION -->
+                <div class="lp2-section-label" data-lang="lp_deposit_section">Deposit Amounts</div>
+
+                <!-- TOKEN A -->
+                <div class="lp2-input-card" id="lpInputCard0">
+                    <div class="lp2-input-meta">
+                        <span class="lp2-meta-label" data-lang="lp_you_deposit">You Deposit</span>
+                        <span class="lp2-meta-balance" id="lpBalance0">Balance: 0.00 SDA</span>
+                    </div>
+                    <div class="lp2-input-row">
+                        <input
+                            id="lpAmount0"
+                            class="lp2-amount-input"
+                            placeholder="0.0"
+                            inputmode="decimal"
+                            autocomplete="off"
+                        />
+                        <div class="lp2-token-chip" id="lpToken0Select">
+                            <img src="img/sda.png" class="lp2-token-img" alt="SDA">
+                            <span>SDA</span>
+                            <i class="fa-solid fa-chevron-down" style="font-size:9px;color:#666;"></i>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- PLUS CONNECTOR -->
+                <div class="lp2-connector" aria-hidden="true">
+                    <div class="lp2-connector-line"></div>
+                    <div class="lp2-connector-dot"><i class="fa-solid fa-plus"></i></div>
+                    <div class="lp2-connector-line"></div>
+                </div>
+
+                <!-- TOKEN B -->
+                <div class="lp2-input-card" id="lpInputCard1">
+                    <div class="lp2-input-meta">
+                        <span class="lp2-meta-label" data-lang="lp_pair_with">Pair With</span>
+                        <span class="lp2-meta-balance" id="lpBalance1">Balance: 0.00</span>
+                    </div>
+                    <div class="lp2-input-row">
+                        <input
+                            id="lpAmount1"
+                            class="lp2-amount-input"
+                            placeholder="0.0"
+                            inputmode="decimal"
+                            autocomplete="off"
+                        />
+                        <div class="lp2-token-chip lp2-token-empty" id="lpToken1Select">
+                            <div id="lpToken1IconBox" class="lp2-token-icon-empty">
+                                <i class="fa-solid fa-magnifying-glass" style="font-size:11px;color:#666;"></i>
+                            </div>
+                            <span id="lpToken1Symbol" data-lang="lp_select_token">Select token</span>
+                            <i class="fa-solid fa-chevron-down" style="font-size:9px;color:#555;"></i>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- POOL STATUS -->
+                <div class="lp2-pool-status" id="lpPoolStatusRow">
+                    <span class="lp2-pool-dot" id="lpPoolDot"></span>
+                    <span class="lp2-pool-text" id="lpPoolStatus">Checking pool...</span>
+                </div>
+
+                <!-- PRICE SECTION -->
+                <div class="lp2-section-label" data-lang="lp_price_section">Pricing</div>
+
+                <!-- INITIAL PRICE -->
+                <div class="lp2-price-card" id="lpInitialPriceCard">
+                    <div class="lp2-price-card-header">
+                        <i class="fa-solid fa-tag" style="color:#f59e0b;" aria-hidden="true"></i>
+                        <span class="lp2-price-card-title" data-lang="lp_initial_price">Set Initial Price</span>
+                    </div>
+                    <input
+                        id="lpManualPrice"
+                        class="lp2-price-input"
+                        placeholder="Enter price..."
+                        inputmode="decimal"
+                        autocomplete="off"
+                    />
+                    <div class="lp2-price-info" id="lpPriceInfo">
+                        <i class="fa-solid fa-chart-line" style="color:#a78bfa;font-size:10px;" aria-hidden="true"></i>
+                        <span>Price: —</span>
+                    </div>
+                </div>
+
+                <!-- PRICE RANGE -->
+                <div class="lp2-section-label" data-lang="lp_price_range">Price Range</div>
+                <div class="lp2-range-tabs" role="tablist" aria-label="Price Range Mode">
+                    <button class="lp2-range-tab active" data-mode="full" role="tab" aria-selected="true">
+                        <i class="fa-solid fa-infinity" aria-hidden="true"></i>
+                        <span data-lang="lp_full_range">Full Range</span>
+                    </button>
+                    <button class="lp2-range-tab" data-mode="custom" role="tab" aria-selected="false">
+                        <i class="fa-solid fa-sliders" aria-hidden="true"></i>
+                        <span data-lang="lp_custom_range">Custom Range</span>
+                    </button>
+                </div>
+
+                <!-- CUSTOM RANGE -->
+                <div id="lpCustomRange" class="lp2-custom-range" style="display:none;">
+                    <div class="lp2-range-pair">
+                        <div class="lp2-range-box">
+                            <div class="lp2-range-label" data-lang="lp_min_price">Min Price</div>
+                            <div class="lp2-range-ctrl">
+                                <button class="lp2-range-btn" onclick="adjustSingle('min', -1)">−</button>
+<input id="lpMinPrice" class="lp2-range-input" placeholder="0.0" inputmode="decimal">
+<button class="lp2-range-btn" onclick="adjustSingle('min', 1)">+</button>
+                            </div>
+                        </div>
+                        <div class="lp2-range-arrow" aria-hidden="true">
+                            <i class="fa-solid fa-arrow-right"></i>
+                        </div>
+                        <div class="lp2-range-box">
+                            <div class="lp2-range-label" data-lang="lp_max_price">Max Price</div>
+                            <div class="lp2-range-ctrl">
+                                <button class="lp2-range-btn" onclick="adjustSingle('max', -1)">−</button>
+<input id="lpMaxPrice" class="lp2-range-input" placeholder="0.0" inputmode="decimal">
+<button class="lp2-range-btn" onclick="adjustSingle('max', 1)">+</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- PRICE TOLERANCE -->
+                <div class="lp2-row-card lp2-clickable" id="lpSlippageSelect" style="margin-top:12px;">
+                    <div class="lp2-row-left">
+                        <div class="lp2-row-icon lp2-icon-green" aria-hidden="true">
+                            <i class="fa-solid fa-shield-halved"></i>
+                        </div>
+                        <div>
+                            <div class="lp2-row-title" data-lang="lp_price_tolerance">Price Tolerance</div>
+                            <div class="lp2-row-sub" data-lang="lp_price_tolerance_sub">Max price change allowed</div>
+                        </div>
+                    </div>
+                    <div class="lp2-badge lp2-badge-green">
+                        <span id="lpSlippageLabel">0.5%</span>
+                        <i class="fa-solid fa-chevron-down" style="font-size:9px;"></i>
+                    </div>
+                </div>
+
+                <!-- SPACER for bottom nav clearance -->
+                <div class="lp2-scroll-end-spacer"></div>
+
+            </div><!-- /lp2-scroll-body -->
+
+            <!-- STICKY FOOTER (above bottom nav) -->
+            <div class="lp2-footer">
+                <button class="lp2-add-btn" id="btnAddLP">
+                    <i class="fa-solid fa-droplet" aria-hidden="true"></i>
+                    <span data-lang="lp_add_btn">Add Liquidity</span>
+                </button>
+                <div class="lp2-footer-note">
+                    <i class="fa-solid fa-shield-halved" style="color:#34d399;font-size:10px;" aria-hidden="true"></i>
+                    <span data-lang="lp_footer_note">You will receive LP tokens representing your share in the pool</span>
+                </div>
+                <div id="lpStatus" class="lp2-status-msg"></div>
+            </div>
+
+        </div><!-- /lp2-sheet -->
+    </div>
+</div>
+
+<!--
+=============================================================
+  DROPDOWN COMPONENT — Fee Tier & Slippage
+  Render dropdown sebagai fixed overlay, BUKAN di dalam sheet.
+  Tempatkan langsung sebelum </body>.
+=============================================================
+-->
+
+<!-- BACKDROP (tutup dropdown saat klik di luar) -->
+<div class="lp2-dropdown-backdrop" id="lpDropdownBackdrop" style="display:none;"></div>
+
+<!-- FEE TIER DROPDOWN -->
+<div class="lp2-dropdown" id="lpFeeDropdown" style="display:none;" role="listbox" aria-label="Fee Tier">
+    <div class="lp2-dropdown-item active" data-fee="0.1" role="option">
+        <div>
+            <div style="font-weight:600;color:#fff;font-size:13px;">0.1%</div>
+            <div style="font-size:11px;color:#555;margin-top:2px;" data-lang="lp_fee_low">Low · Best for stable pairs</div>
+        </div>
+        <span class="lp2-dropdown-item-badge">0.1%</span>
+    </div>
+    <div class="lp2-dropdown-item" data-fee="0.3" role="option">
+        <div>
+            <div style="font-weight:600;color:#fff;font-size:13px;">0.3%</div>
+            <div style="font-size:11px;color:#555;margin-top:2px;" data-lang="lp_fee_standard">Standard · Best for most tokens</div>
+        </div>
+        <span class="lp2-dropdown-item-badge">0.3%</span>
+    </div>
+    <div class="lp2-dropdown-item" data-fee="1.0" role="option">
+        <div>
+            <div style="font-weight:600;color:#fff;font-size:13px;">1.0%</div>
+            <div style="font-size:11px;color:#555;margin-top:2px;" data-lang="lp_fee_high">High · Best for exotic pairs</div>
+        </div>
+        <span class="lp2-dropdown-item-badge">1.0%</span>
+    </div>
+</div>
+
+<!-- SLIPPAGE DROPDOWN -->
+<div class="lp2-dropdown" id="lpSlippageDropdown" style="display:none;" role="listbox" aria-label="Price Tolerance">
+    <div class="lp2-dropdown-item" data-slip="0.1" role="option">
+        <div>
+            <div style="font-weight:600;color:#fff;font-size:13px;">0.1%</div>
+            <div style="font-size:11px;color:#555;margin-top:2px;" data-lang="lp_slip_safe">Very Safe · Low risk</div>
+        </div>
+        <span class="lp2-dropdown-item-badge">0.1%</span>
+    </div>
+    <div class="lp2-dropdown-item active" data-slip="0.5" role="option">
+        <div>
+            <div style="font-weight:600;color:#fff;font-size:13px;">0.5%</div>
+            <div style="font-size:11px;color:#555;margin-top:2px;" data-lang="lp_slip_rec">Recommended</div>
+        </div>
+        <span class="lp2-dropdown-item-badge">0.5%</span>
+    </div>
+    <div class="lp2-dropdown-item" data-slip="1.0" role="option">
+        <div>
+            <div style="font-weight:600;color:#fff;font-size:13px;">1.0%</div>
+            <div style="font-size:11px;color:#555;margin-top:2px;" data-lang="lp_slip_high">High · Use with caution</div>
+        </div>
+        <span class="lp2-dropdown-item-badge">1.0%</span>
+    </div>
+    <div class="lp2-dropdown-item" data-slip="3.0" role="option">
+        <div>
+            <div style="font-weight:600;color:#fff;font-size:13px;">3.0%</div>
+            <div style="font-size:11px;color:#555;margin-top:2px;" data-lang="lp_slip_volatile">Volatile pairs only</div>
+        </div>
+        <span class="lp2-dropdown-item-badge">3.0%</span>
+    </div>
+</div>
+
+
+
+
+
+
+
+
+<div id="pkGlobalModal" class="modal" style="display:none !important;">
+
+    <div class="modal-content">
+
+        <!-- HEADER -->
+        <div class="modal-header">
+            <span>
+                <i class="fa-solid fa-wallet" style="margin-right:6px;"></i>
+                Wallet Manager
+            </span>
+            <span onclick="closePKModal()" style="cursor:pointer;">
+                <i class="fa-solid fa-xmark"></i>
+            </span>
+        </div>
+
+        <!-- MODE TABS � hanya tampil saat wallet aktif (dihandle JS) -->
+        <div id="pkModeTabs" class="pk-tabs">
+            <button class="pk-tab active" data-mode="pk" onclick="setPKMode('pk')">
+                <i class="fa-solid fa-key"></i> Private Key
+            </button>
+            <button class="pk-tab" data-mode="phrase" onclick="setPKMode('phrase')">
+                <i class="fa-solid fa-shield-halved"></i> PIN
+            </button>
+        </div>
+
+        <!-- track mode aktif -->
+        <span id="pkModeLabel" data-mode="pk" style="display:none;"></span>
+
+        <!-- BODY � diisi renderPKModal() -->
+        <div id="pkModalBody"></div>
+
+    </div>
+
+</div>
+
+
+<div id="autoWorkflowOverlay">
+    <div class="awf-title">AUTO SWAP</div>
+    <div class="awf-mode-badge" id="awfModeBadge">BUY MODE</div>
+
+    <!-- MARGIN INDICATOR -->
+    <div class="awf-margin-value" id="awfMarginValue">— %</div>
+    <div class="awf-margin-track">
+        <div class="awf-margin-label">-3</div>
+        <div class="awf-margin-bar" id="awfMarginBar"></div>
+        <div class="awf-margin-label">+3</div>
+    </div>
+    <div class="awf-margin-hint" id="awfMarginHint">Menghitung margin...</div>
+
+    <!-- ROUTE PATH -->
+    <div class="awf-route" id="awfRoute"></div>
+
+    <!-- STEP PROGRESS -->
+    <div class="awf-steps" id="awfSteps"></div>
+
+    <!-- STATUS -->
+    <div class="awf-status" id="awfStatus">Memulai...</div>
+
+    <!-- INFO BOX -->
+    <div class="awf-info-box" id="awfInfoBox">—</div>
+</div>
+
+<div id="sidraBrowserContainer"></div>
+
+<footer class="app-footer">
+    SDA Wallet v1.0.0<br>
+    <small>Developed by Atos</small><br>
+
+    <button class="footer-link-btn" onclick="openPrivacyPolicy()">
+        Privacy Policy
+    </button>
+</footer>
+
+<!-- =====================================================
+     BOTTOM NAVIGATION BAR
+     Taruh sebelum </body>, sesudah semua modal
+===================================================== -->
+<nav class="bottom-nav" id="bottomNav">
+    <div class="nav-item active" id="navHome">
+        <div class="nav-icon-wrap">
+            <i class="fa-solid fa-house"></i>
+        </div>
+        <span data-lang="nav_home">Home</span>
+    </div>
+    <div class="nav-item" id="navSend">
+        <div class="nav-icon-wrap">
+            <i class="fa-solid fa-arrow-up"></i>
+        </div>
+        <span data-lang="nav_send">Send</span>
+    </div>
+    <div class="nav-item nav-center" id="navSwap">
+        <div class="nav-icon-wrap nav-icon-center">
+            <i class="fa-solid fa-right-left"></i>
+        </div>
+        <span data-lang="nav_swap">Swap</span>
+    </div>
+    <div class="nav-item" id="navHistory">
+        <div class="nav-icon-wrap">
+            <i class="fa-regular fa-clock"></i>
+            <span id="navTxBadge" class="nav-badge" style="display:none;"></span>
+        </div>
+        <span data-lang="nav_history">History</span>
+    </div>
+    <div class="nav-item" id="navWallet">
+        <div class="nav-icon-wrap">
+            <i class="fa-solid fa-wallet"></i>
+            <span id="navWalletDot" class="nav-dot"></span>
+        </div>
+        <span data-lang="nav_wallet">Wallet</span>
+    </div>
+</nav>
+
+<!-- SAVED ADDRESS PICKER MODAL (UI sama dengan wallet picker) -->
+<div id="savedAddressModal" class="modal" style="z-index:10050;">
+  <div class="wp-sheet">
+
+    <div class="wp-header">
+      <div class="wp-accent-bar"></div>
+      <button class="wp-close-btn" onclick="closeSavedAddressPicker()" aria-label="Tutup">
+        <i class="fa-solid fa-xmark"></i>
+      </button>
+      <p class="wp-title" data-lang="saved_addr_title">Pilih Address</p>
+      <p class="wp-sub" data-lang="saved_addr_sub">Pilih alamat tersimpan untuk tujuan kirim</p>
+    </div>
+
+    <div class="wp-list" id="savedAddressList">
+      <!-- diisi oleh JS -->
+    </div>
+
+  </div>
+</div>
+
+
+
+<!-- ETHERS (wajib paling pertama) -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/5.7.2/ethers.umd.min.js"></script>
+<!-- FOUNDATION: config & storage dulu sebelum apapun -->
+<script src="js/config.js"></script>
+<script src="js/storage.js"></script>
+<!-- WALLET CORE BARU: gen  vault  session (urutan dependency) -->
+<script src="js/bottom-nav.js"></script>
+<script src="js/wallet-gen.js"></script>
+<script src="js/vault.js"></script>
+<script src="js/wallet-session.js"></script>
+<!-- WALLET LEGACY (pakai SESSION dari wallet-session.js) -->
+<script src="js/wallet-core.js"></script>
+<script src="js/wallet.js"></script>
+<!-- UI ONBOARDING (butuh vault + wallet-gen sudah siap) -->
+<script src="js/ui-onboarding.js"></script>
+<script src="js/explorer-patch.js"></script>
+<!-- ENGINE & FEATURES -->
+<script src="js/unwrap-engine.js"></script>
+<script src="js/tokens.js"></script>
+<script src="js/lp.js"></script>
+<script src="js/rpc-batch.js"></script>
+<script src="js/balance.js"></script>
+<!-- UI LAYER -->
+<script src="js/ui-core.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/lang.js"></script>
+<!-- MODALS & SEND -->
+<script src="js/send-modal.js"></script>
+<script src="js/send-token.js"></script>
+<script src="js/pk-wallet.js"></script>
+<script src="js/walletpicker.js"></script>
+<!-- APP INIT: paling terakhir (butuh semua sudah siap) -->
+<script src="js/app-vault-patch.js"></script>
+<script src="js/blockchain.js"></script>
+<script src="js/riwayat.js"></script>
+<script src="js/lp-engine.js"></script>
+<script src="js/lp-factory.js"></script>
+<script src="js/lp-modal.js"></script>
+<script src="js/factory-engine.js"></script>   <!-- PRICE_ENGINE didefinisikan di sini -->
+<script src="js/rate-limit-dialog.js"></script>
+<script src="js/swap-liquidity-check.js"></script>
+<script src="js/swap-engine.js"></script>       <!-- pakai PRICE_ENGINE -->
+<script src="js/confirm-modals.js"></script>
+<script src="js/swap-modal.js"></script>        <!-- pakai PRICE_ENGINE -->
+<script src="js/modal-zindex-patch.js"></script>
+<script src="js/aggregator-engine.js"></script> <!-- pakai PRICE_ENGINE -->
+<script src="js/auto-workflow.js"></script>
+<script src="js/tradelog.js"></script>
+<script src="js/sessionprofit.js"></script>
+<script src="js/agg-auto-modal.js"></script>
+<script src="js/auto-modal-sync-patch.js"></script>
+<!-- 
+     BROWSER INJECTION LAYER (EIP-1193 + dApp Browser)
+     Urutan WAJIB: permission  provider  bridge  modal  ui  conn  browser
+      -->
+<script src="js/permission-manager.js"></script>
+<script src="js/provider-injection.js"></script>
+<script src="js/android-provider.js"></script>
+<script src="js/browser-bridge.js"></script>        <!-- 3. postMessage transport (butuh provider-injection) -->
+<script src="js/connect-modal.js"></script>         <!-- 4. popup connect/sign/tx (butuh provider-injection + bridge) -->
+<script src="js/browser-permission-ui.js"></script> <!-- 5. browser-specific permission popup (butuh connect-modal) -->
+<script src="js/dapp-connection-manager.js"></script> <!-- 6. koneksi aktif + hook session (butuh semua di atas) -->
+<script src="js/sidra-browser-v2.js"></script>      <!-- 7. dApp browser UI (butuh semua di atas) -->
+<script src="js/balance-hero.js"></script>
+
+
+<!--  -->
+<!-- SIDRA BROWSER LAMA: nonaktifkan jika sudah pakai v2    -->
+<!-- <script src="js/sidra-browser.js"></script>            -->
+<!--  -->
+<script src="sw.js"></script>
+<script>
+
+function toggleMenu(){
+    const menu = document.getElementById("menuDropdown");
+    menu.style.display =
+        menu.style.display === "flex" ? "none" : "flex";
+}
+
+</script>
+
+<script>
+function toggleWatchPanel() {
+    var panel    = document.getElementById('watchPanel');
+    var chevron  = document.getElementById('watchChevron');
+    var btn      = document.getElementById('watchToggleBtn');
+    var isOpen   = panel.style.display === 'block';
+
+    panel.style.display  = isOpen ? 'none' : 'block';
+    chevron.style.transform = isOpen ? 'rotate(0deg)' : 'rotate(180deg)';
+    btn.style.borderRadius  = isOpen ? '12px' : '12px 12px 0 0';
+    btn.style.borderBottom  = isOpen ? '1px solid #222' : '1px solid #1e1e1e';
+}
+
+function openPrivacyPolicy(){
+    window.location.href = "privacy.html";
+}
+</script>
+
+
+
+<script>
+loadLang();
+</script>
+
+<script>
+
+if ("serviceWorker" in navigator) {
+    navigator.serviceWorker.register("./sw.js")
+        .then(reg => {
+
+            console.log("SW registered");
+
+            reg.onupdatefound = () => {
+                const newWorker = reg.installing;
+
+                newWorker.onstatechange = () => {
+                    if (newWorker.state === "installed") {
+                        if (navigator.serviceWorker.controller) {
+                            window.location.reload();
+                        }
+                    }
+                };
+            };
+
+        })
+        .catch(err => console.log("SW error:", err));
+}
+
+
+</script>
+
+
+</body>
+</html>
