@@ -1,0 +1,457 @@
+/* =====================================================
+   CONFIRM MODALS â€” PREMIUM
+   - Swap confirm: CENTER (pop-up)
+   - Send confirm: BOTTOM SHEET
+   z-index 20000 â€” di atas semua modal lain
+===================================================== */
+
+/* BASE OVERLAY */
+.confirm-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 20000;
+    display: flex;
+    justify-content: center;
+    /* align-items per modal: swap=center, send=flex-end */
+}
+
+/* BACKDROP */
+.confirm-backdrop {
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    background: rgba(0, 0, 0, 0.85);
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+}
+
+/* =====================================================
+   SWAP CONFIRM â€” CENTER pop-up
+===================================================== */
+#swapConfirmModal {
+    align-items: center;
+    padding: 20px;
+}
+
+#swapConfirmModal .confirm-box {
+    position: relative;
+    z-index: 2;
+    width: 100%;
+    max-width: 400px;
+    background: #13171f;   /* solid â€” tidak transparan */
+    border: 1px solid #252b38;
+    border-radius: 24px;
+    padding: 24px 20px 28px;
+    box-shadow:
+        0 0 0 1px #ffffff08,
+        0 24px 80px rgba(0, 0, 0, 0.9);
+    animation: popIn .25s cubic-bezier(.32,1,.32,1);
+    max-height: 90vh;
+    overflow-y: auto;
+}
+
+@keyframes popIn {
+    from { transform: scale(.92); opacity: 0; }
+    to   { transform: scale(1);   opacity: 1; }
+}
+
+/* =====================================================
+   SEND CONFIRM â€” BOTTOM SHEET
+===================================================== */
+#sendConfirmModal {
+    align-items: flex-end;
+}
+
+#sendConfirmModal .confirm-box {
+    position: relative;
+    z-index: 2;
+    width: 100%;
+    max-width: 480px;
+    background: #13171f;   /* solid â€” tidak transparan */
+    border: 1px solid #252b38;
+    border-bottom: none;
+    border-radius: 28px 28px 0 0;
+    padding: 8px 20px 40px;
+    box-shadow: 0 -8px 60px rgba(0, 0, 0, 0.9);
+    animation: slideUp .28s cubic-bezier(.32,1,.32,1);
+    max-height: 92vh;
+    overflow-y: auto;
+}
+
+@keyframes slideUp {
+    from { transform: translateY(100%); opacity: 0; }
+    to   { transform: translateY(0);    opacity: 1; }
+}
+
+/* Drag handle â€” hanya di bottom sheet */
+#sendConfirmModal .confirm-box::before {
+    content: '';
+    display: block;
+    width: 40px;
+    height: 4px;
+    background: #2a2f3a;
+    border-radius: 4px;
+    margin: 10px auto 18px;
+}
+
+/* =====================================================
+   SHARED BOX ELEMENTS
+===================================================== */
+.confirm-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 4px;
+}
+
+.confirm-title {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 18px;
+    font-weight: 700;
+    color: #fff;
+}
+
+.confirm-close {
+    width: 32px;
+    height: 32px;
+    border-radius: 10px;
+    background: #1e2330;
+    border: none;
+    color: #666;
+    font-size: 14px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    transition: background .2s, color .2s;
+}
+.confirm-close:hover { background: #ff7a0020; color: #ff7a00; }
+
+.confirm-sub {
+    font-size: 12px;
+    color: #555;
+    margin-bottom: 18px;
+}
+
+/* =====================================================
+   SWAP â€” TOKEN PAIR
+===================================================== */
+.confirm-pair {
+    display: flex;
+    flex-direction: column;
+    margin-bottom: 14px;
+    border-radius: 16px;
+    overflow: hidden;
+}
+
+.confirm-token-card {
+    background: #0a0d12;
+    border: 1px solid #1a1e28;
+    border-bottom: none;
+    padding: 14px 16px;
+}
+
+.confirm-token-card-out {
+    border-bottom: 1px solid #1a1e28;
+    border-top: 1px solid #0a1208;
+    background: linear-gradient(135deg, #070e07, #0a0d10);
+}
+
+.confirm-token-label {
+    font-size: 10px;
+    color: #555;
+    text-transform: uppercase;
+    letter-spacing: .5px;
+    margin-bottom: 8px;
+}
+
+.confirm-token-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.confirm-token-icon {
+    width: 38px;
+    height: 38px;
+    border-radius: 50%;
+    border: 2px solid #1e2330;
+    object-fit: contain;
+    flex-shrink: 0;
+    background: #0a0d12;
+}
+
+.confirm-token-amount {
+    font-size: 22px;
+    font-weight: 700;
+    color: #fff;
+    line-height: 1.2;
+}
+
+.confirm-token-amount-out { color: #00cc66; }
+
+.confirm-token-symbol {
+    font-size: 12px;
+    color: #555;
+    margin-top: 2px;
+}
+
+.confirm-arrow {
+    display: flex;
+    align-items: center;
+    padding-left: 30px;
+    height: 24px;
+    background: #0a0d12;
+    border-left: 1px solid #1a1e28;
+    border-right: 1px solid #1a1e28;
+}
+
+.confirm-arrow i { font-size: 11px; color: #2a2f3a; }
+
+/* =====================================================
+   SEND â€” TOKEN CARD
+===================================================== */
+.confirm-send-card {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    background: #0a0d12;
+    border: 1px solid #1a1e28;
+    border-radius: 16px;
+    padding: 16px;
+    margin-bottom: 14px;
+}
+
+.confirm-send-icon {
+    width: 52px;
+    height: 52px;
+    border-radius: 50%;
+    border: 2px solid #1e2330;
+    object-fit: contain;
+    flex-shrink: 0;
+    background: #0a0d12;
+}
+
+.confirm-send-amount-wrap { flex: 1; min-width: 0; }
+
+.confirm-send-amount {
+    font-size: 28px;
+    font-weight: 700;
+    color: #fff;
+    line-height: 1.1;
+}
+
+.confirm-send-symbol {
+    font-size: 13px;
+    color: #666;
+    margin-top: 4px;
+}
+
+/* =====================================================
+   INFO BOX (shared)
+===================================================== */
+.confirm-info-box {
+    background: #0a0d12;
+    border: 1px solid #1a1e28;
+    border-radius: 14px;
+    padding: 2px 16px;
+    margin-bottom: 14px;
+}
+
+.confirm-info-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 11px 0;
+    font-size: 13px;
+    color: #666;
+    gap: 12px;
+}
+
+.confirm-info-row span:last-child {
+    color: #ccc;
+    font-weight: 500;
+    text-align: right;
+    word-break: break-all;
+}
+
+.confirm-info-divider {
+    height: 1px;
+    background: #1a1e28;
+    margin: 0 -16px;
+}
+
+.confirm-addr {
+    font-family: monospace;
+    font-size: 11px !important;
+    color: #aaa !important;
+}
+
+/* =====================================================
+   WARNING
+===================================================== */
+.confirm-warning {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    background: #1a1000;
+    border: 1px solid #ff7a0018;
+    border-radius: 12px;
+    padding: 10px 14px;
+    font-size: 12px;
+    color: #886633;
+    line-height: 1.6;
+    margin-bottom: 16px;
+}
+
+.confirm-warning i { color: #ff7a00; margin-top: 2px; flex-shrink: 0; }
+
+/* =====================================================
+   BUTTONS
+===================================================== */
+.confirm-btn-primary {
+    width: 100%;
+    padding: 16px;
+    border: none;
+    border-radius: 16px;
+    background: linear-gradient(135deg, #9b5cff, #6a3fd4);
+    color: #fff;
+    font-size: 16px;
+    font-weight: 700;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    margin-bottom: 10px;
+    box-shadow: 0 4px 20px rgba(155, 92, 255, 0.2);
+    transition: transform .15s, opacity .15s;
+}
+.confirm-btn-primary:active { transform: scale(.97); opacity: .9; }
+
+.confirm-btn-send {
+    background: linear-gradient(135deg, #ff6a00, #ff4500);
+    box-shadow: 0 4px 20px rgba(255, 100, 0, 0.2);
+}
+
+.confirm-btn-ghost {
+    width: 100%;
+    padding: 14px;
+    border: 1px solid #1e2330;
+    border-radius: 16px;
+    background: transparent;
+    color: #555;
+    font-size: 15px;
+    cursor: pointer;
+    transition: border-color .2s, color .2s;
+}
+.confirm-btn-ghost:active { border-color: #ff4444; color: #ff4444; }
+
+/* =====================================================
+   TX LOADING OVERLAY
+===================================================== */
+.tx-loading-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 21000;
+    background: rgba(0, 0, 0, 0.90);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.tx-loading-box {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 16px;
+    padding: 32px 28px;
+    background: linear-gradient(145deg, #141820, #0d1017);
+    border: 1px solid #1e2330;
+    border-radius: 24px;
+    min-width: 240px;
+    max-width: 300px;
+    width: 85%;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.6);
+}
+
+.tx-loading-tokens {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    min-height: 52px;
+}
+
+.tx-spinner {
+    position: relative;
+    width: 60px;
+    height: 60px;
+}
+
+.tx-spinner svg {
+    width: 100%;
+    height: 100%;
+    animation: txSpin 1.6s linear infinite;
+}
+
+@keyframes txSpin { to { transform: rotate(360deg); } }
+
+.tx-spinner-track {
+    fill: none;
+    stroke: #1e2330;
+    stroke-width: 4;
+}
+
+.tx-spinner-fill {
+    fill: none;
+    stroke: #9b5cff;
+    stroke-width: 4;
+    stroke-linecap: round;
+    stroke-dasharray: 100 38;
+}
+
+.tx-spinner-icon {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 20px;
+    color: #c77dff;
+}
+
+.swap-progress-bar {
+    width: 100%;
+    height: 3px;
+    background: #1e2330;
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+#swapProgressFill,
+.swap-progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #9b5cff, #c77dff);
+    border-radius: 4px;
+    transition: width .5s ease;
+    width: 0%;
+}
+
+.tx-loading-text {
+    font-size: 14px;
+    font-weight: 600;
+    color: #fff;
+    text-align: center;
+}
+
+.tx-loading-sub {
+    font-size: 11px;
+    color: #444;
+    text-align: center;
+}
