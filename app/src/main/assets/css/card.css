@@ -1,0 +1,94 @@
+/* =========================
+   CARD
+========================= */
+
+.card{
+    background:#111;
+    border-radius:14px;
+    padding:18px;
+    border:1px solid #222;
+}
+
+.card > *{
+    margin-bottom:10px;
+}
+
+/* =========================
+   CARD HEADER
+========================= */
+
+.card-header{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    margin-bottom:10px;
+}
+
+#activeWalletName{
+    font-size:14px;
+    font-weight:bold;
+    color:#fff;
+}
+
+/* ACTION ICON DI HEADER CARD */
+.card-actions{
+    display:flex;
+    gap:10px;
+}
+
+
+
+.card-actions i{
+    background:#1a1a1a;
+    padding:8px;
+    border-radius:8px;
+    font-size:14px;
+    cursor:pointer;
+    transition:all 0.25s ease;
+}
+
+/* HOVER */
+.card-actions i:hover{
+    background:#ff7a00;
+}
+
+/* =========================
+   BALANCE AREA
+========================= */
+
+.balance{
+    font-size:28px;
+    font-weight:bold;
+    margin:10px 0;
+    color:#fff;
+    text-align:center;
+    text-shadow:0 0 10px rgba(255,122,0,0.6);
+
+    /* prevent overflow */
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+
+.app-footer{
+    text-align:center;
+    padding:25px 15px 35px;
+    color:rgba(255,255,255,.45);
+    font-size:12px;
+}
+
+.app-footer small{
+    color:#ff9d2a;
+    font-size:11px;
+    letter-spacing:1px;
+}
+
+.footer-link-btn{
+    background:none;
+    border:none;
+    color:#ff7a00;
+    margin-top:8px;
+    cursor:pointer;
+    font-size:13px;
+}
