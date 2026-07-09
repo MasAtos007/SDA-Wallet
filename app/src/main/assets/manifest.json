@@ -8,12 +8,12 @@
   "description": "Wallet checker for Sidra Chain",
   "icons": [
     {
-      "src": "img/sda.png",
+      "src": "img/logo.png",
       "sizes": "192x192",
       "type": "image/png"
     },
     {
-      "src": "img/sda.png",
+      "src": "img/logo.png",
       "sizes": "512x512",
       "type": "image/png"
     }
