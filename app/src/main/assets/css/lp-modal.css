@@ -1,0 +1,739 @@
+/* ========================= */
+/* LP MODAL v2               */
+/* Ganti semua lp-* dengan   */
+/* lp2-* di seluruh project  */
+/* ========================= */
+
+/* â”€â”€ OVERLAY & SHEET â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+
+.lp2-overlay {
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    min-height: 100%;
+}
+
+.lp2-sheet {
+    background: #0f0f0f;
+    border-radius: 24px 24px 0 0;
+    width: 100%;
+    max-width: 480px;
+    display: flex;
+    flex-direction: column;
+    /*
+     * 64px  = tinggi bottom nav
+     * env() = safe area iPhone (notch bawah)
+     * 8px   = sedikit breathing room di atas sheet
+     * Hasilnya: sheet tidak pernah melewati batas atas bottom nav
+     */
+    max-height: calc(100dvh - 64px - env(safe-area-inset-bottom, 0px) - 8px);
+    max-height: calc(100vh  - 64px - 8px); /* fallback */
+    overflow: hidden;
+}
+
+/* â”€â”€ DRAG HANDLE â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+
+.lp2-drag-handle {
+    width: 36px;
+    height: 4px;
+    border-radius: 2px;
+    background: #2a2a2a;
+    margin: 10px auto 0;
+    flex-shrink: 0;
+}
+
+/* â”€â”€ SCROLLABLE AREA â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+
+.lp2-scroll-body {
+    flex: 1;
+    overflow-y: auto;
+    overflow-x: hidden; /* dropdown butuh ini */
+    padding: 16px 16px 20px;
+    /* Sembunyikan scrollbar tapi tetap scrollable */
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+}
+.lp2-scroll-body::-webkit-scrollbar { display: none; }
+
+/* â”€â”€ STICKY FOOTER â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+
+.lp2-footer {
+    flex-shrink: 0;
+    padding: 12px 16px;
+    padding-bottom: calc(12px + env(safe-area-inset-bottom, 0px));
+    background: #0f0f0f;
+    border-top: 1px solid #1a1a1a;
+}
+
+/* â”€â”€ HEADER â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+
+.lp2-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 18px;
+}
+
+.lp2-header-left {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.lp2-icon-wrap {
+    width: 38px;
+    height: 38px;
+    border-radius: 12px;
+    background: #a78bfa18;
+    border: 1px solid #a78bfa33;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #a78bfa;
+    font-size: 15px;
+    flex-shrink: 0;
+}
+
+.lp2-title {
+    font-size: 18px;
+    font-weight: 700;
+    color: #fff;
+    line-height: 1.2;
+}
+
+.lp2-sub {
+    font-size: 11px;
+    color: #555;
+    margin-top: 2px;
+}
+
+.lp2-close-btn {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: #1a1a1a;
+    border: 1px solid #2a2a2a;
+    color: #666;
+    font-size: 13px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    transition: background 0.15s, color 0.15s;
+}
+.lp2-close-btn:hover { background: #222; color: #ccc; }
+
+/* â”€â”€ SECTION LABEL â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+
+.lp2-section-label {
+    font-size: 10px;
+    font-weight: 600;
+    color: #3a3a3a;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    margin: 14px 0 8px;
+}
+
+/* â”€â”€ ROW CARD (fee tier, slippage) â”€â”€â”€â”€â”€ */
+
+.lp2-row-card {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: #141414;
+    border: 1px solid #1e1e1e;
+    border-radius: 14px;
+    padding: 11px 14px;
+    margin-bottom: 8px;
+    transition: border-color 0.2s;
+}
+
+.lp2-clickable { cursor: pointer; }
+.lp2-clickable:hover { border-color: #2a2a2a; }
+
+.lp2-row-left {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.lp2-row-icon {
+    width: 30px;
+    height: 30px;
+    border-radius: 9px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    flex-shrink: 0;
+}
+
+.lp2-icon-purple {
+    background: #a78bfa18;
+    color: #a78bfa;
+}
+
+.lp2-icon-green {
+    background: #34d39918;
+    color: #34d399;
+}
+
+.lp2-row-title {
+    font-size: 12px;
+    font-weight: 600;
+    color: #ccc;
+    line-height: 1.2;
+}
+
+.lp2-row-sub {
+    font-size: 11px;
+    color: #444;
+    margin-top: 1px;
+}
+
+/* â”€â”€ BADGES â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+
+.lp2-badge {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    border-radius: 20px;
+    padding: 4px 10px;
+    font-size: 12px;
+    font-weight: 700;
+    white-space: nowrap;
+    cursor: pointer;
+}
+
+.lp2-badge-purple {
+    background: #a78bfa18;
+    border: 1px solid #a78bfa33;
+    color: #a78bfa;
+}
+
+.lp2-badge-green {
+    background: #34d39918;
+    border: 1px solid #34d39933;
+    color: #34d399;
+}
+
+/* â”€â”€ INPUT CARDS â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+
+.lp2-input-card {
+    background: #141414;
+    border: 1px solid #1e1e1e;
+    border-radius: 16px;
+    padding: 13px 14px;
+    transition: border-color 0.2s;
+}
+
+.lp2-input-card:focus-within { border-color: #a78bfa44; }
+
+.lp2-input-meta {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+}
+
+.lp2-meta-label {
+    font-size: 10px;
+    color: #444;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.lp2-meta-balance {
+    font-size: 11px;
+    color: #a78bfa;
+    font-weight: 500;
+}
+
+.lp2-input-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.lp2-amount-input {
+    flex: 1;
+    background: transparent;
+    border: none;
+    outline: none;
+    font-size: 22px;
+    font-weight: 600;
+    color: #fff;
+    min-width: 0;
+    font-family: inherit;
+}
+
+.lp2-amount-input::placeholder { color: #2a2a2a; }
+
+/* â”€â”€ TOKEN CHIP â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+
+.lp2-token-chip {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    background: #1c1c1c;
+    border: 1px solid #282828;
+    border-radius: 50px;
+    padding: 6px 10px 6px 6px;
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 600;
+    color: #fff;
+    white-space: nowrap;
+    flex-shrink: 0;
+    transition: background 0.15s;
+}
+
+.lp2-token-chip:hover { background: #222; }
+
+.lp2-token-empty {
+    color: #666;
+    font-weight: 500;
+    font-size: 12px;
+}
+
+.lp2-token-img {
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    flex-shrink: 0;
+}
+
+.lp2-token-icon-empty {
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    background: #222;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+/* â”€â”€ CONNECTOR (plus between tokens) â”€â”€â”€ */
+
+.lp2-connector {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0;
+    margin: 6px 0;
+    position: relative;
+}
+
+.lp2-connector-line {
+    height: 1px;
+    width: 40%;
+    background: #1e1e1e;
+}
+
+.lp2-connector-dot {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background: #141414;
+    border: 1px solid #2a2a2a;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #444;
+    font-size: 10px;
+    flex-shrink: 0;
+    z-index: 1;
+}
+
+/* â”€â”€ POOL STATUS â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+
+.lp2-pool-status {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: #141414;
+    border: 1px solid #1e1e1e;
+    border-radius: 10px;
+    padding: 9px 12px;
+    margin-top: 8px;
+    margin-bottom: 2px;
+}
+
+.lp2-pool-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: #444;
+    flex-shrink: 0;
+}
+
+/* JS: tambahkan class .lp2-dot-active untuk pool aktif */
+.lp2-pool-dot.lp2-dot-active { background: #34d399; }
+.lp2-pool-dot.lp2-dot-inactive { background: #f87171; }
+
+.lp2-pool-text {
+    font-size: 12px;
+    color: #666;
+}
+
+/* â”€â”€ PRICE CARD â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+
+.lp2-price-card {
+    background: #141414;
+    border: 1px solid #1e1e1e;
+    border-radius: 14px;
+    padding: 12px 14px;
+    margin-bottom: 4px;
+}
+
+.lp2-price-card-header {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    margin-bottom: 8px;
+}
+
+.lp2-price-card-title {
+    font-size: 11px;
+    font-weight: 600;
+    color: #888;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.lp2-price-input {
+    width: 100%;
+    box-sizing: border-box;
+    background: #0d0d0d;
+    border: 1px solid #202020;
+    border-radius: 10px;
+    padding: 10px 12px;
+    color: #fff;
+    font-size: 15px;
+    font-weight: 500;
+    outline: none;
+    font-family: inherit;
+    transition: border-color 0.2s;
+}
+
+.lp2-price-input::placeholder { color: #2e2e2e; }
+.lp2-price-input:focus { border-color: #a78bfa55; }
+
+.lp2-price-info {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 11px;
+    color: #555;
+    margin-top: 8px;
+}
+
+/* â”€â”€ RANGE TABS â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+
+.lp2-range-tabs {
+    display: flex;
+    gap: 6px;
+    background: #0d0d0d;
+    border: 1px solid #1e1e1e;
+    border-radius: 12px;
+    padding: 4px;
+}
+
+.lp2-range-tab {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 9px 10px;
+    border-radius: 9px;
+    border: none;
+    background: transparent;
+    font-size: 12px;
+    color: #555;
+    cursor: pointer;
+    font-weight: 500;
+    transition: background 0.2s, color 0.2s;
+    font-family: inherit;
+}
+
+.lp2-range-tab.active {
+    background: #a78bfa18;
+    color: #a78bfa;
+    font-weight: 600;
+    border: 1px solid #a78bfa33;
+}
+
+/* â”€â”€ CUSTOM RANGE â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+
+.lp2-custom-range {
+    margin-top: 10px;
+    padding: 12px 14px;
+    background: #141414;
+    border: 1px solid #1e1e1e;
+    border-radius: 14px;
+}
+
+.lp2-range-pair {
+    display: flex;
+    align-items: flex-end;
+    gap: 8px;
+}
+
+.lp2-range-box { flex: 1; }
+
+.lp2-range-label {
+    font-size: 10px;
+    font-weight: 600;
+    color: #444;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 6px;
+}
+
+.lp2-range-ctrl {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.lp2-range-input {
+    flex: 1;
+    background: #0d0d0d;
+    border: 1px solid #202020;
+    border-radius: 9px;
+    padding: 7px 6px;
+    color: #fff;
+    font-size: 13px;
+    outline: none;
+    min-width: 0;
+    text-align: center;
+    font-family: inherit;
+    transition: border-color 0.2s;
+}
+.lp2-range-input:focus { border-color: #a78bfa55; }
+
+.lp2-range-btn {
+    width: 28px;
+    height: 34px;
+    border-radius: 8px;
+    border: 1px solid #252525;
+    background: #181818;
+    color: #666;
+    font-size: 16px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    transition: all 0.15s;
+    font-family: inherit;
+}
+
+.lp2-range-btn:hover {
+    background: #a78bfa18;
+    border-color: #a78bfa44;
+    color: #a78bfa;
+}
+
+.lp2-range-arrow {
+    color: #2e2e2e;
+    font-size: 11px;
+    padding-bottom: 4px;
+    flex-shrink: 0;
+}
+
+/* â”€â”€ ADD BUTTON â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+
+.lp2-add-btn {
+    width: 100%;
+    padding: 15px;
+    background: linear-gradient(135deg, #7c3aed, #9d6df7);
+    border: none;
+    border-radius: 14px;
+    color: #fff;
+    font-size: 15px;
+    font-weight: 700;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    transition: opacity 0.2s, transform 0.15s;
+    letter-spacing: 0.3px;
+    font-family: inherit;
+}
+
+.lp2-add-btn:hover { opacity: 0.92; }
+.lp2-add-btn:active { opacity: 0.82; transform: scale(0.98); }
+
+/* â”€â”€ FOOTER NOTE â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+
+.lp2-footer-note {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+    font-size: 11px;
+    color: #3a3a3a;
+    margin-top: 8px;
+    text-align: center;
+}
+
+.lp2-status-msg {
+    margin-top: 6px;
+    text-align: center;
+    font-size: 11px;
+    color: #666;
+    min-height: 14px;
+}
+
+/* â”€â”€ DROPDOWN OVERRIDE â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+
+.dropdown {
+    background: #161616 !important;
+    border: 1px solid #262626 !important;
+    border-radius: 14px !important;
+    overflow: hidden !important;
+    box-shadow: 0 12px 40px rgba(0,0,0,0.85) !important;
+}
+
+.dropdown-item {
+    padding: 11px 16px !important;
+    font-size: 13px !important;
+    color: #bbb !important;
+    cursor: pointer !important;
+    border-bottom: 1px solid #1e1e1e !important;
+    background: #161616 !important;
+    transition: background 0.12s !important;
+}
+
+.dropdown-item:last-child { border-bottom: none !important; }
+.dropdown-item:hover { background: #1e1e1e !important; color: #fff !important; }
+
+/* â”€â”€ LEGACY COMPAT â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+.lp-range { display: none; }
+
+/* â”€â”€ DROPDOWN POPOVER â€” tidak tertutup bottom nav â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+ *
+ * Dropdown muncul dari dalam .lp2-sheet yang overflow:hidden,
+ * sehingga harus di-portal ke luar (append ke <body>) via JS,
+ * ATAU gunakan position:fixed dengan perhitungan posisi manual.
+ *
+ * Solusi CSS: override dropdown agar fixed + z-index di atas nav.
+ * JS harus menambahkan class .lp2-dropdown-open ke body saat buka.
+ */
+
+.lp2-dropdown {
+    position: fixed !important;
+    z-index: 99999 !important;        /* di atas bottom nav (z:99998) */
+    background: #161616 !important;
+    border: 1px solid #2a2a2a !important;
+    border-radius: 14px !important;
+    overflow: hidden !important;
+    box-shadow: 0 -8px 32px rgba(0,0,0,0.9) !important;
+    /* Muncul dari bawah ke atas â€” hindari bottom nav */
+    bottom: calc(64px + env(safe-area-inset-bottom, 0px) + 8px) !important;
+    left: 16px !important;
+    right: 16px !important;
+    max-width: 448px !important;
+    margin: 0 auto !important;
+}
+
+.lp2-dropdown-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 13px 16px;
+    font-size: 13px;
+    color: #bbb;
+    cursor: pointer;
+    border-bottom: 1px solid #1e1e1e;
+    background: #161616;
+    transition: background 0.12s;
+}
+
+.lp2-dropdown-item:last-child { border-bottom: none; }
+
+.lp2-dropdown-item:hover {
+    background: #1e1e1e;
+    color: #fff;
+}
+
+.lp2-dropdown-item.active {
+    background: #a78bfa18;
+    color: #a78bfa;
+}
+
+.lp2-dropdown-item-badge {
+    font-size: 11px;
+    font-weight: 600;
+    color: #555;
+    background: #1a1a1a;
+    border: 1px solid #2a2a2a;
+    border-radius: 20px;
+    padding: 2px 8px;
+}
+
+.lp2-dropdown-item.active .lp2-dropdown-item-badge {
+    background: #a78bfa18;
+    border-color: #a78bfa33;
+    color: #a78bfa;
+}
+
+/* Backdrop semi-transparan saat dropdown terbuka */
+.lp2-dropdown-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 99998;
+    background: transparent;
+}
+
+/* â”€â”€ SCROLL BODY â€” spacer terakhir agar item terakhir
+ *    tidak nempel ke footer â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+.lp2-scroll-end-spacer {
+    height: 16px;
+    flex-shrink: 0;
+}
+
+/* â”€â”€ FIX: Token icon di chip â€” paksa ukuran tetap 22x22 â”€â”€â”€â”€â”€â”€
+ * Mencegah img token yang di-inject JS membesar keluar container
+ */
+#lpToken1IconBox,
+#lpToken0IconBox,
+.lp2-token-icon-box {
+    width: 22px !important;
+    height: 22px !important;
+    min-width: 22px !important;
+    min-height: 22px !important;
+    max-width: 22px !important;
+    max-height: 22px !important;
+    border-radius: 50% !important;
+    overflow: hidden !important;       /* potong kalau img lebih besar */
+    flex-shrink: 0 !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    background: #222;
+}
+
+/* Semua <img> di dalam token chip â€” ukuran fix tanpa exception */
+.lp2-token-chip img,
+#lpToken0Select img,
+#lpToken1Select img,
+#lpToken1IconBox img,
+#lpToken0IconBox img {
+    width: 22px !important;
+    height: 22px !important;
+    min-width: 22px !important;
+    min-height: 22px !important;
+    max-width: 22px !important;
+    max-height: 22px !important;
+    object-fit: cover !important;
+    border-radius: 50% !important;
+    display: block !important;
+    flex-shrink: 0 !important;
+}
