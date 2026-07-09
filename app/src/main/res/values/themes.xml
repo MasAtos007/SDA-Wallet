@@ -1,11 +1,1 @@
-<?xml version="1.0" encoding="utf-8"?>
-<resources>
-    <style name="Theme.SidraWallet" parent="Theme.AppCompat.NoActionBar">
-        <item name="android:windowBackground">#000000</item>
-        <item name="android:statusBarColor">#000000</item>
-        <item name="android:navigationBarColor">#000000</item>
-        <item name="colorPrimary">#ff7a00</item>
-        <item name="colorPrimaryDark">#000000</item>
-        <item name="colorAccent">#00ff88</item>
-    </style>
-</resources>
+404: Not Found
