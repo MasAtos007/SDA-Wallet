@@ -1,0 +1,218 @@
+/* =========================
+   BALANCE HERO
+========================= */
+.balance-hero{
+    box-sizing:border-box;
+    width:100%;
+    background:linear-gradient(145deg,#1a1006 0%,#0d0d0d 65%);
+    border:1px solid #2a1a08;
+    border-radius:16px;
+    padding:14px;
+    margin-bottom:12px;
+    overflow:hidden;
+}
+
+.balance-hero-top{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+}
+.balance-hero-label{
+    display:flex;
+    align-items:center;
+    gap:6px;
+    color:#999;
+    font-size:12px;
+}
+.balance-hero-label i{
+    cursor:pointer;
+    color:#777;
+    font-size:13px;
+}
+.balance-hero-token{
+    background:#1a1a1a;
+    border:1px solid #2a2a2a;
+    border-radius:30px;
+    padding:5px 10px 5px 6px;
+    display:flex;
+    align-items:center;
+    gap:5px;
+    flex-shrink:0;
+    max-width:120px;
+    box-sizing:border-box;
+    position:relative;
+}
+.balance-hero-token::after{
+    content:"\f078";
+    font-family:"Font Awesome 6 Free";
+    font-weight:900;
+    font-size:9px;
+    color:#888;
+    pointer-events:none;
+    margin-left:2px;
+}
+.balance-hero-token select{
+    background:transparent;
+    border:none;
+    outline:none;
+    color:#fff;
+    font-weight:600;
+    font-size:12px;
+    -webkit-appearance:none;
+    -moz-appearance:none;
+    appearance:none;
+    max-width:60px;
+    overflow:hidden;
+    text-overflow:ellipsis;
+    white-space:nowrap;
+    padding:0;
+    cursor:pointer;
+}
+.balance-hero-token select::-ms-expand{
+    display:none;
+}
+
+.balance-hero-main{
+    margin-top:10px;
+}
+.balance-hero-main-row{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    gap:6px;
+    width:100%;
+    box-sizing:border-box;
+}
+
+.balance-hero-left{
+    min-width:0;
+    flex:1 1 auto;
+    overflow:hidden;
+}
+.balance-hero-row{
+    display:flex;
+    align-items:baseline;
+    gap:5px;
+    min-width:0;
+}
+.balance-hero-row .balance{
+    font-size:clamp(16px, 5.2vw, 22px);
+    font-weight:800;
+    color:#fff;
+    white-space:nowrap;
+    overflow:hidden;
+    text-overflow:ellipsis;
+    display:block;
+    min-width:0;
+}
+.balance-hero-usd{
+    color:#888;
+    font-size:11px;
+    margin-top:3px;
+    white-space:nowrap;
+    overflow:hidden;
+    text-overflow:ellipsis;
+}
+
+.balance-hero-right{
+    flex:0 0 auto;
+    width:64px;
+    display:flex;
+    flex-direction:column;
+    align-items:flex-end;
+    gap:4px;
+}
+#balanceSparkline{
+    width:64px;
+    height:26px;
+    display:block;
+}
+.balance-hero-badge{
+    background:rgba(0,200,90,0.15);
+    color:#27d36a;
+    font-size:10px;
+    font-weight:600;
+    padding:2px 6px;
+    border-radius:20px;
+    display:flex;
+    align-items:center;
+    gap:3px;
+    white-space:nowrap;
+}
+.balance-hero-badge.down{
+    background:rgba(255,60,60,0.15);
+    color:#ff5c5c;
+}
+
+/* ACTION BUTTONS Send/Receive — DIPERBAIKI agar tidak overflow */
+.balance-hero-actions{
+    display:flex;
+    gap:8px;
+    margin-top:12px;
+    width:100%;
+    box-sizing:border-box;
+}
+.hero-action-btn{
+    box-sizing:border-box;
+    flex:1 1 0;
+    min-width:0;
+    display:flex;
+    align-items:center;
+    gap:8px;
+    border:none;
+    border-radius:12px;
+    padding:9px 10px;
+    cursor:pointer;
+    text-align:left;
+    font-family:inherit;
+    overflow:hidden;
+}
+.hero-action-btn i{
+    font-size:12px;
+    color:#fff;
+    background:rgba(255,255,255,0.18);
+    width:26px;
+    height:26px;
+    border-radius:8px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    flex-shrink:0;
+}
+.hero-action-send{ background:linear-gradient(135deg,#ff8a1e,#e25a00); }
+.hero-action-receive{ background:linear-gradient(135deg,#5a3df0,#3a1fb8); }
+
+.hero-action-btn > div{
+    min-width:0;
+    overflow:hidden;
+}
+.hero-action-title{
+    color:#fff;
+    font-weight:700;
+    font-size:12px;
+    line-height:1.2;
+    white-space:nowrap;
+    overflow:hidden;
+    text-overflow:ellipsis;
+}
+.hero-action-sub{
+    color:rgba(255,255,255,0.8);
+    font-size:9px;
+    line-height:1.25;
+    white-space:nowrap;
+    overflow:hidden;
+    text-overflow:ellipsis;
+}
+
+@media (max-width:340px){
+    .balance-hero-main-row{
+        flex-direction:column;
+        align-items:stretch;
+    }
+    .balance-hero-right{
+        width:100%;
+        align-items:flex-end;
+        margin-top:6px;
+    }
+    #balanceSparkline{ width:100%; }
+}
