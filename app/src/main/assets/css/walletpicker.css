@@ -1,0 +1,313 @@
+/* =====================================================
+   OVERLAY DI ATAS <select id="walletSelect"> ASLI
+   Select tetap ada & berfungsi normal (opacity:0),
+   overlay ini murni visual.
+===================================================== */
+.wp-overlay-display {
+    flex: 1;
+    background: #111;
+    border: 1px solid #222;
+    border-radius: 10px;
+    padding: 10px 12px;
+    color: #fff;
+    font-size: 13px;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    cursor: pointer;
+    position: relative;
+}
+.wp-overlay-display i {
+    color: #555;
+    font-size: 11px;
+}
+
+/* =====================================================
+   WALLET PICKER MODAL (PREMIUM)
+===================================================== */
+#walletPickerModal {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.72);
+    z-index: 9999;
+    display: none;
+    align-items: flex-end;
+    justify-content: center;
+    padding: 0;
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+}
+#walletPickerModal.show {
+    display: flex;
+}
+
+.wp-sheet {
+    background: #111827;
+    border-radius: 24px 24px 0 0;
+    width: 100%;
+    max-width: 480px;
+    overflow: hidden;
+    animation: wpSlideUp 0.32s cubic-bezier(0.34, 1.2, 0.64, 1) both;
+    max-height: calc(85vh - 64px);
+    display: flex;
+    flex-direction: column;
+    margin-bottom: 64px;
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+@keyframes wpSlideUp {
+    from { transform: translateY(100%); opacity: 0; }
+    to   { transform: translateY(0);    opacity: 1; }
+}
+
+/* HEADER */
+.wp-header {
+    flex-shrink: 0;
+    background: #0a1628;
+    padding: 22px 20px 16px;
+    position: relative;
+}
+.wp-accent-bar {
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 3px;
+    background: linear-gradient(90deg, #ff7a00, #ffaa44);
+    border-radius: 3px 3px 0 0;
+}
+.wp-close-btn {
+    position: absolute;
+    top: 14px; right: 14px;
+    background: rgba(255,255,255,0.08);
+    border: none;
+    border-radius: 50%;
+    width: 30px; height: 30px;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer;
+    color: #aaa;
+    font-size: 16px;
+    transition: background 0.2s;
+}
+.wp-close-btn:hover { background: rgba(255,255,255,0.14); }
+
+.wp-title {
+    font-size: 17px;
+    font-weight: 700;
+    color: #fff;
+    margin: 0 0 4px;
+}
+.wp-sub {
+    font-size: 12px;
+    color: #667788;
+    margin: 0;
+}
+
+/* LIST */
+.wp-list {
+    flex: 1;
+    overflow-y: auto;
+    padding: 8px 10px 16px;
+    padding-bottom: 24px;
+}
+
+/* ITEM */
+.wp-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 14px 12px;
+    border-radius: 16px;
+    cursor: pointer;
+    transition: background .15s;
+    border: 1px solid transparent;
+    margin-bottom: 4px;
+}
+.wp-item:active { background: rgba(255,255,255,0.04); }
+.wp-item.selected {
+    background: rgba(0,201,123,0.08);
+    border-color: rgba(0,201,123,0.3);
+}
+
+/* AVATAR */
+.wp-avatar {
+    width: 42px;
+    height: 42px;
+    border-radius: 50%;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+    font-weight: 700;
+    color: #fff;
+    background: linear-gradient(135deg, #9b5cff, #6a3fd4);
+}
+.wp-avatar.view-only {
+    background: linear-gradient(135deg, #3a4150, #262b35);
+}
+
+/* META */
+.wp-meta {
+    flex: 1;
+    min-width: 0;
+}
+.wp-name {
+    font-size: 14px;
+    font-weight: 600;
+    color: #e8eef5;
+    margin: 0 0 2px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.wp-addr {
+    font-size: 11px;
+    color: #667788;
+    font-family: monospace;
+    margin: 0 0 5px;
+}
+
+/* BADGE */
+.wp-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 9.5px;
+    font-weight: 600;
+    padding: 2px 8px;
+    border-radius: 20px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+.wp-badge.full-access {
+    background: rgba(0,201,123,0.12);
+    color: #00c97b;
+    border: 0.5px solid rgba(0,201,123,0.3);
+}
+.wp-badge.view-only {
+    background: rgba(150,160,180,0.1);
+    color: #8899aa;
+    border: 0.5px solid rgba(150,160,180,0.25);
+}
+.wp-badge i { font-size: 9px; }
+
+/* ACTIVE TAG */
+.wp-active-tag {
+    font-size: 9.5px;
+    font-weight: 600;
+    color: #00c97b;
+    margin-left: 6px;
+}
+
+/* RADIO */
+.wp-radio {
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    border: 2px solid #2a3140;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: border-color .15s;
+}
+.wp-item.selected .wp-radio {
+    border-color: #00c97b;
+}
+.wp-radio-dot {
+    width: 11px;
+    height: 11px;
+    border-radius: 50%;
+    background: #00c97b;
+    opacity: 0;
+    transform: scale(0.5);
+    transition: opacity .15s, transform .15s;
+}
+.wp-item.selected .wp-radio-dot {
+    opacity: 1;
+    transform: scale(1);
+}
+
+/* EMPTY STATE */
+.wp-empty {
+    text-align: center;
+    color: #667788;
+    padding: 40px 20px;
+    font-size: 13px;
+}
+
+/* =====================================================
+   WALLET ITEM - MENU TITIK TIGA
+===================================================== */
+.wp-menu-btn {
+    background: rgba(255,255,255,0.05);
+    border: none;
+    color: #667788;
+    width: 32px;
+    height: 32px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    flex-shrink: 0;
+    margin-left: 4px;
+    transition: background .15s, color .15s;
+}
+.wp-menu-btn:hover,
+.wp-menu-btn:active {
+    background: rgba(255,255,255,0.1);
+    color: #c8d8e8;
+}
+
+/* POPUP MENU */
+.wp-item-menu {
+    background: #1a1f2b;
+    border: 1px solid #2a3140;
+    border-radius: 12px;
+    box-shadow: 0 12px 32px rgba(0,0,0,0.5);
+    z-index: 999999;
+    min-width: 160px;
+    overflow: hidden;
+    animation: wpMenuPop .12s ease both;
+}
+@keyframes wpMenuPop {
+    from { opacity: 0; transform: scale(0.94); }
+    to   { opacity: 1; transform: scale(1); }
+}
+
+.wp-item-menu-option {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 11px 14px;
+    background: none;
+    border: none;
+    color: #c8d8e8;
+    font-size: 13px;
+    font-weight: 500;
+    text-align: left;
+    cursor: pointer;
+    transition: background .12s;
+}
+.wp-item-menu-option:hover {
+    background: rgba(255,255,255,0.06);
+}
+.wp-item-menu-option i {
+    width: 14px;
+    font-size: 12px;
+    color: #8899aa;
+}
+.wp-item-menu-option.danger {
+    color: #ff6b6b;
+}
+.wp-item-menu-option.danger i {
+    color: #ff6b6b;
+}
+.wp-item-menu-option:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+.wp-item-menu-option:disabled:hover {
+    background: none;
+}
