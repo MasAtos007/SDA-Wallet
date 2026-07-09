@@ -1,0 +1,706 @@
+/* =====================================================
+   DASHBOARD V2 â€” Full Redesign v3.0
+   Mirip Image 1 (target design)
+   Pasang sebagai LINK CSS TERAKHIR di <head>
+   ===================================================== */
+
+/* â•â•â•â•â•â•â•â• TOKENS â•â•â•â•â•â•â•â• */
+:root {
+  --v2-bg:      #0c0c0e;
+  --v2-card:    #151518;
+  --v2-card2:   #1c1c22;
+  --v2-border:  rgba(255,255,255,0.07);
+  --v2-orange:  #ff7a00;
+  --v2-orange2: #ffaa44;
+  --v2-purple:  #5c35e8;
+  --v2-purple2: #8b5cf6;
+  --v2-text:    #ffffff;
+  --v2-muted:   #666;
+  --v2-green:   #22c55e;
+  --v2-r:       20px;
+  --v2-r-sm:    14px;
+}
+
+/* â•â•â•â•â•â•â•â• RESET BASE â•â•â•â•â•â•â•â• */
+* { box-sizing: border-box; }
+
+body, .app {
+  background: var(--v2-bg) !important;
+  min-height: 100vh;
+}
+
+/* â•â•â•â•â•â•â•â• HEADER â•â•â•â•â•â•â•â• */
+.header {
+  background: var(--v2-bg) !important;
+  border-bottom: 1px solid var(--v2-border) !important;
+  padding: 14px 16px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+}
+.title {
+  font-size: 17px !important;
+  font-weight: 700 !important;
+  color: #fff !important;
+}
+
+/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+   BALANCE CARD â€” mirip Image 1
+   â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
+.card {
+  background: linear-gradient(150deg, #201508 0%, #1a1010 45%, #0f0f1c 100%) !important;
+  border: 1px solid rgba(255,122,0,0.2) !important;
+  border-radius: var(--v2-r) !important;
+  margin: 10px 12px 0 !important;
+  padding: 20px 18px 20px !important;
+  position: relative !important;
+  overflow: hidden !important;
+  width: auto !important;
+}
+
+/* Chart line background (kanan atas) */
+.card::before {
+  content: '' !important;
+  position: absolute !important;
+  inset: 0 !important;
+  background:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 400 160'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='0' y2='1'%3E%3Cstop offset='0' stop-color='%23ff7a00' stop-opacity='0.25'/%3E%3Cstop offset='1' stop-color='%23ff7a00' stop-opacity='0'/%3E%3C/linearGradient%3E%3C/defs%3E%3Cpath d='M150,140 C165,130 175,135 190,118 C205,101 215,112 230,98 C245,84 255,95 270,78 C285,61 295,74 310,55 C325,36 335,52 350,38 C365,24 375,35 390,20 C395,16 398,14 400,12' fill='none' stroke='%23ff7a00' stroke-width='2.5' stroke-linecap='round' opacity='0.6'/%3E%3Cpath d='M150,140 C165,130 175,135 190,118 C205,101 215,112 230,98 C245,84 255,95 270,78 C285,61 295,74 310,55 C325,36 335,52 350,38 C365,24 375,35 390,20 C395,16 398,14 400,12 L400,160 L150,160Z' fill='url(%23g)'/%3E%3C/svg%3E")
+    no-repeat right bottom / 65% auto !important;
+  pointer-events: none !important;
+  z-index: 0 !important;
+}
+
+/* Semua anak card di atas pseudo */
+.card > * { position: relative !important; z-index: 1 !important; }
+
+/* â”€â”€ Row 1: ASSETS label + SDA dropdown â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+.card > div:first-child {
+  display: flex !important;
+  justify-content: space-between !important;
+  align-items: center !important;
+  margin-bottom: 10px !important;
+  flex-wrap: nowrap !important;
+}
+.card .label[data-lang="assets"] {
+  font-size: 11px !important;
+  color: var(--v2-muted) !important;
+  text-transform: uppercase !important;
+  letter-spacing: 1px !important;
+  font-weight: 600 !important;
+  margin: 0 !important;
+}
+.token-dropdown {
+  background: rgba(255,255,255,0.09) !important;
+  border: 1px solid rgba(255,255,255,0.1) !important;
+  border-radius: 30px !important;
+  padding: 6px 14px !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 6px !important;
+  min-width: 0 !important;
+}
+.token-dropdown .token-logo { width: 20px !important; height: 20px !important; }
+.token-dropdown select {
+  color: #fff !important;
+  font-size: 14px !important;
+  font-weight: 700 !important;
+  background: transparent !important;
+  border: none !important;
+  outline: none !important;
+  max-width: 80px !important;
+}
+
+/* â”€â”€ Row 2: card-header (wallet name + refresh) â”€â”€â”€ */
+.card-header {
+  display: flex !important;
+  justify-content: space-between !important;
+  align-items: center !important;
+  margin: 0 0 6px !important;
+}
+#activeWalletName {
+  font-size: 12px !important;
+  color: var(--v2-muted) !important;
+  font-weight: 400 !important;
+}
+.card-actions i {
+  color: var(--v2-muted) !important;
+  font-size: 16px !important;
+  background: none !important;
+  width: auto !important; height: auto !important;
+}
+
+/* â”€â”€ Row 3: Balance (logo + number) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+/* Wrapper flex */
+.card > div[style*="display:flex"][style*="align-items:center"][style*="justify-content:center"] {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: flex-start !important;
+  gap: 10px !important;
+  flex-wrap: nowrap !important;
+  overflow: visible !important;
+  margin: 4px 0 4px !important;
+}
+#tokenLogoBalance {
+  width: 32px !important;
+  height: 32px !important;
+  flex-shrink: 0 !important;
+}
+#balance {
+  font-size: clamp(26px, 8.5vw, 38px) !important;
+  font-weight: 800 !important;
+  color: #fff !important;
+  letter-spacing: -1px !important;
+  line-height: 1 !important;
+  white-space: nowrap !important;
+  overflow: visible !important;
+  text-overflow: clip !important;
+  flex-shrink: 1 !important;
+  min-width: 0 !important;
+}
+#cacheLabel {
+  font-size: 10px !important;
+  color: var(--v2-muted) !important;
+}
+
+/* USD line below balance */
+#balance::after {
+  content: attr(data-usd) !important;
+  display: block !important;
+  font-size: 13px !important;
+  font-weight: 400 !important;
+  color: var(--v2-muted) !important;
+  letter-spacing: 0 !important;
+  margin-top: 3px !important;
+  white-space: normal !important;
+}
+
+/* â”€â”€ Realtime label â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+.text-center-small[data-lang="realtime"] {
+  font-size: 10px !important;
+  color: var(--v2-muted) !important;
+  text-align: center !important;
+  display: block !important;
+  margin: 10px 0 4px !important;
+}
+
+/* â”€â”€ Select Wallet label â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+.label[data-lang="select_wallet"] {
+  font-size: 10px !important;
+  color: var(--v2-muted) !important;
+  display: block !important;
+  margin-bottom: 4px !important;
+}
+
+/* â”€â”€ Wallet select row (icon + dropdown) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+div:has(> i.fa-wallet + #walletSelect),
+div:has(> i.fa-solid.fa-wallet) {
+  display: flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+}
+#walletSelect {
+  flex: 1 !important;
+  background: rgba(255,255,255,0.07) !important;
+  border: 1px solid var(--v2-border) !important;
+  border-radius: 12px !important;
+  color: #fff !important;
+  font-size: 14px !important;
+  font-weight: 600 !important;
+  padding: 10px 12px !important;
+  width: 100% !important;
+}
+
+/* â”€â”€ Address bar â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+.address-bar {
+  background: rgba(255,255,255,0.04) !important;
+  border: 1px solid var(--v2-border) !important;
+  border-radius: 12px !important;
+  padding: 10px 14px !important;
+  margin-top: 8px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  gap: 8px !important;
+}
+#showAddress, .address-text {
+  color: var(--v2-orange) !important;
+  font-size: 12px !important;
+  font-family: monospace !important;
+  flex: 1 !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
+}
+.address-actions {
+  display: flex !important;
+  align-items: center !important;
+  gap: 5px !important;
+  flex-shrink: 0 !important;
+}
+.address-actions i {
+  background: rgba(255,255,255,0.08) !important;
+  border-radius: 8px !important;
+  padding: 7px 8px !important;
+  font-size: 13px !important;
+  color: #aaa !important;
+  cursor: pointer !important;
+  width: auto !important; height: auto !important;
+  margin: 0 !important;
+  transition: all 0.15s;
+}
+.address-actions i:hover {
+  background: rgba(255,122,0,0.2) !important;
+  color: var(--v2-orange) !important;
+}
+
+/* â”€â”€ Watch address button â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+#watchToggleBtn {
+  width: 100% !important;
+  background: rgba(255,255,255,0.04) !important;
+  border: 1px solid var(--v2-border) !important;
+  border-radius: var(--v2-r-sm) !important;
+  margin-top: 8px !important;
+  padding: 12px 16px !important;
+  box-sizing: border-box !important;
+}
+#watchPanel {
+  background: #111115 !important;
+  border: 1px solid var(--v2-border) !important;
+  border-top: none !important;
+  border-radius: 0 0 var(--v2-r-sm) var(--v2-r-sm) !important;
+}
+
+/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+   ACTION BUTTONS â€” 2 baris Ã— 2 kolom
+   Row 1: Send (orange pill) + Receive (purple pill)
+   Row 2: Add Liquidity + Browser (card style)
+   â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
+.actions {
+  display: grid !important;
+  grid-template-columns: 1fr 1fr !important;
+  grid-template-rows: auto auto !important;
+  gap: 10px !important;
+  margin: 16px 0 2px !important;
+  width: 100% !important;
+}
+
+/* â”€â”€ All action-btn base reset â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+.action-btn {
+  display: flex !important;
+  cursor: pointer !important;
+  text-decoration: none !important;
+  border: none !important;
+  outline: none !important;
+}
+
+/* â”€â”€ Send â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+.action-btn:nth-child(1) {
+  grid-column: 1 / 2 !important;
+  grid-row: 1 !important;
+  background: linear-gradient(135deg, #d96200, #ff8c1a) !important;
+  border-radius: var(--v2-r-sm) !important;
+  padding: 16px 12px !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 4px !important;
+  box-shadow: 0 4px 20px rgba(255,122,0,0.35) !important;
+  min-height: 70px !important;
+}
+.action-btn:nth-child(1) i {
+  background: transparent !important;
+  color: #fff !important;
+  font-size: 20px !important;
+  width: auto !important; height: auto !important;
+  border-radius: 0 !important;
+  padding: 0 !important;
+  margin: 0 !important;
+}
+.action-btn:nth-child(1) > span {
+  font-size: 15px !important;
+  font-weight: 700 !important;
+  color: #fff !important;
+  display: block !important;
+}
+.action-btn:nth-child(1) .v2-sub {
+  font-size: 10px !important;
+  color: rgba(255,255,255,0.7) !important;
+  display: block !important;
+  text-align: center !important;
+}
+
+/* â”€â”€ Receive â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+.action-btn:nth-child(2) {
+  grid-column: 2 / 3 !important;
+  grid-row: 1 !important;
+  background: linear-gradient(135deg, #3a2090, #6042cc) !important;
+  border-radius: var(--v2-r-sm) !important;
+  padding: 16px 12px !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 4px !important;
+  box-shadow: 0 4px 20px rgba(92,53,232,0.35) !important;
+  min-height: 70px !important;
+}
+.action-btn:nth-child(2) i {
+  background: transparent !important;
+  color: #fff !important;
+  font-size: 20px !important;
+  width: auto !important; height: auto !important;
+  border-radius: 0 !important;
+  padding: 0 !important;
+  margin: 0 !important;
+}
+.action-btn:nth-child(2) > span {
+  font-size: 15px !important;
+  font-weight: 700 !important;
+  color: #fff !important;
+  display: block !important;
+}
+.action-btn:nth-child(2) .v2-sub {
+  font-size: 10px !important;
+  color: rgba(255,255,255,0.7) !important;
+  display: block !important;
+  text-align: center !important;
+}
+
+/* â”€â”€ Swap â€” hidden â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+.action-btn:nth-child(3) {
+  display: none !important;
+}
+
+/* â”€â”€ Add Liquidity â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+.action-btn:nth-child(4) {
+  grid-column: 1 / 2 !important;
+  grid-row: 2 !important;
+  display: flex !important;
+  background: var(--v2-card2) !important;
+  border: 1px solid var(--v2-border) !important;
+  border-radius: var(--v2-r-sm) !important;
+  padding: 14px 12px !important;
+  flex-direction: row !important;
+  align-items: center !important;
+  gap: 10px !important;
+  justify-content: flex-start !important;
+  min-height: 64px !important;
+}
+.action-btn:nth-child(4) .action-icon {
+  width: 40px !important; height: 40px !important;
+  border-radius: 50% !important;
+  background: #1a0b36 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  flex-shrink: 0 !important;
+}
+.action-btn:nth-child(4) .action-icon i,
+.action-btn:nth-child(4) > i.fa-droplet {
+  font-size: 18px !important;
+  color: var(--v2-purple2) !important;
+  background: transparent !important;
+  width: auto !important; height: auto !important;
+  border-radius: 0 !important;
+  padding: 0 !important;
+  margin: 0 !important;
+}
+/* fallback if no .action-icon wrapper */
+.action-btn:nth-child(4) > i:first-child {
+  width: 40px !important; height: 40px !important;
+  border-radius: 50% !important;
+  background: #1a0b36 !important;
+  color: var(--v2-purple2) !important;
+  font-size: 18px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  flex-shrink: 0 !important;
+  padding: 0 !important;
+  margin: 0 !important;
+}
+.action-btn:nth-child(4) > span {
+  font-size: 13px !important;
+  font-weight: 600 !important;
+  color: #fff !important;
+  line-height: 1.3 !important;
+}
+
+/* â”€â”€ Browser â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+.action-btn:nth-child(5) {
+  grid-column: 2 / 3 !important;
+  grid-row: 2 !important;
+  display: flex !important;
+  background: var(--v2-card2) !important;
+  border: 1px solid var(--v2-border) !important;
+  border-radius: var(--v2-r-sm) !important;
+  padding: 14px 12px !important;
+  flex-direction: row !important;
+  align-items: center !important;
+  gap: 10px !important;
+  justify-content: flex-start !important;
+  min-height: 64px !important;
+}
+.action-btn:nth-child(5) > i {
+  width: 40px !important; height: 40px !important;
+  border-radius: 50% !important;
+  background: #092418 !important;
+  color: #00dd77 !important;
+  font-size: 18px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  flex-shrink: 0 !important;
+  padding: 0 !important;
+  margin: 0 !important;
+}
+.action-btn:nth-child(5) > span {
+  font-size: 13px !important;
+  font-weight: 600 !important;
+  color: #fff !important;
+  line-height: 1.3 !important;
+}
+
+/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+   WALLET AKTIF CARD (di luar .card, injected via JS)
+   â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
+.v2-wallet-card {
+  background: var(--v2-card) !important;
+  border: 1px solid var(--v2-border) !important;
+  border-radius: var(--v2-r) !important;
+  margin: 10px 12px 0 !important;
+  padding: 16px !important;
+  overflow: hidden !important;
+}
+.v2-wallet-card .v2-wallet-label {
+  font-size: 10px !important;
+  color: var(--v2-muted) !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.6px !important;
+  font-weight: 600 !important;
+  margin-bottom: 6px !important;
+  display: block !important;
+}
+.v2-wallet-card .v2-wallet-name-row {
+  display: flex !important;
+  align-items: center !important;
+  gap: 10px !important;
+  margin-bottom: 12px !important;
+}
+.v2-wallet-icon {
+  width: 40px !important; height: 40px !important;
+  border-radius: 10px !important;
+  background: rgba(255,122,0,0.15) !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  flex-shrink: 0 !important;
+}
+.v2-wallet-icon i { color: var(--v2-orange) !important; font-size: 18px !important; }
+.v2-wallet-name-text { font-size: 16px !important; font-weight: 700 !important; color: #fff !important; }
+.v2-wallet-addr-short {
+  font-size: 11px !important;
+  color: var(--v2-muted) !important;
+  font-family: monospace !important;
+  margin-top: 1px !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 4px !important;
+}
+.v2-wallet-actions-row {
+  display: grid !important;
+  grid-template-columns: 1fr 1fr 1fr !important;
+  gap: 1px !important;
+  background: var(--v2-border) !important;
+  border-radius: 10px !important;
+  overflow: hidden !important;
+  margin-top: 10px !important;
+}
+.v2-wallet-action-btn {
+  background: rgba(255,255,255,0.03) !important;
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 5px !important;
+  padding: 12px 8px !important;
+  cursor: pointer !important;
+  transition: background 0.15s !important;
+}
+.v2-wallet-action-btn:hover {
+  background: rgba(255,122,0,0.08) !important;
+}
+.v2-wallet-action-btn i {
+  font-size: 16px !important;
+  color: #ccc !important;
+}
+.v2-wallet-action-btn span {
+  font-size: 11px !important;
+  color: var(--v2-muted) !important;
+  font-weight: 500 !important;
+}
+
+/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+   LP + BROWSER CARD (di luar .card)
+   â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
+.v2-feature-card {
+  background: var(--v2-card) !important;
+  border: 1px solid var(--v2-border) !important;
+  border-radius: var(--v2-r) !important;
+  margin: 10px 12px 0 !important;
+  padding: 4px 0 !important;
+  display: grid !important;
+  grid-template-columns: 1fr 1fr !important;
+  gap: 1px !important;
+  overflow: hidden !important;
+}
+.v2-feature-btn {
+  background: transparent !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 10px !important;
+  padding: 16px 14px !important;
+  cursor: pointer !important;
+  transition: background 0.15s !important;
+  border: none !important;
+  text-align: left !important;
+}
+.v2-feature-btn:hover { background: rgba(255,255,255,0.03) !important; }
+.v2-feature-icon {
+  width: 42px !important; height: 42px !important;
+  border-radius: 50% !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  flex-shrink: 0 !important;
+  font-size: 18px !important;
+}
+.v2-feature-btn .v2-feature-text strong {
+  display: block !important;
+  font-size: 13px !important;
+  font-weight: 700 !important;
+  color: #fff !important;
+}
+.v2-feature-btn .v2-feature-text small {
+  font-size: 10px !important;
+  color: var(--v2-muted) !important;
+  display: block !important;
+  margin-top: 1px !important;
+}
+.v2-feature-divider {
+  width: 1px !important;
+  background: var(--v2-border) !important;
+  margin: 10px 0 !important;
+  align-self: stretch !important;
+}
+
+/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+   TABS
+   â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
+.tabs {
+  background: transparent !important;
+  border: none !important;
+  border-bottom: 1px solid var(--v2-border) !important;
+  margin: 14px 12px 0 !important;
+  padding: 0 !important;
+  display: flex !important;
+  border-radius: 0 !important;
+}
+.tab {
+  flex: 1 !important;
+  text-align: center !important;
+  padding: 11px 0 !important;
+  font-size: 14px !important;
+  font-weight: 500 !important;
+  color: var(--v2-muted) !important;
+  background: transparent !important;
+  border: none !important;
+  border-bottom: 2px solid transparent !important;
+  border-radius: 0 !important;
+  cursor: pointer !important;
+  transition: all 0.2s !important;
+}
+.tab.active {
+  color: var(--v2-orange) !important;
+  border-bottom: 2px solid var(--v2-orange) !important;
+  font-weight: 700 !important;
+}
+
+/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+   TAB CONTENT
+   â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
+.tab-content {
+  padding: 10px 12px 90px !important;
+}
+
+/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+   BOTTOM NAV
+   â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
+.bottom-nav {
+  background: rgba(12,12,14,0.97) !important;
+  border-top: 1px solid var(--v2-border) !important;
+  backdrop-filter: blur(16px) !important;
+  -webkit-backdrop-filter: blur(16px) !important;
+}
+.nav-item span { font-size: 11px !important; }
+.nav-item.active > span { color: var(--v2-orange) !important; }
+.nav-item.active .nav-icon-wrap > i { color: var(--v2-orange) !important; }
+.nav-icon-center {
+  background: linear-gradient(135deg, #4520c8, #7b4cf0) !important;
+  border-radius: 50% !important;
+  width: 52px !important;
+  height: 52px !important;
+  margin-top: -20px !important;
+  box-shadow: 0 6px 24px rgba(92,53,232,0.5) !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+.nav-icon-center i { color: #fff !important; font-size: 20px !important; }
+.nav-dot {
+  background: var(--v2-green) !important;
+  width: 7px !important; height: 7px !important;
+  border-radius: 50% !important;
+  position: absolute !important;
+  top: 0 !important; right: 0 !important;
+}
+.nav-badge {
+  background: #e53535 !important;
+  color: #fff !important;
+  font-size: 9px !important;
+  font-weight: 700 !important;
+  border-radius: 10px !important;
+  padding: 1px 5px !important;
+  position: absolute !important;
+  top: -4px !important; right: -4px !important;
+}
+
+/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+   MISC
+   â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
+.pk-indicator {
+  background: rgba(34,197,94,0.1) !important;
+  border: 1px solid rgba(34,197,94,0.3) !important;
+  border-radius: 20px !important;
+  padding: 2px 8px !important;
+}
+.pk-dot { background: var(--v2-green) !important; }
+
+.toast {
+  border-radius: 12px !important;
+  font-size: 13px !important;
+  bottom: 80px !important;
+  left: 12px !important;
+  right: 12px !important;
+}
+
+.app-footer {
+  background: var(--v2-bg) !important;
+  color: var(--v2-muted) !important;
+  font-size: 11px !important;
+  padding: 16px 16px 90px !important;
+}
+
+/* â”€â”€ scrollbar â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+::-webkit-scrollbar { width: 3px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.07); border-radius: 4px; }
