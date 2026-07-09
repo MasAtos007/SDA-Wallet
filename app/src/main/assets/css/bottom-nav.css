@@ -1,0 +1,170 @@
+/* =====================================================
+   BOTTOM NAVIGATION BAR
+===================================================== */
+
+/* Beri ruang di bawah app agar konten tidak tertutup nav */
+.app {
+    padding-bottom: 72px;
+}
+
+.bottom-nav {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    z-index: 99998;
+
+    display: flex;
+    align-items: center;
+    justify-content: space-around;
+
+    height: 64px;
+    padding: 0 4px;
+    padding-bottom: env(safe-area-inset-bottom, 0px); /* iPhone notch */
+
+    background: #0d0d0d;
+    border-top: 1px solid #1a1a1a;
+    box-shadow: 0 -4px 24px rgba(0, 0, 0, 0.5);
+
+    /* Smooth hide/show */
+    transition: transform .3s cubic-bezier(.4,0,.2,1),
+                opacity  .3s ease;
+}
+
+/* Sembunyikan saat modal fullscreen aktif */
+.bottom-nav.hidden {
+    transform: translateY(100%);
+    opacity: 0;
+    pointer-events: none;
+}
+
+/* ITEM */
+.nav-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    flex: 1;
+    cursor: pointer;
+    padding: 6px 0;
+    position: relative;
+    -webkit-tap-highlight-color: transparent;
+    transition: opacity .15s;
+}
+
+.nav-item:active { opacity: .6; }
+
+.nav-item span {
+    font-size: 10px;
+    color: #444;
+    font-weight: 500;
+    letter-spacing: .3px;
+    transition: color .2s;
+}
+
+/* ICON WRAP */
+.nav-icon-wrap {
+    position: relative;
+    width: 26px;
+    height: 26px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.nav-icon-wrap i {
+    font-size: 18px;
+    color: #444;
+    transition: color .2s, transform .2s;
+}
+
+/* ACTIVE STATE */
+.nav-item.active .nav-icon-wrap i {
+    color: #ff7a00;
+}
+
+.nav-item.active span {
+    color: #ff7a00;
+}
+
+/* Active indicator dot di bawah icon */
+.nav-item.active::after {
+    content: '';
+    position: absolute;
+    bottom: 2px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 4px;
+    height: 4px;
+    border-radius: 50%;
+    background: #ff7a00;
+}
+
+/* CENTER BUTTON (Swap) */
+.nav-center {
+    flex: 1.2;
+}
+
+.nav-icon-center {
+    width: 48px;
+    height: 48px;
+    border-radius: 16px;
+    background: linear-gradient(135deg, #9b5cff, #6a3fd4);
+    box-shadow: 0 4px 16px rgba(155, 92, 255, 0.4);
+    margin-top: -16px;
+    transition: transform .2s, box-shadow .2s;
+}
+
+.nav-icon-center i {
+    font-size: 20px;
+    color: #fff !important;
+}
+
+.nav-center.active .nav-icon-center {
+    background: linear-gradient(135deg, #c77dff, #9b5cff);
+    box-shadow: 0 6px 20px rgba(155, 92, 255, 0.5);
+    transform: scale(1.06);
+}
+
+.nav-center::after { display: none; } /* no dot for center */
+
+/* BADGE — notifikasi history */
+.nav-badge {
+    position: absolute;
+    top: -4px;
+    right: -6px;
+    min-width: 16px;
+    height: 16px;
+    border-radius: 8px;
+    background: #ff3b3b;
+    color: #fff;
+    font-size: 9px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0 3px;
+    border: 2px solid #0d0d0d;
+}
+
+/* DOT — status wallet unlocked */
+.nav-dot {
+    position: absolute;
+    top: -2px;
+    right: -2px;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #00cc66;
+    border: 2px solid #0d0d0d;
+    display: none;
+}
+
+.nav-dot.visible { display: block; }
+
+.bottom-nav.modal-open{
+    transform: translateY(100%);
+    opacity: 0;
+    pointer-events: none;
+}
