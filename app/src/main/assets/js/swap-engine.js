@@ -203,17 +203,53 @@ window.SWAP_ENGINE = (function () {
             }
 
             // ==========================
-            // SIMULASI REAL (preview) — coba dapat angka SEBENARNYA sebelum
-            // user lihat modal konfirmasi, bukan cuma estimasi curve.
-            // Kalau gagal (mis. token belum pernah di-approve, allowance=0,
-            // jadi transferFrom di dalam static call ikut revert), diam-diam
-            // fallback ke angka curve seperti biasa — jangan blokir preview.
+            // STEP A — BUILD PARAMS (WAJIB SUKSES)
+            // buildParams() menentukan apakah pool untuk pair ini benar-benar
+            // ADA (bisa dieksekusi via exactInputSingle 1-hop). Kalau gagal
+            // di sini (mis. "No pool found for this pair" — cuma ada pool
+            // via hub/multihop, bukan pool langsung), swap ini memang TIDAK
+            // BISA dieksekusi dengan router 1-hop yang ada. JANGAN ditelan
+            // jadi fallback curve — user harus tahu dari awal, bukan setelah
+            // tap Confirm dan dapat modal yang ujung-ujungnya gagal.
             // ==========================
-            let simulatedParams = null; // dititipkan ke swapConfirmState buat dipakai ulang saat eksekusi
+            let baseParams;
+            try {
+                baseParams = await buildParams(wallet, tokenIn, tokenOut, amountUI);
+            } catch (buildErr) {
+                if (reviewBtn) reviewBtn.disabled = false;
+                console.error("[openSwapConfirm] buildParams gagal — pair ini tidak bisa di-swap langsung:", buildErr.message || buildErr);
+
+                const inSym  = getTokenData(tokenIn)?.symbol  || "token ini";
+                const outSym = getTokenData(tokenOut)?.symbol || "token tujuan";
+
+                if (buildErr.message === "No pool found for this pair") {
+                    showSwapFailModal(
+                        "Swap Tidak Tersedia",
+                        `Tidak ada pool langsung antara <b>${inSym}</b> dan <b>${outSym}</b>.<br><br>
+                         Swap ini perlu dilakukan 2 langkah manual: jual dulu <b>${inSym}</b> ke SDA/WSDA,
+                         lalu beli <b>${outSym}</b> dari SDA/WSDA.`
+                    );
+                } else {
+                    showSwapFailModal(
+                        "Swap Gagal Disiapkan",
+                        buildErr.message || "Terjadi kesalahan saat menyiapkan swap ini."
+                    );
+                }
+                return; // STOP total — jangan lanjut ke modal konfirmasi
+            }
+
+            // ==========================
+            // STEP B — SIMULASI REAL (callStatic) — OPSIONAL, boleh fallback
+            // Ini cuma untuk dapat angka output SEBENARNYA (bukan estimasi
+            // curve). Kalau gagal (mis. allowance=0 bikin transferFrom di
+            // dalam static call ikut revert), aman fallback ke angka curve
+            // — beda dengan Step A di atas, di sini pool-nya SUDAH PASTI ada.
+            // ==========================
+            let simulatedParams = null; // hasil callStatic ASLI — prioritas utama saat reuse
+            const cachedBaseParams = baseParams; // pool/fee sudah pasti valid dari Step A
 
             try {
                 const router     = new ethers.Contract(ROUTER_ADDR, ROUTER_ABI, wallet);
-                const baseParams = await buildParams(wallet, tokenIn, tokenOut, amountUI);
                 const simParams  = { ...baseParams, amountOutMinimum: 0 };
                 const simValue   = isNative(tokenIn) ? simParams.amountIn : 0;
                 const realOutBN  = await router.callStatic.exactInputSingle(simParams, { value: simValue });
@@ -233,7 +269,7 @@ window.SWAP_ENGINE = (function () {
                     };
                 }
             } catch (simErr) {
-                console.warn("[openSwapConfirm] simulasi preview gagal, pakai estimasi curve:", simErr.message || simErr);
+                console.warn("[openSwapConfirm] simulasi callStatic gagal (pool tetap valid), pakai estimasi curve:", simErr.message || simErr);
             }
 
             // GUARD TAMBAHAN — cek kedalaman likuiditas pool sesungguhnya
@@ -256,7 +292,9 @@ window.SWAP_ENGINE = (function () {
                 estimated: realistic,
                 wallet: wallet.address,  // address wallet AKTIF saat confirm
                 simParams: simulatedParams,          // hasil simulasi callStatic, siap dipakai ulang
-                simTs: simulatedParams ? Date.now() : null
+                baseParams: cachedBaseParams,         // FIX: pool/fee yang sudah ditemukan saat preview,
+                                                       // biar swapExactInput() gak perlu getBestPool() ulang
+                simTs: cachedBaseParams ? Date.now() : null   // tetap dicatat waktunya walau simParams null
             };
 
             showSwapConfirmModal(inData, outData, amountUI, realistic);
@@ -265,6 +303,42 @@ window.SWAP_ENGINE = (function () {
             console.error(e);
             showToast?.(e.message || "Preview failed", "error");
         }
+    }
+
+    // ==========================
+    // SHOW SWAP FAIL MODAL (preview tidak bisa dilanjutkan)
+    // Dipakai saat buildParams() gagal di tahap preview — mis. tidak ada
+    // pool langsung antar 2 token. Modal (bukan toast) supaya pesannya
+    // tidak kelewat dan user paham kenapa swap tidak bisa diproses.
+    // ==========================
+    function showSwapFailModal(title, message) {
+        document.getElementById("swapFailModal")?.remove();
+
+        const modal = document.createElement("div");
+        modal.id = "swapFailModal";
+
+        modal.innerHTML = `
+            <div class="confirm-backdrop" style="position:fixed;inset:0;background:rgba(0,0,0,0.8);z-index:20000;
+                 display:flex;align-items:center;justify-content:center;">
+                <div style="background:#151920;border:1px solid #3a2020;border-radius:20px;
+                            padding:24px 20px;width:90%;max-width:360px;text-align:center;">
+                    <div style="font-size:40px;margin-bottom:10px;">⚠️</div>
+                    <div style="font-size:16px;font-weight:700;color:#ff4d4f;margin-bottom:10px;">
+                        ${title}
+                    </div>
+                    <div style="font-size:13px;color:#aaa;line-height:1.6;margin-bottom:20px;">
+                        ${message}
+                    </div>
+                    <button id="swapFailCloseBtn" style="width:100%;padding:14px;border:none;border-radius:14px;
+                            background:#252b38;color:#fff;font-size:14px;
+                            font-weight:700;cursor:pointer;">Tutup</button>
+                </div>
+            </div>`;
+
+        document.body.appendChild(modal);
+        modal.style.cssText = "position:fixed;inset:0;z-index:20000;display:flex;";
+
+        modal.querySelector("#swapFailCloseBtn").onclick = () => modal.remove();
     }
 
     // ==========================
@@ -533,7 +607,40 @@ window.SWAP_ENGINE = (function () {
             const isNativeOut = isNative(tokenOut);
 
             const router = new ethers.Contract(ROUTER_ADDR, ROUTER_ABI, wallet);
-            const params = await buildParams(wallet, tokenIn, tokenOut, amountUI);
+
+            // ==========================
+            // REUSE PARAMS (POOL/FEE) DARI PREVIEW KALAU MASIH VALID
+            // FIX UTAMA: sebelumnya buildParams() SELALU dipanggil ulang di sini,
+            // artinya getBestPool() juga SELALU di-query ulang lewat _batchCall().
+            // Kalau batch RPC itu kena rate-limit / gagal sesaat, _poolDataCache
+            // kosong -> getBestPool() return null -> buildParams() throw
+            // "No pool found for this pair", PADAHAL pool-nya nyata ada (baru
+            // saja ketemu beberapa detik lalu di preview/openSwapConfirm).
+            //
+            // Sekarang: kalau data preview masih fresh & cocok persis (token/
+            // amount/wallet sama, belum kadaluarsa), pakai ULANG params
+            // (termasuk pool & fee) dari preview -> TIDAK ada RPC call baru
+            // sama sekali di titik ini. rpc-batch / factory-engine TIDAK
+            // diubah sedikit pun — cuma dihindari pemanggilannya saat tidak perlu.
+            // ==========================
+            const SIM_REUSE_TTL = 20_000; // 20 detik — cukup untuk jeda tap Review -> tap Confirm
+            const cs = window.swapConfirmState;
+            const reuseMatch =
+                cs?.simTs && (Date.now() - cs.simTs < SIM_REUSE_TTL) &&
+                cs.tokenIn === tokenIn &&
+                cs.tokenOut === tokenOut &&
+                cs.amountUI === amountUI &&
+                cs.wallet?.toLowerCase() === wallet.address?.toLowerCase();
+
+            const canReuseBase = reuseMatch && cs?.baseParams;
+
+            let params;
+            if (canReuseBase) {
+                params = { ...cs.baseParams }; // pool/fee sudah ketemu sebelumnya, skip getBestPool()
+                console.log("[SWAP] Pakai ulang params (pool/fee) dari preview, skip buildParams ulang");
+            } else {
+                params = await buildParams(wallet, tokenIn, tokenOut, amountUI);
+            }
 
             log("Executing swap...");
 
@@ -543,20 +650,9 @@ window.SWAP_ENGINE = (function () {
             }
 
             // ==========================
-            // REUSE SIMULASI DARI PREVIEW (openSwapConfirm) KALAU MASIH VALID
-            // Kalau sesuai (token/amount/wallet sama & belum kadaluarsa),
-            // langsung pakai amountOutMinimum yang sudah disimulasikan di
-            // preview — total jadi 1x callStatic per proses swap, bukan 2x.
+            // REUSE SIMULASI CALLSTATIC (amountOutMinimum ASLI) DARI PREVIEW
             // ==========================
-            const SIM_REUSE_TTL = 20_000; // 20 detik — cukup untuk jeda tap Review -> tap Confirm
-            const cs = window.swapConfirmState;
-            const canReuse =
-                cs?.simParams &&
-                cs.simTs && (Date.now() - cs.simTs < SIM_REUSE_TTL) &&
-                cs.tokenIn === tokenIn &&
-                cs.tokenOut === tokenOut &&
-                cs.amountUI === amountUI &&
-                cs.wallet?.toLowerCase() === wallet.address?.toLowerCase();
+            const canReuse = reuseMatch && cs?.simParams;
 
             if (canReuse) {
                 params.amountOutMinimum = cs.simParams.amountOutMinimum;
