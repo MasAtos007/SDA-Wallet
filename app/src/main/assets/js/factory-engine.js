@@ -144,8 +144,19 @@ async function _getPoolAddr(tokenA, tokenB, fee) {
 // GET ALL 3 POOL ADDRESSES — 1 batch request
 // =====================================
 async function _getPoolAddrsMulticall(tokenA, tokenB) {
+    // FIX: cache key HARUS order-independent. Pool on-chain sama saja mau
+    // dipanggil getBestPool(A,B) atau getBestPool(B,A) — tapi sebelumnya
+    // cache key "tokenA_tokenB_fee" beda dgn "tokenB_tokenA_fee", jadi
+    // dua arah query yang sama menghasilkan DUA entri cache terpisah.
+    // Kalau salah satu arah kena RPC hiccup & ke-poison null, arah itu
+    // gagal permanen walau arah satunya sudah lama sukses & cache bagus.
+    // Sort dulu supaya (A,B) dan (B,A) selalu mengarah ke cache key SAMA.
+    const [sortedA, sortedB] = [tokenA, tokenB].sort((x, y) =>
+        x.toLowerCase() < y.toLowerCase() ? -1 : 1
+    );
+
     // Cek cache dulu — kalau semua sudah ada, skip RPC
-    const keys    = FEES.map(f => `${tokenA}_${tokenB}_${f}`.toLowerCase());
+    const keys    = FEES.map(f => `${sortedA}_${sortedB}_${f}`.toLowerCase());
     const allHit  = keys.every(k => _poolAddrCache.has(k));
     if (allHit) {
         return FEES.map((f, i) => ({
@@ -161,24 +172,41 @@ async function _getPoolAddrsMulticall(tokenA, tokenB) {
 
     const calls = toFetch.map(fee => ({
         target:   _FACTORY(),
-        callData: iFactory.encodeFunctionData("getPool", [tokenA, tokenB, fee])
+        callData: iFactory.encodeFunctionData("getPool", [sortedA, sortedB, fee])
     }));
 
     const results = await _batchCall(calls);
 
     if (results) {
         toFetch.forEach((fee, i) => {
-            const key = `${tokenA}_${tokenB}_${fee}`.toLowerCase();
+            const key = `${sortedA}_${sortedB}_${fee}`.toLowerCase();
             try {
                 const r = results[i];
-                if (!r || r.error || !r.result || r.result === "0x") {
-                    _poolAddrCache.set(key, null);
+
+                // FIX UTAMA: r.error / !r.result / "0x" itu AMBIGU — bisa berarti
+                // (a) RPC/node gagal SESAAT untuk 1 call di dalam batch (rate limit,
+                //     node sibuk, response korup) -> status pool BELUM DIKETAHUI,
+                //     JANGAN dicache, biar dicoba lagi di scan berikutnya.
+                // (b) getPool() BENAR-BENAR sukses & hasilnya address(0) -> pool
+                //     memang tidak ada -> BOLEH dicache permanen (POOL_ADDR_TTL=0).
+                // Sebelumnya (a) dan (b) disamakan, jadi sekali kena hiccup RPC,
+                // pair itu permanen "dikira tidak ada pool" walau pool-nya nyata ada.
+                if (!r || r.error) {
+                    console.warn(`[FACTORY] getPool fee=${fee} call error, TIDAK dicache:`, r?.error || "response kosong");
+                    return; // key tetap kosong -> dicoba lagi di scan berikutnya
+                }
+                if (!r.result || r.result === "0x") {
+                    console.warn(`[FACTORY] getPool fee=${fee} result kosong/0x, TIDAK dicache (ambigu)`);
                     return;
                 }
+
                 const [addr] = iFactory.decodeFunctionResult("getPool", r.result);
                 const pool   = (!addr || addr === ethers.constants.AddressZero) ? null : addr;
-                _poolAddrCache.set(key, pool);
-            } catch { _poolAddrCache.set(key, null); }
+                _poolAddrCache.set(key, pool); // baru aman di-cache: hasil jelas & tanpa error
+            } catch (e) {
+                console.warn(`[FACTORY] getPool fee=${fee} decode gagal, TIDAK dicache:`, e);
+                // sengaja tidak di-cache — biar dicoba ulang, bukan permanen dianggap kosong
+            }
         });
     } else {
         // Batch gagal (RPC/network down, atau rpcBatch belum siap) — JANGAN
