@@ -1,11 +1,9 @@
 plugins {
     id 'com.android.application'
 }
-
 android {
     namespace 'com.sidrachain.wallet'
     compileSdk 34
-
     defaultConfig {
         applicationId "com.sidrachain.wallet"
         minSdk 24
@@ -13,36 +11,36 @@ android {
         versionCode 1
         versionName "1.0.0"
     }
-
     signingConfigs {
         config {
-            storeFile file("sidra.keystore")
-            storePassword "sidra123456"
-            keyAlias "sidrakey"
-            keyPassword "sidra123456"
+            storeFile file("sidrawallet.jks")
+            storePassword System.getenv("KEYSTORE_PASSWORD")
+            keyAlias System.getenv("KEY_ALIAS")
+            keyPassword System.getenv("KEY_PASSWORD")
         }
     }
-
     buildTypes {
         debug {
             signingConfig signingConfigs.config
             debuggable true
             minifyEnabled false
         }
+        release {
+            signingConfig signingConfigs.config
+            debuggable false
+            minifyEnabled false
+        }
     }
-
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_17
         targetCompatibility JavaVersion.VERSION_17
     }
-
     sourceSets {
         main {
             assets.srcDirs = ['src/main/assets']
         }
     }
 }
-
 dependencies {
     implementation 'androidx.appcompat:appcompat:1.6.1'
     implementation 'androidx.webkit:webkit:1.8.0'
