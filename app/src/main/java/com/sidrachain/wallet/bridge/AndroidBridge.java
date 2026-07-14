@@ -4,6 +4,9 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.ClipboardManager;
 import android.content.ClipData;
+import android.content.pm.PackageInfo;
+import android.content.pm.PackageManager;
+import android.net.Uri;
 import android.webkit.JavascriptInterface;
 import android.webkit.WebView;
 import android.os.Handler;
@@ -161,6 +164,30 @@ public class AndroidBridge {
     @JavascriptInterface
     public void openUrl(String url) {
         openBrowser(url);
+    }
+
+    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // VERSI APP & PRIVACY POLICY
+    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    @JavascriptInterface
+    public String getAppVersion() {
+        try {
+            PackageInfo pInfo = context.getPackageManager()
+                    .getPackageInfo(context.getPackageName(), 0);
+            return pInfo.versionName != null ? pInfo.versionName : "1.0.0";
+        } catch (PackageManager.NameNotFoundException e) {
+            return "1.0.0";
+        }
+    }
+
+    @JavascriptInterface
+    public void openPrivacyPolicy() {
+        mainHandler.post(() -> {
+            Intent intent = new Intent(Intent.ACTION_VIEW,
+                    Uri.parse("https://masatos007.github.io/sidrawallet-privacy/"));
+            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            context.startActivity(intent);
+        });
     }
 
     // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
