@@ -1768,7 +1768,7 @@
 <div id="sidraBrowserContainer"></div>
 
 <footer class="app-footer">
-    SDA Wallet v1.0.0<br>
+    SDA Wallet v<span id="app-version">1.0.0</span><br>
     <small>Developed by Atos</small><br>
 
     <button class="footer-link-btn" onclick="openPrivacyPolicy()">
@@ -1926,7 +1926,11 @@ function toggleWatchPanel() {
 }
 
 function openPrivacyPolicy(){
-    window.location.href = "privacy.html";
+    if (window.Android && window.Android.openPrivacyPolicy) {
+        window.Android.openPrivacyPolicy();
+    } else {
+        window.location.href = "privacy.html";
+    }
 }
 </script>
 
@@ -1963,6 +1967,14 @@ if ("serviceWorker" in navigator) {
 
 </script>
 
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+    if (window.Android && window.Android.getAppVersion) {
+        var el = document.getElementById("app-version");
+        if (el) el.innerText = window.Android.getAppVersion();
+    }
+});
+</script>
 
 </body>
 </html>
