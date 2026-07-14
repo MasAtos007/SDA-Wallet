@@ -1926,8 +1926,8 @@ function toggleWatchPanel() {
 }
 
 function openPrivacyPolicy(){
-    if (window.Android && window.Android.openPrivacyPolicy) {
-        window.Android.openPrivacyPolicy();
+    if (window.AndroidWallet && window.AndroidWallet.openPrivacyPolicy) {
+        window.AndroidWallet.openPrivacyPolicy();
     } else {
         window.location.href = "privacy.html";
     }
@@ -1969,9 +1969,9 @@ if ("serviceWorker" in navigator) {
 
 <script>
 document.addEventListener("DOMContentLoaded", function () {
-    if (window.Android && window.Android.getAppVersion) {
+    if (window.AndroidWallet && window.AndroidWallet.getAppVersion) {
         var el = document.getElementById("app-version");
-        if (el) el.innerText = window.Android.getAppVersion();
+        if (el) el.innerText = window.AndroidWallet.getAppVersion();
     }
 });
 </script>
