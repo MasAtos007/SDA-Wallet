@@ -28,14 +28,21 @@ function toggleAssetSortByBalance() {
 // ==========================
 // COPY TOKEN ADDRESS (tap nama token di asset card)
 // ==========================
-function copyTokenAddress(address) {
+// isWSDA: WSDA adalah pengecualian — alamat kontraknya memang alamat
+// yang benar untuk dikirimi SDA kalau user mau wrap manual, jadi
+// pesannya dibuat netral, bukan pesan larangan seperti token lain.
+function copyTokenAddress(address, isWSDA) {
     if (!address) return;
 
     const shortAddr = address.slice(0, 8) + "..." + address.slice(-6);
-    // Keterangan: ini alamat SMART CONTRACT token, BUKAN alamat wallet.
-    // Diambil dari lang.json (key: contract_address_warning_short) supaya
-    // konsisten dengan bahasa yang dipilih user (id/en/ar).
-    const warning = t("contract_address_warning_short");
+    // Keterangan: untuk token biasa ini alamat SMART CONTRACT, BUKAN
+    // alamat wallet, jadi user diberi peringatan. Untuk WSDA, alamat
+    // ini justru valid untuk menerima SDA (wrap manual), jadi pesannya
+    // netral. Diambil dari lang.json supaya konsisten dengan bahasa
+    // yang dipilih user (id/en/ar).
+    const warning = isWSDA
+        ? t("wsda_contract_note")
+        : t("contract_address_warning_short");
     const msg = (t("address_copied") || "Address copied") + ": " + shortAddr + "\n" + warning;
 
     const doCopy = () => showToast?.(msg, "success");
@@ -168,10 +175,15 @@ function renderAssets() {
         const isWSDA = token.symbol === "WSDA";
         const logo   = token.logo || token.icon || "img/default.png";
 
+        // Baris kecil per-token ini adalah SATU-SATUNYA pengingat alamat
+        // kontrak (Opsi A: banner besar di tab Token dihapus, cukup
+        // pengingat kontekstual persis di titik yang relevan). Untuk
+        // WSDA pesannya netral karena alamat kontraknya memang valid
+        // untuk menerima SDA (wrap manual).
         listHtml += `
             <div class="asset-card">
                 <div class="asset-card-top">
-                    <div class="asset-card-info" onclick="copyTokenAddress('${token.address}')" style="cursor:pointer;">
+                    <div class="asset-card-info" onclick="copyTokenAddress('${token.address}', ${isWSDA})" style="cursor:pointer;">
                         <img class="asset-icon" src="${logo}"
                              onerror="this.src='img/default.png'">
                         <div>
@@ -187,13 +199,11 @@ function renderAssets() {
                                     ${token.userAdded ? (t("badge_manual") || "Manual") : (t("badge_auto") || "Auto")}
                                 </span>
                             </div>
-                            <!-- Keterangan: alamat di atas adalah alamat SMART CONTRACT token,
-                                 bukan alamat wallet tujuan kirim. Ditampilkan supaya user baru
-                                 tidak salah kirim token ke alamat kontrak ini. -->
                             <div class="asset-contract-warning"
-                                 style="font-size:10px;color:#8a8a8a;margin-top:2px;line-height:1.3;">
-                                <i class="fa-solid fa-triangle-exclamation" style="color:#ff7a00;margin-right:4px;"></i>
-                                ${t("contract_address_warning_short")}
+                                 style="font-size:10px;color:${isWSDA ? '#5b9bff' : '#8a8a8a'};margin-top:2px;line-height:1.3;">
+                                <i class="fa-solid ${isWSDA ? 'fa-circle-info' : 'fa-triangle-exclamation'}"
+                                   style="color:${isWSDA ? '#5b9bff' : '#ff7a00'};margin-right:4px;"></i>
+                                ${isWSDA ? t("wsda_contract_note") : t("contract_address_warning_short")}
                             </div>
                         </div>
                     </div>
@@ -389,6 +399,10 @@ function renderTokenTab() {
     const container = document.getElementById("tab-tokens");
     if (!container) return;
 
+    // Opsi A: banner besar (5 baris, muncul permanen tiap buka tab Token)
+    // DIHAPUS. Redundan dengan baris peringatan kecil yang sudah ada di
+    // tiap baris token di bawah — itu sudah cukup jadi pengingat
+    // kontekstual tepat di titik yang relevan (saat user mau tap copy).
     let html = `
         <div style="display:grid;grid-template-columns:1fr auto;gap:8px;margin-bottom:6px;width:100%;
                     position:sticky;top:0;z-index:5;background:#0f0f0f;padding:8px 0 0 0;">
@@ -403,18 +417,6 @@ function renderTokenTab() {
                 <i class="fa-solid fa-trash"></i> ${t("reset_token_btn") || "Reset"}
             </button>
         </div>
-        <!-- Keterangan global tab Token: alamat yang tampil di bawah tiap
-             token adalah alamat SMART CONTRACT, bukan alamat wallet.
-             User baru sering salah kirim token ke alamat ini. -->
-        <div style="display:flex;gap:6px;align-items:flex-start;
-                    background:rgba(255,122,0,0.08);border:1px solid rgba(255,122,0,0.25);
-                    border-radius:10px;padding:8px 10px;margin-bottom:10px;
-                    position:sticky;top:52px;z-index:4;">
-            <i class="fa-solid fa-triangle-exclamation" style="color:#ff7a00;margin-top:2px;"></i>
-            <span style="font-size:11.5px;color:#ccc;line-height:1.4;">
-                ${t("contract_address_warning")}
-            </span>
-        </div>
     `;
 
     const addedAddresses = new Set(
@@ -428,6 +430,7 @@ function renderTokenTab() {
         const isAdded   = addedAddresses.has(token.address.toLowerCase());
         const tokenData = encodeURIComponent(JSON.stringify(token));
         const logo      = token.logo || token.icon || "img/default.png";
+        const isWSDA    = token.symbol === "WSDA";
 
         const shortTokenAddr = token.address.slice(0, 8) + "..." + token.address.slice(-6);
 
@@ -442,13 +445,14 @@ function renderTokenTab() {
                     <div style="min-width:0;">
                         <b>${token.name || token.symbol}</b><br>
                         <small style="color:#888;">${token.symbol}</small><br>
-                        <small onclick="event.stopPropagation();copyTokenAddress('${token.address}')"
+                        <small onclick="event.stopPropagation();copyTokenAddress('${token.address}', ${isWSDA})"
                                style="color:#5b9bff;cursor:pointer;font-family:monospace;font-size:10.5px;">
                             ${shortTokenAddr} <i class="fa-regular fa-copy" style="font-size:9px;"></i>
                         </small><br>
-                        <small style="color:#8a8a8a;font-size:9.5px;">
-                            <i class="fa-solid fa-triangle-exclamation" style="color:#ff7a00;"></i>
-                            ${t("contract_address_warning_short")}
+                        <small style="color:${isWSDA ? '#5b9bff' : '#8a8a8a'};font-size:9.5px;">
+                            <i class="fa-solid ${isWSDA ? 'fa-circle-info' : 'fa-triangle-exclamation'}"
+                               style="color:${isWSDA ? '#5b9bff' : '#ff7a00'};"></i>
+                            ${isWSDA ? t("wsda_contract_note") : t("contract_address_warning_short")}
                         </small>
                     </div>
                 </div>
