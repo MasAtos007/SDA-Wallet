@@ -42,6 +42,13 @@
     "copy_failed": "Copy failed",
     "copy_address": "Copy Address",
 
+    "share_app_title": "Share Wallet",
+    "share_app_desc": "Invite friends to install Sidra Wallet via the link below",
+    "share_app_btn": "Share Wallet",
+    "share_app_message": "Try Sidra Wallet, a wallet for SidraChain! Download here:",
+    "link_copied": "Link copied",
+    "download_apk": "Download APK",
+
     "wallet_qr": "Wallet QR",
     "qr_desc": "Scan this QR code to add this wallet to your wallet app.",
 
@@ -450,6 +457,13 @@
     "copy_failed": "Gagal menyalin",
     "copy_address": "Salin Alamat",
 
+    "share_app_title": "Bagikan Wallet",
+    "share_app_desc": "Ajak teman install Sidra Wallet lewat link berikut",
+    "share_app_btn": "Bagikan Wallet",
+    "share_app_message": "Yuk coba Sidra Wallet, wallet untuk SidraChain! Download di sini:",
+    "link_copied": "Link disalin",
+    "download_apk": "Download APK",
+
     "wallet_qr": "QR Wallet",
     "qr_desc": "Scan QR ini untuk menambahkan wallet ke aplikasi wallet Anda.",
 
@@ -857,6 +871,13 @@
     "copied": "تم النسخ",
     "copy_failed": "فشل النسخ",
     "copy_address": "نسخ العنوان",
+
+    "share_app_title": "مشاركة المحفظة",
+    "share_app_desc": "ادعُ أصدقاءك لتثبيت Sidra Wallet عبر الرابط التالي",
+    "share_app_btn": "مشاركة المحفظة",
+    "share_app_message": "جرّب Sidra Wallet، محفظة لـ SidraChain! حمّلها من هنا:",
+    "link_copied": "تم نسخ الرابط",
+    "download_apk": "تحميل APK",
 
     "wallet_qr": "رمز QR للمحفظة",
     "qr_desc": "امسح رمز QR هذا لإضافة المحفظة إلى تطبيقك.",
