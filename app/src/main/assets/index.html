@@ -433,6 +433,49 @@
 
 </div>
 
+<!-- SHARE APP MODAL -->
+<div id="shareAppModal" class="modal">
+
+    <div class="modal-content">
+
+        <div class="modal-header">
+            <span>
+                <i class="fa-solid fa-share-nodes"></i>
+                <span data-lang="share_app_title">Bagikan Wallet</span>
+            </span>
+            <span class="modal-close" onclick="closeShareAppModal()">
+                <i class="fa-solid fa-xmark"></i>
+            </span>
+        </div>
+
+        <div style="font-size:12px;color:#888;margin-bottom:10px;" data-lang="share_app_desc">
+            Ajak teman install Sidra Wallet lewat link berikut
+        </div>
+
+        <input id="shareAppLink" readonly style="font-size:11px;margin-bottom:10px;">
+
+        <button onclick="downloadShareApp()" style="background:#00a86b;">
+            <i class="fa-solid fa-download"></i>
+            <span data-lang="download_apk">Download APK</span>
+        </button>
+
+        <button onclick="copyShareAppLink()">
+            <i class="fa-solid fa-copy"></i>
+            <span data-lang="copy_link">Copy Link</span>
+        </button>
+
+        <button onclick="shareAppWA()">
+            <i class="fa-brands fa-whatsapp"></i> WhatsApp
+        </button>
+
+        <button onclick="shareAppTelegram()">
+            <i class="fa-brands fa-telegram"></i> Telegram
+        </button>
+
+    </div>
+
+</div>
+
 <!-- TABS -->
 <div class="tabs">
 
@@ -1774,6 +1817,11 @@
     <button class="footer-link-btn" onclick="openPrivacyPolicy()">
         Privacy Policy
     </button>
+
+    <button class="footer-link-btn" onclick="openShareAppModal()">
+        <i class="fa-solid fa-share-nodes"></i>
+        <span data-lang="share_app_btn">Bagikan Wallet</span>
+    </button>
 </footer>
 
 <!-- =====================================================
@@ -1868,6 +1916,7 @@
 <script src="js/send-token.js"></script>
 <script src="js/pk-wallet.js"></script>
 <script src="js/walletpicker.js"></script>
+<script src="js/share-app.js"></script>
 <!-- APP INIT: paling terakhir (butuh semua sudah siap) -->
 <script src="js/app-vault-patch.js"></script>
 <script src="js/blockchain.js"></script>
