@@ -11,7 +11,7 @@ const SIDRA_EXPLORER = "https://ledger.sidrachain.com/address/";
  */
 function openExplorer(address) {
     if (!address) return;
-    const url = SIDRA_EXPLORER + address;
+    const url = address.startsWith("http") ? address : SIDRA_EXPLORER + address;
     if (window.AndroidWallet?.openUrl) window.AndroidWallet.openUrl(url);
     else if (window.AndroidWallet?.openBrowser) window.AndroidWallet.openBrowser(url);
     else window.open(url, "_blank", "noopener,noreferrer");
