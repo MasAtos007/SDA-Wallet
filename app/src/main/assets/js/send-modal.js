@@ -193,26 +193,56 @@ async function setSendMax() {
 
     if (!addr) return;
 
+    const tokenData = window.selectedTokenData || { type: "native" };
+    const isNativeToken = !tokenData?.address || tokenData?.type === "native";
+
     try {
 
-        const bal =
-            await provider.getBalance(addr);
+        if (isNativeToken) {
 
-        const amount =
-            parseFloat(
-                ethers.utils.formatEther(bal)
-            );
+            // Token native (SDA) — sisakan reserve buat gas
+            const bal =
+                await provider.getBalance(addr);
 
-        const reserve = 0.0001;
+            const amount =
+                parseFloat(
+                    ethers.utils.formatEther(bal)
+                );
 
-        input.value =
-            amount > reserve
-                ? (amount - reserve).toFixed(6)
-                : amount.toFixed(6);
+            const reserve = 0.0001;
+
+            input.value =
+                amount > reserve
+                    ? (amount - reserve).toFixed(6)
+                    : amount.toFixed(6);
+
+        } else {
+
+            // Token ERC20 — ambil balanceOf dari contract, tanpa reserve
+            const abi = [
+                "function balanceOf(address) view returns (uint256)",
+                "function decimals() view returns (uint8)"
+            ];
+
+            const contract = new ethers.Contract(tokenData.address, abi, provider);
+
+            const [bal, dec] = await Promise.all([
+                contract.balanceOf(addr),
+                contract.decimals().catch(() => tokenData.decimals || 18)
+            ]);
+
+            const amount =
+                parseFloat(
+                    ethers.utils.formatUnits(bal, dec)
+                );
+
+            input.value = amount.toFixed(6);
+        }
 
     } catch (e) {
 
         console.error(e);
+        showToast?.("Gagal ambil saldo token", "error");
 
     }
 
