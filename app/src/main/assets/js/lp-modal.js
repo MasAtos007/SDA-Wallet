@@ -784,7 +784,7 @@ let _lpmExplorerUrl = "";
 
 function showLPSuccessModal({ hash, t0, t1, a0, a1, feeLabel, explorerUrl }) {
     _lpmCurrentHash = hash || "";
-    _lpmExplorerUrl = (explorerUrl || "https://ledger.sidrachain.com/tx/") + hash;
+    _lpmExplorerUrl = "https://ledger.sidrachain.com/tx/" + hash;
 
     let modal = document.getElementById("lpSuccessModal");
     if (!modal) {
