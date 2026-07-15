@@ -838,7 +838,7 @@ function showSwapSuccessModal({
     const finalAmountOut = realAmountOut ?? amountOut; // fallback ke estimasi kalau parse gagal
 
     _swmCurrentHash = hash || "";
-    _swmExplorerUrl = (explorerUrl || "https://ledger.sidrachain.com/tx/") + hash;
+    _swmExplorerUrl = "https://ledger.sidrachain.com/tx/" + hash;
 
     const fromSymbol = isNativeIn  ? "SDA" : (tokenIn?.symbol  || "?");
     const toSymbol   = isNativeOut ? "SDA" : (tokenOut?.symbol || "?");
