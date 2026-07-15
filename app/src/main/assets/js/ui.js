@@ -32,7 +32,11 @@ function copyTokenAddress(address) {
     if (!address) return;
 
     const shortAddr = address.slice(0, 8) + "..." + address.slice(-6);
-    const msg = (t("address_copied") || "Address copied") + ": " + shortAddr;
+    // Keterangan: ini alamat SMART CONTRACT token, BUKAN alamat wallet.
+    // Diambil dari lang.json (key: contract_address_warning_short) supaya
+    // konsisten dengan bahasa yang dipilih user (id/en/ar).
+    const warning = t("contract_address_warning_short");
+    const msg = (t("address_copied") || "Address copied") + ": " + shortAddr + "\n" + warning;
 
     const doCopy = () => showToast?.(msg, "success");
 
@@ -182,6 +186,14 @@ function renderAssets() {
                                     color:${token.userAdded ? '#5b9bff' : '#ff8a1f'};">
                                     ${token.userAdded ? (t("badge_manual") || "Manual") : (t("badge_auto") || "Auto")}
                                 </span>
+                            </div>
+                            <!-- Keterangan: alamat di atas adalah alamat SMART CONTRACT token,
+                                 bukan alamat wallet tujuan kirim. Ditampilkan supaya user baru
+                                 tidak salah kirim token ke alamat kontrak ini. -->
+                            <div class="asset-contract-warning"
+                                 style="font-size:10px;color:#8a8a8a;margin-top:2px;line-height:1.3;">
+                                <i class="fa-solid fa-triangle-exclamation" style="color:#ff7a00;margin-right:4px;"></i>
+                                ${t("contract_address_warning_short")}
                             </div>
                         </div>
                     </div>
@@ -378,8 +390,8 @@ function renderTokenTab() {
     if (!container) return;
 
     let html = `
-        <div style="display:grid;grid-template-columns:1fr auto;gap:8px;margin-bottom:10px;width:100%;
-                    position:sticky;top:0;z-index:5;background:#0f0f0f;padding:8px 0;">
+        <div style="display:grid;grid-template-columns:1fr auto;gap:8px;margin-bottom:6px;width:100%;
+                    position:sticky;top:0;z-index:5;background:#0f0f0f;padding:8px 0 0 0;">
             <input type="text" id="searchToken" class="sidra-token-search-v2"
                    placeholder="${t("search_token") || 'Search token...'}"
                    style="width:100%;min-width:0;box-sizing:border-box;
@@ -390,6 +402,18 @@ function renderTokenTab() {
                        border-radius:10px;color:#ff5c5c;font-size:13px;white-space:nowrap;cursor:pointer;">
                 <i class="fa-solid fa-trash"></i> ${t("reset_token_btn") || "Reset"}
             </button>
+        </div>
+        <!-- Keterangan global tab Token: alamat yang tampil di bawah tiap
+             token adalah alamat SMART CONTRACT, bukan alamat wallet.
+             User baru sering salah kirim token ke alamat ini. -->
+        <div style="display:flex;gap:6px;align-items:flex-start;
+                    background:rgba(255,122,0,0.08);border:1px solid rgba(255,122,0,0.25);
+                    border-radius:10px;padding:8px 10px;margin-bottom:10px;
+                    position:sticky;top:52px;z-index:4;">
+            <i class="fa-solid fa-triangle-exclamation" style="color:#ff7a00;margin-top:2px;"></i>
+            <span style="font-size:11.5px;color:#ccc;line-height:1.4;">
+                ${t("contract_address_warning")}
+            </span>
         </div>
     `;
 
@@ -421,6 +445,10 @@ function renderTokenTab() {
                         <small onclick="event.stopPropagation();copyTokenAddress('${token.address}')"
                                style="color:#5b9bff;cursor:pointer;font-family:monospace;font-size:10.5px;">
                             ${shortTokenAddr} <i class="fa-regular fa-copy" style="font-size:9px;"></i>
+                        </small><br>
+                        <small style="color:#8a8a8a;font-size:9.5px;">
+                            <i class="fa-solid fa-triangle-exclamation" style="color:#ff7a00;"></i>
+                            ${t("contract_address_warning_short")}
                         </small>
                     </div>
                 </div>
@@ -519,4 +547,3 @@ function renderLPList() {
 function toggleAddress(el) {
     el.classList.toggle("address-full");
 }
-
