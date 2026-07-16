@@ -26,24 +26,23 @@ function toggleAssetSortByBalance() {
 }
 
 // ==========================
-// COPY TOKEN ADDRESS (tap nama token di asset card)
+// COPY TOKEN ADDRESS (tap nama token di tab Tokens)
 // ==========================
-// isWSDA: WSDA adalah pengecualian — alamat kontraknya memang alamat
+// isWSDA: WSDA adalah pengecualian â€” alamat kontraknya memang alamat
 // yang benar untuk dikirimi SDA kalau user mau wrap manual, jadi
 // pesannya dibuat netral, bukan pesan larangan seperti token lain.
+// Dipakai HANYA di tab Tokens sekarang â€” di tab Assets fitur copy +
+// baris peringatan sudah dihapus supaya kartu tidak terlalu penuh
+// dan tidak disangka alamat wallet oleh user.
 function copyTokenAddress(address, isWSDA) {
     if (!address) return;
 
     const shortAddr = address.slice(0, 8) + "..." + address.slice(-6);
-    // Keterangan: untuk token biasa ini alamat SMART CONTRACT, BUKAN
-    // alamat wallet, jadi user diberi peringatan. Untuk WSDA, alamat
-    // ini justru valid untuk menerima SDA (wrap manual), jadi pesannya
-    // netral. Diambil dari lang.json supaya konsisten dengan bahasa
-    // yang dipilih user (id/en/ar).
-    const warning = isWSDA
-        ? t("wsda_contract_note")
-        : t("contract_address_warning_short");
-    const msg = (t("address_copied") || "Address copied") + ": " + shortAddr + "\n" + warning;
+    // Toast dipendekin â€” cukup konfirmasi copy, tanpa embel-embel
+    // peringatan kontrak. Peringatan itu sekarang cuma tampil di
+    // tab Tokens (baris kecil di bawah tiap token), bukan lagi
+    // di toast atau di tab Assets.
+    const msg = (t("address_copied") || "Address copied") + ": " + shortAddr;
 
     const doCopy = () => showToast?.(msg, "success");
 
@@ -166,7 +165,7 @@ function renderAssets() {
         const cached   = localStorage.getItem(cacheKey) || ("0.00 " + token.symbol);
         const amount   = parseFloat(cached) || 0;
 
-        // Sembunyikan token saldo 0 — KECUALI token yang user tambah
+        // Sembunyikan token saldo 0 â€” KECUALI token yang user tambah
         // sendiri, ATAU kalau toggle "tampilkan semua" aktif.
         if (amount <= 0 && !token.userAdded && !assetShowHidden) return;
 
@@ -175,21 +174,21 @@ function renderAssets() {
         const isWSDA = token.symbol === "WSDA";
         const logo   = token.logo || token.icon || "img/default.png";
 
-        // Baris kecil per-token ini adalah SATU-SATUNYA pengingat alamat
-        // kontrak (Opsi A: banner besar di tab Token dihapus, cukup
-        // pengingat kontekstual persis di titik yang relevan). Untuk
-        // WSDA pesannya netral karena alamat kontraknya memang valid
-        // untuk menerima SDA (wrap manual).
+        // Kartu di tab Assets sengaja dibuat ringkas: TANPA tap-to-copy
+        // dan TANPA baris peringatan kontrak. Ini supaya kartu tidak
+        // terlalu padat info, dan menghindari risiko user tap-copy lalu
+        // mengira itu alamat wallet. Peringatan + copy tetap ada di
+        // tab Tokens, karena di situ konteksnya memang user mencari
+        // alamat kontrak.
         listHtml += `
             <div class="asset-card">
                 <div class="asset-card-top">
-                    <div class="asset-card-info" onclick="copyTokenAddress('${token.address}', ${isWSDA})" style="cursor:pointer;">
+                    <div class="asset-card-info">
                         <img class="asset-icon" src="${logo}"
                              onerror="this.src='img/default.png'">
                         <div>
                             <div class="asset-name">
                                 ${token.name || token.symbol}
-                                <i class="fa-regular fa-copy" style="font-size:11px;color:#666;margin-left:6px;"></i>
                             </div>
                             <div class="asset-subtitle">
                                 ${t("erc20_token") || "ERC-20 Token"}
@@ -198,12 +197,6 @@ function renderAssets() {
                                     color:${token.userAdded ? '#5b9bff' : '#ff8a1f'};">
                                     ${token.userAdded ? (t("badge_manual") || "Manual") : (t("badge_auto") || "Auto")}
                                 </span>
-                            </div>
-                            <div class="asset-contract-warning"
-                                 style="font-size:10px;color:${isWSDA ? '#5b9bff' : '#8a8a8a'};margin-top:2px;line-height:1.3;">
-                                <i class="fa-solid ${isWSDA ? 'fa-circle-info' : 'fa-triangle-exclamation'}"
-                                   style="color:${isWSDA ? '#5b9bff' : '#ff7a00'};margin-right:4px;"></i>
-                                ${isWSDA ? t("wsda_contract_note") : t("contract_address_warning_short")}
                             </div>
                         </div>
                     </div>
@@ -239,7 +232,7 @@ function renderAssets() {
     if (listEl) listEl.innerHTML = listHtml;
 
      // ==========================
-    // USD CONVERSION — SEKALI BATCH untuk semua token visible,
+    // USD CONVERSION â€” SEKALI BATCH untuk semua token visible,
     // BUKAN formatUSD per token satu-satu (itu yang bikin tiap
     // token nembak rpcBatch sendiri-sendiri, jadi ratusan call).
     // ==========================
@@ -401,7 +394,7 @@ function renderTokenTab() {
 
     // Opsi A: banner besar (5 baris, muncul permanen tiap buka tab Token)
     // DIHAPUS. Redundan dengan baris peringatan kecil yang sudah ada di
-    // tiap baris token di bawah — itu sudah cukup jadi pengingat
+    // tiap baris token di bawah â€” itu sudah cukup jadi pengingat
     // kontekstual tepat di titik yang relevan (saat user mau tap copy).
     let html = `
         <div style="display:grid;grid-template-columns:1fr auto;gap:8px;margin-bottom:6px;width:100%;
