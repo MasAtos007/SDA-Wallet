@@ -194,3 +194,99 @@ if (typeof _origSetWallets === "function") {
         _origSetWallets(deduped);
     };
 }
+
+
+// =====================================
+// [GUARD] BLOK SEND / SWAP / ADD LIQUIDITY
+// UNTUK WALLET WATCH-ONLY (type === "watch")
+// =====================================
+function isWatchOnlyWallet() {
+    const w = (typeof getSelectedWallet === "function") ? getSelectedWallet() : null;
+    if (!w) return false; // tidak ada wallet -> biarkan flow lain yang handle
+    return w.type === "watch";
+}
+
+function showWatchOnlyModal() {
+
+    const lang = (window.LANG && window.LANG[window.CURRENT_LANG]) || {};
+    const isRTL = window.CURRENT_LANG === "ar";
+
+    const titleText = lang.watch_only_title || "Wallet Pantauan Saja";
+    const descText  = lang.watch_only_desc  ||
+        "Wallet ini hanya untuk memantau saldo. Kamu tidak bisa kirim, swap, atau tambah likuiditas karena tidak ada private key yang terhubung.";
+    const btnText   = lang.watch_only_btn   || "Mengerti";
+
+    let modal = document.getElementById("watchOnlyModal");
+
+    if (!modal) {
+        modal = document.createElement("div");
+        modal.id = "watchOnlyModal";
+        modal.style.cssText = `
+            position: fixed; inset: 0; z-index: 99999;
+            display: flex; align-items: center; justify-content: center;
+            background: rgba(0,0,0,0.6);
+        `;
+
+        modal.innerHTML = `
+            <div style="
+                background:#14141c; color:#fff; width:88%; max-width:360px;
+                border-radius:16px; padding:22px 20px; text-align:center;
+                border:1px solid #ffaa0040;
+            ">
+                <div style="font-size:36px; margin-bottom:10px;">
+                    <i class="fa-solid fa-eye" style="color:#ffaa00;"></i>
+                </div>
+                <div id="watchOnlyTitle" style="font-size:17px; font-weight:600; margin-bottom:8px;"></div>
+                <div id="watchOnlyText" style="font-size:14px; color:#aaa; margin-bottom:20px; line-height:1.5;"></div>
+                <button id="watchOnlyCloseBtn" style="
+                    width:100%; padding:12px; border:none; border-radius:12px;
+                    background:#ffaa00; color:#111; font-size:15px; font-weight:600;
+                "></button>
+            </div>
+        `;
+
+        document.body.appendChild(modal);
+
+        modal.addEventListener("click", (e) => {
+            if (e.target === modal) modal.style.display = "none";
+        });
+    }
+
+    modal.dir = isRTL ? "rtl" : "ltr";
+
+    const titleEl = document.getElementById("watchOnlyTitle");
+    const textEl  = document.getElementById("watchOnlyText");
+    const closeBtn = document.getElementById("watchOnlyCloseBtn");
+
+    if (titleEl) titleEl.textContent = titleText;
+    if (textEl)  textEl.textContent  = descText;
+    if (closeBtn) {
+        closeBtn.textContent = btnText;
+        closeBtn.onclick = () => { modal.style.display = "none"; };
+    }
+
+    modal.style.display = "flex";
+}
+
+// Intercept klik di CAPTURE PHASE — dijalankan sebelum listener asli
+// (openSendBtn, openSwapBtn, openLpBtn) sempat membuka modalnya.
+function _guardWatchOnlyClick(e) {
+    if (isWatchOnlyWallet()) {
+        e.preventDefault();
+        e.stopImmediatePropagation();
+        showWatchOnlyModal();
+    }
+}
+
+document.addEventListener("DOMContentLoaded", () => {
+    ["openSendBtn", "openSwapBtn", "openLpBtn"].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.addEventListener("click", _guardWatchOnlyClick, true); // true = capture phase
+    });
+
+    // Bottom nav Send & Swap juga harus diblok kalau wallet watch-only
+    const navSend = document.getElementById("navSend");
+    const navSwap = document.getElementById("navSwap");
+    if (navSend) navSend.addEventListener("click", _guardWatchOnlyClick, true);
+    if (navSwap) navSwap.addEventListener("click", _guardWatchOnlyClick, true);
+});
