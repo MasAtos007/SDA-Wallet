@@ -324,7 +324,6 @@
 
     "native_token": "Native Token",
     "erc20_token": "ERC-20 Token",
-    "contract_address_warning": "The address shown below each token is the token's smart contract address, not a wallet address. Do not send SDA or any token to this address — funds sent here may be permanently lost.",
     "contract_address_warning_short": "Contract address — don't send tokens here",
     "wsda_contract_note": "WSDA contract address — can be used for manual wrapping",
     "lp_position": "LP Position",
@@ -739,7 +738,6 @@
 
     "native_token": "Native Token",
     "erc20_token": "ERC-20 Token",
-    "contract_address_warning": "Alamat di bawah setiap token adalah alamat smart contract token, bukan alamat wallet. Jangan kirim SDA atau token ke alamat ini — dana yang terkirim ke sini bisa hilang permanen.",
     "contract_address_warning_short": "Alamat kontrak — jangan kirim token ke sini",
     "wsda_contract_note": "Alamat kontrak WSDA — bisa dipakai untuk wrap manual",
     "lp_position": "LP Position",
@@ -1154,7 +1152,6 @@
 
     "native_token": "الرمز الأصلي",
     "erc20_token": "رمز ERC-20",
-    "contract_address_warning": "العنوان الموضح أسفل كل رمز هو عنوان العقد الذكي للرمز، وليس عنوان محفظة. لا ترسل SDA أو أي رمز إلى هذا العنوان — قد تُفقد الأموال المرسلة إلى هنا بشكل دائم.",
     "contract_address_warning_short": "عنوان عقد — لا ترسل الرموز إلى هنا",
     "wsda_contract_note": "عنوان عقد WSDA — يمكن استخدامه للتغليف اليدوي",
     "lp_position": "موضع LP",
