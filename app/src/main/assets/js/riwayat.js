@@ -435,19 +435,44 @@ function processTokenTransfers(rawItems, swapInfoMap, myAddress) {
             }
         }
 
-        // -- Pure NFT transfer -> LP_NFT --
+        // -- Pure NFT transfer -> LP_NFT (atau REMOVE_LP kalau NFT dibakar ke 0x0) --
         if (allNft) {
             const base  = items[0];
             const token = base.token || {};
             const to    = (base.to?.hash || "").toLowerCase();
             const from  = (base.from?.hash || "").toLowerCase();
-            const type  = (to === myAddr && from !== myAddr) ? "RECEIVE" : "SEND";
             const tokenId = base.total?.token_id || base.token_id || "?";
+            const BURN_ADDR = "0x0000000000000000000000000000000000000000";
 
+            const isBurnByUser = to === BURN_ADDR && from === myAddr;
+
+            if (isBurnByUser) {
+                result.push({
+                    hash, from, to,
+                    type:      "REMOVE_LP",
+                    subType:   "BURN",
+                    inSymbol:  "", inLogo: "",
+                    outSymbol: "", outLogo: "",
+                    amountOut: "0",
+                    amount1:   "0",
+                    value:     "0",
+                    symbol:    token.symbol || "LP",
+                    logo:      "img/lp.png",
+                    tokenId:   String(tokenId),
+                    blockNumber: "0x" + (base.block_number || 0).toString(16),
+                    timestamp: base.timestamp
+                        ? Math.floor(new Date(base.timestamp).getTime() / 1000)
+                        : 0,
+                    status: "success",
+                    source: "blockscout",
+                    read:   false
+                });
+                return;
+            }
+
+            const type = (to === myAddr && from !== myAddr) ? "RECEIVE" : "SEND";
             result.push({
-                hash,
-                from,
-                to,
+                hash, from, to,
                 type:    "LP_NFT",
                 subType: type,
                 value:   "0",
@@ -797,6 +822,7 @@ function dedupeTxList(list) {
 // =============================
 let _lastTxFetch = {}; // address -> timestamp fetch terakhir
 const TX_FETCH_MIN_INTERVAL = 15_000; // jangan fetch ulang riwayat < 15 detik
+let _lastMaxPagesLoaded = {}; // address -> maxPages terakhir yang berhasil di-load
 
 async function loadTxHistory(address, maxPages = 1) {
     // Render apa yang sudah ada di memori (sesi ini) sambil menunggu fetch terbaru
@@ -883,18 +909,18 @@ async function loadTxHistory(address, maxPages = 1) {
                 tx.read = readHashes.has(key);
             });
 
+            const displayLimit = Math.max(20, maxPages * 20);
             const deduped = dedupeTxList(remote)
                 .sort((a, b) =>
                     normalizeTimestamp(b.timestamp) - normalizeTimestamp(a.timestamp)
                 )
-                .slice(0, 20);
+                .slice(0, displayLimit);
+
+            _lastMaxPagesLoaded[address] = maxPages;
 
             saveTxHistory(deduped);
             renderTxHistory();
             updateBellBadge();
-
-            // Tampilkan tombol "Muat lebih" kalau kemungkinan masih ada halaman berikutnya
-            _renderLoadMoreBtn(address, maxPages);
 
         } else {
             console.warn("[riwayat] API gagal memuat transaksi");
@@ -950,6 +976,7 @@ function showTxDetail(tx) {
     const isSwap        = tx.type === "SWAP";
     const isLpNftTx     = tx.type === "LP_NFT";
     const isRemoveLp    = tx.type === "REMOVE_LP";
+    const isBurnLp      = isRemoveLp && tx.subType === "BURN";
     const isCollect     = tx.type === "COLLECT_FEE";
     const isFailed      = tx.status === "failed";
 
@@ -966,6 +993,11 @@ function showTxDetail(tx) {
         if (isFailed) {
             iconWrap.style.background = "linear-gradient(135deg,#ff4d4f,#ff7875)";
             iconWrap.innerHTML = '<i class="fa-solid fa-circle-xmark"></i>';
+        } else if (isBurnLp) {
+            iconWrap.style.display = "block";
+            iconWrap.style.background = "linear-gradient(135deg,#3a3a3a,#555)";
+            iconWrap.style.border = "none";
+            iconWrap.innerHTML = '<i class="fa-solid fa-droplet"></i>';
         } else if (isSwap || isRemoveLp || isCollect || tx.type === "ADD_LP") {
             // Sembunyikan iconWrap untuk swap, add LP & collect fee — pair row sudah tampil di atas
             iconWrap.style.display = (isSwap || tx.type === "ADD_LP" || isCollect) ? "none" : "block";
@@ -1020,7 +1052,7 @@ function showTxDetail(tx) {
     const isAddLpDisplay = tx.type === "ADD_LP";
     const isCollectDisplay = isCollect;
 
-    if ((isSwap || isAddLpDisplay || isCollectDisplay) && pairRow) {
+    if ((isSwap || isAddLpDisplay || (isCollectDisplay && !!tx.outSymbol)) && pairRow) {
         pairRow.style.display = "flex";
         if (amountEl) amountEl.style.display = "none";
 
@@ -1072,6 +1104,14 @@ function showTxDetail(tx) {
             amountEl.innerHTML = `${tx.amountIn || "?"} <span style="color:#667788;font-size:14px;">${tx.outSymbol || ""}</span> <i class="fa-solid fa-arrow-right" style="font-size:12px;color:#667788;"></i> ${tx.amountOut || "?"} <span style="color:#c77dff;">${tx.inSymbol || ""}</span>`;
         } else if (isLpNftTx) {
             amountEl.textContent = "LP NFT #" + (tx.tokenId || "?");
+        } else if (isBurnLp) {
+            const closedText = (t("tx_lp_nft_closed") || "LP NFT #{id} closed")
+                .replace("{id}", tx.tokenId || "?");
+            amountEl.innerHTML = `<span style="color:#888;">${closedText}</span>`;
+        } else if (isCollect && !tx.outSymbol) {
+            const v0 = Number(tx.amountOut || 0);
+            const fmt = n => n < 0.000001 && n > 0 ? n.toExponential(2) : n.toFixed(6).replace(/\.?0+$/, "");
+            amountEl.innerHTML = `${fmt(v0)} <span style="color:#ffaa44;">${tx.inSymbol || "FEE"}</span>`;
         } else if (isRemoveLp || isCollect) {
             const v0 = Number(tx.amountOut || 0);
             const v1 = Number(tx.amount1   || 0);
@@ -1298,10 +1338,13 @@ function renderTxHistory() {
         else if (type === "RECEIVE") { color = "#00d084"; icon = "down"; type = "Receive"; }
         else if (type === "SEND")    { type = "Send"; }
 
+        const isBurnLp = isRemoveLP && tx.subType === "BURN";
+
         // -- Simbol --
         let symbolDisplay;
         if (isCollectFee)    symbolDisplay = tx.outSymbol ? `${tx.inSymbol||"?"} + ${tx.outSymbol}` : (tx.inSymbol||"FEE");
         else if (isLpNftTx)  symbolDisplay = `LP NFT #${tx.tokenId||"?"}`;
+        else if (isBurnLp)   symbolDisplay = `LP NFT #${tx.tokenId||"?"}`;
         else if (isRemoveLP) symbolDisplay = `${tx.inSymbol||"?"} + ${tx.outSymbol||"?"}`;
         else if (isSwap)     symbolDisplay = `${tx.outSymbol||"?"} > ${tx.inSymbol||"?"}`;
         else if (isAddLP)    symbolDisplay = `${tx.inSymbol||""} + ${tx.outSymbol||""}`;
@@ -1312,6 +1355,7 @@ function renderTxHistory() {
         let valueFormatted;
         if (isCollectFee)    valueFormatted = tx.outSymbol ? `${fmt(tx.amountOut)} + ${fmt(tx.amount1)}` : fmt(tx.amountOut);
         else if (isLpNftTx)  valueFormatted = `#${tx.tokenId||"?"}`;
+        else if (isBurnLp)   valueFormatted = t("tx_status_closed") || "Closed";
         else if (isRemoveLP) valueFormatted = `${fmt(tx.amountOut)} + ${fmt(tx.amount1)}`;
         else if (isAddLP)    valueFormatted = `${fmt(tx.amount0)} + ${fmt(tx.amount1)}`;
         else if (isSwap)     valueFormatted = fmt(tx.amountOut || tx.value);
@@ -1341,14 +1385,18 @@ function renderTxHistory() {
         const safeOutLogo = (tx.outLogo ? normalizeLogo(tx.outLogo,"img/sda.png") : resolveTokenLogo(tx.outSymbol,null)) || "img/default.png";
         const safeInLogo  = (tx.inLogo  ? normalizeLogo(tx.inLogo,"img/default.png") : resolveTokenLogo(tx.inSymbol,null)) || "img/default.png";
 
-        const logoHTML = isLpNftTx
+        const isSingleSided = (isCollectFee || isRemoveLP) && !tx.outSymbol;
+
+        const logoHTML = (isLpNftTx || isBurnLp)
             ? `<div style="width:38px;height:38px;border-radius:50%;background:#1a1a2e;display:flex;align-items:center;justify-content:center;"><i class="fa-solid fa-droplet" style="color:#888;font-size:16px;"></i></div>`
-            : (isSwap||isAddLP||isRemoveLP||isCollectFee)
-                ? `<div style="position:relative;width:42px;height:38px;flex-shrink:0;">
-                    <img src="${safeOutLogo}" onerror="this.src='img/default.png'" style="width:26px;height:26px;border-radius:50%;position:absolute;left:0;top:6px;background:#111;padding:2px;z-index:1;object-fit:contain;border:1.5px solid #1a1a1a;">
-                    <img src="${safeInLogo}"  onerror="this.src='img/default.png'" style="width:26px;height:26px;border-radius:50%;position:absolute;right:0;top:6px;background:#111;padding:2px;z-index:2;object-fit:contain;border:2px solid #0b0f17;">
-                   </div>`
-                : `<img src="${logo}" onerror="this.src='img/default.png'" style="width:38px;height:38px;border-radius:50%;background:#111;padding:4px;object-fit:contain;flex-shrink:0;">`;
+            : isSingleSided
+                ? `<img src="${safeInLogo}" onerror="this.src='img/default.png'" style="width:38px;height:38px;border-radius:50%;background:#111;padding:4px;object-fit:contain;flex-shrink:0;">`
+                : (isSwap||isAddLP||isRemoveLP||isCollectFee)
+                    ? `<div style="position:relative;width:42px;height:38px;flex-shrink:0;">
+                        <img src="${safeOutLogo}" onerror="this.src='img/default.png'" style="width:26px;height:26px;border-radius:50%;position:absolute;left:0;top:6px;background:#111;padding:2px;z-index:1;object-fit:contain;border:1.5px solid #1a1a1a;">
+                        <img src="${safeInLogo}"  onerror="this.src='img/default.png'" style="width:26px;height:26px;border-radius:50%;position:absolute;right:0;top:6px;background:#111;padding:2px;z-index:2;object-fit:contain;border:2px solid #0b0f17;">
+                       </div>`
+                    : `<img src="${logo}" onerror="this.src='img/default.png'" style="width:38px;height:38px;border-radius:50%;background:#111;padding:4px;object-fit:contain;flex-shrink:0;">`;
 
         const sourceBadge = tx.source === "blockscout"
             ? `<span style="font-size:9px;color:#3b82f6;opacity:0.5;margin-left:3px;">live</span>`
@@ -1399,6 +1447,13 @@ function renderTxHistory() {
 
         list.appendChild(el);
     });
+
+    // Tampilkan lagi tombol "Muat lebih" tiap kali list dirender ulang
+    // (ganti tab filter, dibuka lagi dari cache, dll) — bukan cuma
+    // sekali setelah fetch, supaya tombolnya tidak hilang.
+    if (myAddr) {
+        _renderLoadMoreBtn(myAddr, _lastMaxPagesLoaded[myAddr] || 1);
+    }
 }
 
 // =============================
