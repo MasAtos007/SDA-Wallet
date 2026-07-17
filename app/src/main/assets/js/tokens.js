@@ -239,6 +239,13 @@ function setGlobalToken(val) {
     loadBalance?.();
     updateSendBalance?.();
     renderAssets?.();
+
+    // Auto-refresh saldo token yang baru dipilih — pakai versi cepat
+    // (1 RPC call utk token ini saja), bukan refreshAll yang nunggu
+    // batch semua customTokens dulu baru update layar.
+    if (typeof refreshSelectedTokenOnly === "function") {
+        refreshSelectedTokenOnly();
+    }
 }
 
 
