@@ -528,3 +528,65 @@ async function refreshAll() {
     );
 }
 }
+
+// ==========================
+// QUICK REFRESH — hanya token yang baru dipilih
+// Dipakai saat ganti token dari dropdown, biar cepat (1 RPC call)
+// tanpa nunggu batch semua customTokens seperti refreshAll()
+// ==========================
+async function refreshSelectedTokenOnly() {
+
+    if (!_ethers || !provider) return;
+
+    const wallet = getSelectedWallet();
+    if (!wallet) return;
+
+    const currentAddress = wallet.address;
+    const selected = window.selectedToken || "native";
+
+    // Tampilkan loading di angka saldo
+    const el = document.getElementById("balance");
+    if (el) el.textContent = "...";
+
+    try {
+
+        if (selected === "native") {
+
+            const bal = await provider.getBalance(currentAddress);
+            const result = parseFloat(_ethers.utils.formatEther(bal)).toFixed(4) + " SDA";
+            localStorage.setItem(currentAddress + "_native", result);
+
+        } else {
+
+            const token = (window.TOKENS || []).find(t => t.address === selected);
+            if (!token) throw new Error("Token not found");
+
+            const abi = [
+                "function balanceOf(address) view returns (uint256)",
+                "function decimals() view returns (uint8)"
+            ];
+
+            const contract = new _ethers.Contract(token.address, abi, provider);
+
+            const [bal, decimalsRaw] = await Promise.all([
+                contract.balanceOf(currentAddress),
+                contract.decimals().catch(() => 18)
+            ]);
+
+            const value = parseFloat(_ethers.utils.formatUnits(bal, decimalsRaw)).toFixed(4);
+            localStorage.setItem(currentAddress + "_" + token.address, value + " " + token.symbol);
+        }
+
+    } catch (e) {
+        console.warn("[refreshSelectedTokenOnly] gagal:", e);
+    }
+
+    // Safety check: wallet aktif belum ganti selagi fetch jalan
+    const latestWallet = getSelectedWallet();
+    if (!latestWallet || latestWallet.address !== currentAddress) return;
+
+    if (typeof loadBalance === "function") loadBalance();
+    if (typeof renderAssets === "function") renderAssets();
+}
+
+window.refreshSelectedTokenOnly = refreshSelectedTokenOnly;
