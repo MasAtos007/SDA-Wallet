@@ -242,19 +242,100 @@ async function loadNFTs() {
 // =====================================
 // COLLECT FEES
 // =====================================
-async function collectFees(tokenId) {
+// =====================================
+// COLLECT FEES — Confirm -> Proses -> Sukses
+// =====================================
+function collectFees(tokenId) {
+    const lp = window.currentLPs.find(x => x.id == tokenId);
+    if (!lp) return;
+    showCollectConfirmModal(lp);
+}
+
+function _lpLocale() {
+    return window.CURRENT_LANG === "en" ? "en-US" : window.CURRENT_LANG === "ar" ? "ar-SA" : "id-ID";
+}
+
+function _lpTimeStr() {
+    const now = new Date();
+    const locale = _lpLocale();
+    return now.toLocaleTimeString(locale, { hour:"2-digit", minute:"2-digit", second:"2-digit" })
+         + " · " + now.toLocaleDateString(locale, { day:"2-digit", month:"short", year:"numeric" });
+}
+
+function showCollectConfirmModal(lp) {
+    let modal = document.getElementById("lpCollectConfirmModal");
+    if (!modal) {
+        modal = document.createElement("div");
+        modal.id = "lpCollectConfirmModal";
+        document.body.appendChild(modal);
+    }
+
+    modal.innerHTML = `
+        <div class="confirm-backdrop" style="position:fixed;inset:0;background:rgba(0,0,0,0.8);z-index:20000;
+             display:flex;align-items:center;justify-content:center;">
+            <div style="background:#151920;border:1px solid #252b38;border-radius:20px;
+                        padding:24px 20px;width:90%;max-width:360px;">
+                <div style="font-size:17px;font-weight:700;color:#fff;margin-bottom:16px;">${t("lp_collect_confirm_title") || "Confirm Collect Fees"}</div>
+
+                <div style="display:flex;align-items:center;gap:10px;justify-content:center;margin-bottom:16px;">
+                    <div style="text-align:center;">
+                        <img src="${lp.logo0}" onerror="this.src='img/default.png'"
+                             style="width:38px;height:38px;border-radius:50%;object-fit:contain;border:2px solid rgba(255,255,255,.1);">
+                        <div style="font-size:10px;color:#aaa;margin-top:3px;">${lp.symbol0}</div>
+                    </div>
+                    <div style="font-size:18px;color:#9b5cff;">+</div>
+                    <div style="text-align:center;">
+                        <img src="${lp.logo1}" onerror="this.src='img/default.png'"
+                             style="width:38px;height:38px;border-radius:50%;object-fit:contain;border:2px solid rgba(255,255,255,.1);">
+                        <div style="font-size:10px;color:#aaa;margin-top:3px;">${lp.symbol1}</div>
+                    </div>
+                </div>
+
+                <div style="display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid #1e2330;">
+                    <span style="color:#888;">${lp.symbol0}</span>
+                    <b style="color:#00d084;">${lp.fees0}</b>
+                </div>
+                <div style="display:flex;justify-content:space-between;padding:10px 0;margin-bottom:16px;">
+                    <span style="color:#888;">${lp.symbol1}</span>
+                    <b style="color:#00d084;">${lp.fees1}</b>
+                </div>
+
+                <button id="confirmCollectBtn" style="width:100%;padding:14px;border:none;border-radius:14px;
+                        background:linear-gradient(135deg,#9b5cff,#6a3fd4);color:#fff;font-size:15px;
+                        font-weight:700;cursor:pointer;margin-bottom:10px;">${t("lp_collect_confirm_btn") || "Collect Fees"}</button>
+                <button id="cancelCollectBtn" style="width:100%;padding:12px;border:1px solid #252b38;
+                        border-radius:14px;background:transparent;color:#666;font-size:14px;cursor:pointer;">
+                        ${t("lp_cancel_btn") || "Cancel"}</button>
+            </div>
+        </div>`;
+
+    modal.style.cssText = "position:fixed;inset:0;z-index:20000;display:flex;";
+
+    modal.querySelector("#cancelCollectBtn").onclick = () => { modal.style.display = "none"; };
+    modal.querySelector("#confirmCollectBtn").onclick = async () => {
+        modal.style.display = "none";
+        await executeCollectFees(lp);
+    };
+}
+
+async function executeCollectFees(lp) {
+    const tokenId = lp.id;
     try {
         const wallet = getLPSigner(); // throws kalau tidak ada PK / locked
 
         const MAX = ethers.BigNumber.from("0xffffffffffffffffffffffffffffffff");
-
         const contract = new ethers.Contract(
             NFT_PM,
             ["function collect((uint256 tokenId,address recipient,uint128 amount0Max,uint128 amount1Max)) payable returns (uint256 amount0,uint256 amount1)"],
             wallet
         );
 
-        showToast?.("Collecting fees...", "info");
+        showLPLoading(
+            t("lp_collect_processing") || "Collecting fees...",
+            30,
+            { logo: lp.logo0, symbol: lp.symbol0 },
+            { logo: lp.logo1, symbol: lp.symbol1 }
+        );
 
         const tx = await contract.collect({
             tokenId,
@@ -263,89 +344,302 @@ async function collectFees(tokenId) {
             amount1Max: MAX
         });
 
+        updateLPLoading(t("tx_loading") || "Waiting for confirmation...", 70);
         await tx.wait();
+        updateLPLoading(t("gen_step4_title") || "Done", 100);
+        hideLPLoading();
 
-        showToast?.("Fees collected!", "success");
         clearCachedLP();
         renderLP(true);
 
+        showCollectSuccessModal({ hash: tx.hash, lp });
+
     } catch (e) {
+        hideLPLoading();
         console.error("collectFees error:", e);
         if (e.message === "PK required" || e.message === "PK locked") return;
-        showToast?.("Collect gagal: " + (e.reason || e.message || ""), "error");
+        showToast?.((t("lp_toast_collect_failed") || "Collect failed: ") + (e.reason || e.message || ""), "error");
     }
+}
+
+function showCollectSuccessModal({ hash, lp }) {
+    let modal = document.getElementById("lpCollectSuccessModal");
+    if (!modal) {
+        modal = document.createElement("div");
+        modal.id = "lpCollectSuccessModal";
+        document.body.appendChild(modal);
+    }
+
+    const shortHash = hash ? hash.slice(0, 10) + "..." + hash.slice(-8) : "—";
+    const timeStr = _lpTimeStr();
+
+    modal.innerHTML = `
+        <div class="confirm-backdrop" style="position:fixed;inset:0;background:rgba(0,0,0,0.8);z-index:20000;
+             display:flex;align-items:center;justify-content:center;">
+            <div style="background:#151920;border:1px solid #252b38;border-radius:20px;
+                        padding:28px 20px;width:90%;max-width:360px;text-align:center;">
+
+                <div style="width:56px;height:56px;border-radius:50%;background:rgba(0,204,102,0.15);
+                            display:flex;align-items:center;justify-content:center;margin:0 auto 14px;">
+                    <i class="fa-solid fa-check" style="color:#00cc66;font-size:24px;"></i>
+                </div>
+
+                <div style="font-size:17px;font-weight:700;color:#fff;margin-bottom:4px;">${t("lp_collect_success_title") || "Fees Collected"}</div>
+                <div style="font-size:12px;color:#888;margin-bottom:18px;">${lp.symbol0} / ${lp.symbol1} Pool</div>
+
+                <div style="display:flex;align-items:center;gap:10px;justify-content:center;margin-bottom:16px;">
+                    <div style="text-align:center;">
+                        <img src="${lp.logo0}" onerror="this.src='img/default.png'"
+                             style="width:38px;height:38px;border-radius:50%;object-fit:contain;border:2px solid rgba(255,255,255,.1);">
+                        <div style="font-size:11px;color:#fff;margin-top:4px;">${lp.fees0} ${lp.symbol0}</div>
+                    </div>
+                    <div style="font-size:18px;color:#9b5cff;">+</div>
+                    <div style="text-align:center;">
+                        <img src="${lp.logo1}" onerror="this.src='img/default.png'"
+                             style="width:38px;height:38px;border-radius:50%;object-fit:contain;border:2px solid rgba(255,255,255,.1);">
+                        <div style="font-size:11px;color:#fff;margin-top:4px;">${lp.fees1} ${lp.symbol1}</div>
+                    </div>
+                </div>
+
+                <div style="text-align:left;background:#0e1117;border-radius:12px;padding:14px;margin-bottom:18px;">
+                    <div style="display:flex;justify-content:space-between;padding:6px 0;">
+                        <span style="color:#888;font-size:12px;">${t("unwrap_tx_hash") || "Tx Hash"}</span>
+                        <span style="color:#fff;font-size:12px;">${shortHash}</span>
+                    </div>
+                    <div style="display:flex;justify-content:space-between;padding:6px 0;">
+                        <span style="color:#888;font-size:12px;">${t("unwrap_time") || "Time"}</span>
+                        <span style="color:#fff;font-size:12px;">${timeStr}</span>
+                    </div>
+                </div>
+
+                <button id="lpcsExplorerBtn" style="width:100%;padding:13px;border:1px solid #252b38;border-radius:14px;
+                        background:transparent;color:#9b5cff;font-size:14px;font-weight:600;cursor:pointer;margin-bottom:10px;">
+                        ${t("tx_explorer") || "Explorer"}</button>
+                <button id="lpcsCloseBtn" style="width:100%;padding:14px;border:none;border-radius:14px;
+                        background:linear-gradient(135deg,#9b5cff,#6a3fd4);color:#fff;font-size:15px;
+                        font-weight:700;cursor:pointer;">${t("lp_done_btn") || "Done"}</button>
+            </div>
+        </div>`;
+
+    modal.style.cssText = "position:fixed;inset:0;z-index:20000;display:flex;";
+
+    modal.querySelector("#lpcsCloseBtn").onclick = () => { modal.style.display = "none"; };
+    modal.querySelector("#lpcsExplorerBtn").onclick = () => {
+        openExplorer?.("https://ledger.sidrachain.com/tx/" + hash);
+    };
 }
 
 
 // =====================================
 // REMOVE LIQUIDITY + AUTO COLLECT FEES
 // =====================================
-async function removeLiquidity(tokenId) {
+// =====================================
+// REMOVE LIQUIDITY — Confirm -> Proses -> Sukses
+// =====================================
+function removeLiquidity(tokenId) {
     const lp = window.currentLPs.find(x => x.id == tokenId);
     if (!lp) return;
+    showRemoveConfirmModal(lp);
+}
 
-    showConfirm?.(
-        `Remove semua liquidity dari posisi #${tokenId}? Fees yang ada akan di-collect otomatis.`,
-        async () => {
-            try {
-                const wallet = getLPSigner();
+function showRemoveConfirmModal(lp) {
+    let modal = document.getElementById("lpRemoveConfirmModal");
+    if (!modal) {
+        modal = document.createElement("div");
+        modal.id = "lpRemoveConfirmModal";
+        document.body.appendChild(modal);
+    }
 
-                const pm = new ethers.Contract(
-                    NFT_PM,
-                    [
-                        "function decreaseLiquidity((uint256 tokenId,uint128 liquidity,uint256 amount0Min,uint256 amount1Min,uint256 deadline)) payable returns (uint256 amount0,uint256 amount1)",
-                        "function collect((uint256 tokenId,address recipient,uint128 amount0Max,uint128 amount1Max)) payable returns (uint256 amount0,uint256 amount1)",
-                        "function burn(uint256 tokenId) payable"
-                    ],
-                    wallet
-                );
+    const desc = (t("lp_remove_confirm_desc") || "Remove all liquidity from position #{id}?")
+        .replace("{id}", lp.id);
 
-                const deadline = Math.floor(Date.now() / 1000) + 600;
-                const MAX      = ethers.BigNumber.from("0xffffffffffffffffffffffffffffffff");
+    modal.innerHTML = `
+        <div class="confirm-backdrop" style="position:fixed;inset:0;background:rgba(0,0,0,0.8);z-index:20000;
+             display:flex;align-items:center;justify-content:center;">
+            <div style="background:#151920;border:1px solid #252b38;border-radius:20px;
+                        padding:24px 20px;width:90%;max-width:360px;">
+                <div style="font-size:17px;font-weight:700;color:#fff;margin-bottom:10px;">${t("lp_remove_confirm_title") || "Confirm Remove Liquidity"}</div>
+                <div style="font-size:13px;color:#aaa;margin-bottom:16px;line-height:1.5;">${desc}</div>
 
-                showToast?.("Removing liquidity...", "info");
+                <div style="display:flex;align-items:center;gap:10px;justify-content:center;margin-bottom:16px;">
+                    <div style="text-align:center;">
+                        <img src="${lp.logo0}" onerror="this.src='img/default.png'"
+                             style="width:38px;height:38px;border-radius:50%;object-fit:contain;border:2px solid rgba(255,255,255,.1);">
+                        <div style="font-size:10px;color:#aaa;margin-top:3px;">${lp.symbol0}</div>
+                    </div>
+                    <div style="font-size:18px;color:#9b5cff;">+</div>
+                    <div style="text-align:center;">
+                        <img src="${lp.logo1}" onerror="this.src='img/default.png'"
+                             style="width:38px;height:38px;border-radius:50%;object-fit:contain;border:2px solid rgba(255,255,255,.1);">
+                        <div style="font-size:10px;color:#aaa;margin-top:3px;">${lp.symbol1}</div>
+                    </div>
+                </div>
 
-                // Step 1 â€” decrease semua liquidity
-                if (BigInt(lp.liquidity) > 0n) {
-                    const tx1 = await pm.decreaseLiquidity({
-                        tokenId,
-                        liquidity:   lp.liquidity,
-                        amount0Min:  0,
-                        amount1Min:  0,
-                        deadline
-                    });
-                    await tx1.wait();
-                }
+                <div style="display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid #1e2330;">
+                    <span style="color:#888;">${lp.symbol0}</span>
+                    <b style="color:#fff;">${lp.amount0}</b>
+                </div>
+                <div style="display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid #1e2330;">
+                    <span style="color:#888;">${lp.symbol1}</span>
+                    <b style="color:#fff;">${lp.amount1}</b>
+                </div>
+                ${lp.hasFees ? `
+                <div style="font-size:11px;color:#f59e0b;margin-top:12px;">
+                    <i class="fa-solid fa-circle-info"></i> ${t("lp_remove_confirm_warning") || "Uncollected fees will be collected automatically."}
+                </div>` : ""}
 
-                // Step 2 â€” collect semua (termasuk fees)
-                showToast?.("Collecting tokens & fees...", "info");
-                const tx2 = await pm.collect({
-                    tokenId,
-                    recipient:  wallet.address,
-                    amount0Max: MAX,
-                    amount1Max: MAX
-                });
-                await tx2.wait();
+                <button id="confirmRemoveBtn" style="width:100%;padding:14px;border:none;border-radius:14px;
+                        background:linear-gradient(135deg,#ff4d4f,#c92c2e);color:#fff;font-size:15px;
+                        font-weight:700;cursor:pointer;margin-top:16px;margin-bottom:10px;">${t("lp_remove_confirm_btn") || "Remove Liquidity"}</button>
+                <button id="cancelRemoveBtn" style="width:100%;padding:12px;border:1px solid #252b38;
+                        border-radius:14px;background:transparent;color:#666;font-size:14px;cursor:pointer;">
+                        ${t("lp_cancel_btn") || "Cancel"}</button>
+            </div>
+        </div>`;
 
-                // Step 3 â€” burn NFT kalau liquidity & fees sudah 0
-                try {
-                    const tx3 = await pm.burn(tokenId);
-                    await tx3.wait();
-                } catch {
-                    // burn bisa gagal kalau ada sisa dust â€” tidak critical
-                }
+    modal.style.cssText = "position:fixed;inset:0;z-index:20000;display:flex;";
 
-                showToast?.("Liquidity removed!", "success");
-                clearCachedLP();
-                renderLP(true);
+    modal.querySelector("#cancelRemoveBtn").onclick = () => { modal.style.display = "none"; };
+    modal.querySelector("#confirmRemoveBtn").onclick = async () => {
+        modal.style.display = "none";
+        await executeRemoveLiquidity(lp);
+    };
+}
 
-            } catch (e) {
-                console.error("removeLiquidity error:", e);
-                if (e.message === "PK required" || e.message === "PK locked") return;
-                showToast?.("Remove gagal: " + (e.reason || e.message || ""), "error");
-            }
+async function executeRemoveLiquidity(lp) {
+    const tokenId = lp.id;
+    const t0 = { logo: lp.logo0, symbol: lp.symbol0 };
+    const t1 = { logo: lp.logo1, symbol: lp.symbol1 };
+
+    try {
+        const wallet = getLPSigner();
+
+        const pm = new ethers.Contract(
+            NFT_PM,
+            [
+                "function decreaseLiquidity((uint256 tokenId,uint128 liquidity,uint256 amount0Min,uint256 amount1Min,uint256 deadline)) payable returns (uint256 amount0,uint256 amount1)",
+                "function collect((uint256 tokenId,address recipient,uint128 amount0Max,uint128 amount1Max)) payable returns (uint256 amount0,uint256 amount1)",
+                "function burn(uint256 tokenId) payable"
+            ],
+            wallet
+        );
+
+        const deadline = Math.floor(Date.now() / 1000) + 600;
+        const MAX      = ethers.BigNumber.from("0xffffffffffffffffffffffffffffffff");
+
+        showLPLoading(t("lp_remove_step_decrease") || "Removing liquidity...", 20, t0, t1);
+
+        if (BigInt(lp.liquidity) > 0n) {
+            const tx1 = await pm.decreaseLiquidity({
+                tokenId,
+                liquidity:   lp.liquidity,
+                amount0Min:  0,
+                amount1Min:  0,
+                deadline
+            });
+            await tx1.wait();
         }
-    );
+
+        updateLPLoading(t("lp_remove_step_collect") || "Collecting tokens & fees...", 60);
+        const tx2 = await pm.collect({
+            tokenId,
+            recipient:  wallet.address,
+            amount0Max: MAX,
+            amount1Max: MAX
+        });
+        await tx2.wait();
+
+        updateLPLoading(t("lp_remove_step_burn") || "Closing position...", 90);
+        let finalHash = tx2.hash;
+        try {
+            const tx3 = await pm.burn(tokenId);
+            await tx3.wait();
+            finalHash = tx3.hash;
+        } catch {
+            // burn bisa gagal kalau ada sisa dust — tidak critical
+        }
+
+        updateLPLoading(t("gen_step4_title") || "Done", 100);
+        hideLPLoading();
+
+        clearCachedLP();
+        renderLP(true);
+
+        showRemoveSuccessModal({ hash: finalHash, lp });
+
+    } catch (e) {
+        hideLPLoading();
+        console.error("removeLiquidity error:", e);
+        if (e.message === "PK required" || e.message === "PK locked") return;
+        showToast?.((t("lp_toast_remove_failed") || "Remove failed: ") + (e.reason || e.message || ""), "error");
+    }
+}
+
+function showRemoveSuccessModal({ hash, lp }) {
+    let modal = document.getElementById("lpRemoveSuccessModal");
+    if (!modal) {
+        modal = document.createElement("div");
+        modal.id = "lpRemoveSuccessModal";
+        document.body.appendChild(modal);
+    }
+
+    const shortHash = hash ? hash.slice(0, 10) + "..." + hash.slice(-8) : "—";
+    const timeStr = _lpTimeStr();
+
+    modal.innerHTML = `
+        <div class="confirm-backdrop" style="position:fixed;inset:0;background:rgba(0,0,0,0.8);z-index:20000;
+             display:flex;align-items:center;justify-content:center;">
+            <div style="background:#151920;border:1px solid #252b38;border-radius:20px;
+                        padding:28px 20px;width:90%;max-width:360px;text-align:center;">
+
+                <div style="width:56px;height:56px;border-radius:50%;background:rgba(0,204,102,0.15);
+                            display:flex;align-items:center;justify-content:center;margin:0 auto 14px;">
+                    <i class="fa-solid fa-check" style="color:#00cc66;font-size:24px;"></i>
+                </div>
+
+                <div style="font-size:17px;font-weight:700;color:#fff;margin-bottom:4px;">${t("lp_remove_success_title") || "Liquidity Removed"}</div>
+                <div style="font-size:12px;color:#888;margin-bottom:18px;">LP NFT #${lp.id} ${t("tx_status_closed") || "Closed"}</div>
+
+                <div style="display:flex;align-items:center;gap:10px;justify-content:center;margin-bottom:16px;">
+                    <div style="text-align:center;">
+                        <img src="${lp.logo0}" onerror="this.src='img/default.png'"
+                             style="width:38px;height:38px;border-radius:50%;object-fit:contain;border:2px solid rgba(255,255,255,.1);">
+                        <div style="font-size:11px;color:#fff;margin-top:4px;">${lp.amount0} ${lp.symbol0}</div>
+                    </div>
+                    <div style="font-size:18px;color:#9b5cff;">+</div>
+                    <div style="text-align:center;">
+                        <img src="${lp.logo1}" onerror="this.src='img/default.png'"
+                             style="width:38px;height:38px;border-radius:50%;object-fit:contain;border:2px solid rgba(255,255,255,.1);">
+                        <div style="font-size:11px;color:#fff;margin-top:4px;">${lp.amount1} ${lp.symbol1}</div>
+                    </div>
+                </div>
+
+                <div style="text-align:left;background:#0e1117;border-radius:12px;padding:14px;margin-bottom:18px;">
+                    <div style="display:flex;justify-content:space-between;padding:6px 0;">
+                        <span style="color:#888;font-size:12px;">${t("unwrap_tx_hash") || "Tx Hash"}</span>
+                        <span style="color:#fff;font-size:12px;">${shortHash}</span>
+                    </div>
+                    <div style="display:flex;justify-content:space-between;padding:6px 0;">
+                        <span style="color:#888;font-size:12px;">${t("unwrap_time") || "Time"}</span>
+                        <span style="color:#fff;font-size:12px;">${timeStr}</span>
+                    </div>
+                </div>
+
+                <button id="lprsExplorerBtn" style="width:100%;padding:13px;border:1px solid #252b38;border-radius:14px;
+                        background:transparent;color:#9b5cff;font-size:14px;font-weight:600;cursor:pointer;margin-bottom:10px;">
+                        ${t("tx_explorer") || "Explorer"}</button>
+                <button id="lprsCloseBtn" style="width:100%;padding:14px;border:none;border-radius:14px;
+                        background:linear-gradient(135deg,#9b5cff,#6a3fd4);color:#fff;font-size:15px;
+                        font-weight:700;cursor:pointer;">${t("lp_done_btn") || "Done"}</button>
+            </div>
+        </div>`;
+
+    modal.style.cssText = "position:fixed;inset:0;z-index:20000;display:flex;";
+
+    modal.querySelector("#lprsCloseBtn").onclick = () => { modal.style.display = "none"; };
+    modal.querySelector("#lprsExplorerBtn").onclick = () => {
+        openExplorer?.("https://ledger.sidrachain.com/tx/" + hash);
+    };
 }
 
 
@@ -376,14 +670,14 @@ async function boostLiquidity(tokenId) {
                 amount1: ethers.utils.parseUnits(amount1.toFixed(dec1 > 6 ? 6 : dec1), dec1)
             });
 
-            showToast?.("Liquidity boosted!", "success");
+            showToast?.(t("lp_toast_boosted") || "Liquidity boosted!", "success");
             clearCachedLP();
             renderLP(true);
 
         } catch (e) {
             console.error("boostLiquidity error:", e);
             if (e.message === "PK required" || e.message === "PK locked") return;
-            showToast?.("Boost gagal: " + (e.reason || e.message || ""), "error");
+            showToast?.((t("lp_toast_boost_failed") || "Boost failed: ") + (e.reason || e.message || ""), "error");
         }
     });
 }
@@ -408,18 +702,18 @@ async function transferLP(tokenId) {
                     wallet
                 );
 
-                showToast?.("Sending NFT...", "info");
+                showToast?.(t("lp_toast_sending_nft") || "Sending NFT...", "info");
                 const tx = await contract.safeTransferFrom(wallet.address, to, tokenId);
                 await tx.wait();
 
-                showToast?.("LP NFT terkirim!", "success");
+                showToast?.(t("lp_toast_nft_sent") || "LP NFT sent!", "success");
                 clearCachedLP();
                 renderLP(true);
 
             } catch (e) {
                 console.error("transferLP error:", e);
                 if (e.message === "PK required" || e.message === "PK locked") return;
-                showToast?.("Transfer gagal: " + (e.reason || e.message || ""), "error");
+                showToast?.((t("lp_toast_transfer_failed") || "Transfer failed: ") + (e.reason || e.message || ""), "error");
             }
         });
     });
@@ -441,9 +735,9 @@ function openLPDetail(id) {
     const isOwner     = window.WALLET_SESSION?.activeAddress?.toLowerCase() === lp.owner?.toLowerCase();
 
     const noTxReason = !isPKWallet
-        ? "Import PK untuk transaksi"
+        ? (t("lp_no_tx_import_pk") || "Import PK for transaction")
         : !isOwner
-            ? "Bukan wallet pemilik"
+            ? (t("lp_no_tx_not_owner") || "Not the owner wallet")
             : "";
 
     document.getElementById("tab-lp").innerHTML = `
@@ -515,7 +809,7 @@ function openLPDetail(id) {
                     onclick="collectFees('${lp.id}')"
                     ${(!can || !hasFees) ? "disabled" : ""}>
                     <i class="fa-solid fa-hand-holding-dollar"></i>
-                    ${!can ? noTxReason || "Collect Fees" : hasFees ? "Collect Fees" : "No Fees"}
+                    ${!can ? noTxReason || (t("lp_btn_collect_fees") || "Collect Fees") : hasFees ? (t("lp_btn_collect_fees") || "Collect Fees") : (t("lp_btn_no_fees") || "No Fees")}
                 </button>
             </div>
 
@@ -528,21 +822,21 @@ function openLPDetail(id) {
                     onclick="boostLiquidity('${lp.id}')"
                     ${!can ? "disabled" : ""}>
                     <i class="fa-solid fa-plus"></i>
-                    ${can ? "Boost Liquidity" : noTxReason}
+                    ${can ? (t("lp_btn_boost") || "Boost Liquidity") : noTxReason}
                 </button>
                 <button
                     class="lp-btn danger"
                     onclick="removeLiquidity('${lp.id}')"
                     ${!can ? "disabled" : ""}>
                     <i class="fa-solid fa-minus"></i>
-                    ${can ? "Remove Liquidity" : noTxReason}
+                    ${can ? (t("lp_btn_remove") || "Remove Liquidity") : noTxReason}
                 </button>
                 <button
                     class="lp-btn"
                     onclick="transferLP('${lp.id}')"
                     ${!can ? "disabled" : ""}>
                     <i class="fa-solid fa-paper-plane"></i>
-                    ${can ? "Send NFT" : noTxReason}
+                    ${can ? (t("lp_btn_send_nft") || "Send NFT") : noTxReason}
                 </button>
             </div>
 
