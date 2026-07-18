@@ -207,7 +207,7 @@ function isLpNft(token) {
 // =============================
 function buildSwapInfoMap(nativeItems, myAddress) {
     const ROUTER   = (window.CONFIG?.ROUTER   || "").toLowerCase();
-    const POS_MGR  = "0x8b9bcc8c722778f30146e20e44e8d8e28add8df8"; // Uniswap V3 Positions NFT
+    const POS_MGR  = (window.CONFIG?.POS_MGR  || "").toLowerCase(); // Uniswap V3 Positions NFT-V1
     const swapMap    = new Map();
     const collectMap = new Map();
 
@@ -222,9 +222,7 @@ function buildSwapInfoMap(nativeItems, myAddress) {
 
         // -- Deteksi COLLECT FEE LP --
         // Method "collect" (atau hex selector-nya) ke contract Position Manager
-        const isCollect =
-            COLLECT_SELECTORS.has(method) &&
-            (to === POS_MGR || from === POS_MGR);
+        const isCollect = COLLECT_SELECTORS.has(method);
 
         if (isCollect) {
             collectMap.set(hash, { method: "collect" });
@@ -493,9 +491,58 @@ function processTokenTransfers(rawItems, swapInfoMap, myAddress) {
         // -- Pakai nonNftItems untuk logika swap/send biasa --
         const workItems = nonNftItems.length ? nonNftItems : items;
 
+        const hasOutgoing = workItems.some(
+            i => (i.from?.hash || "").toLowerCase() === myAddr
+        );
+        const hasIncoming = workItems.some(
+            i => (i.to?.hash || "").toLowerCase() === myAddr
+        );
+        
+        // -- COLLECT FEE fallback --
+        // Menangani kasus tx native "collect()" yang from/to-nya BUKAN wallet user
+        // (dipanggil pihak lain dengan recipient = wallet user), sehingga tidak pernah
+        // muncul di daftar native tx wallet ini dan gagal terdeteksi lewat collectMap.
+        // Pola: ≥2 token MASUK ke user, TIDAK ADA yang keluar, semua dari pengirim yang sama.
+        const uniqueFromAddrs = new Set(workItems.map(i => (i.from?.hash || "").toLowerCase()));
+        const isLikelyCollectFee =
+            !hasOutgoing &&
+            hasIncoming &&
+            workItems.length >= 2 &&
+            uniqueFromAddrs.size === 1;
+
+        if (isLikelyCollectFee) {
+            const base = workItems[0];
+            const t0   = parseTokenTransferItem(workItems[0]);
+            const t1   = parseTokenTransferItem(workItems[1] || null);
+
+            result.push({
+                hash,
+                from:      (base.from?.hash || "").toLowerCase(),
+                to:        (base.to?.hash   || "").toLowerCase(),
+                type:      "COLLECT_FEE",
+                inSymbol:  t0?.symbol || "?",
+                inLogo:    resolveTokenLogo(t0?.symbol, t0?.logo),
+                outSymbol: t1?.symbol || "",
+                outLogo:   t1 ? resolveTokenLogo(t1.symbol, t1.logo) : "",
+                amountOut: t0?.value || "0",
+                amount1:   t1?.value || "0",
+                value:     t0?.value || "0",
+                symbol:    t0?.symbol || "FEE",
+                logo:      resolveTokenLogo(t0?.symbol, t0?.logo),
+                blockNumber: "0x" + (base.block_number || 0).toString(16),
+                timestamp: base.timestamp
+                    ? Math.floor(new Date(base.timestamp).getTime() / 1000)
+                    : 0,
+                status: "success",
+                source: "blockscout",
+                read:   false
+            });
+            return;
+        }
+
         const isSwap =
             swapInfoMap.has(hash) ||
-            workItems.length >= 2;
+            (hasOutgoing && hasIncoming && workItems.length >= 2);
 
         if (isSwap) {
             
