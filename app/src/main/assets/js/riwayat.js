@@ -285,6 +285,50 @@ function processTokenTransfers(rawItems, swapInfoMap, myAddress) {
         const nativeInfo   = swapInfoMap.get(hash);
         const isCollectFee = window._collectMap?.has(hash);
 
+        // -- WRAP / UNWRAP SDA <-> WSDA --
+        // Wrap: SDA native dikirim ke kontrak WSDA, WSDA baru di-mint (dari 0x0) ke user.
+        // Unwrap: WSDA di-burn (dikirim ke 0x0) dari user, SDA native dikembalikan.
+        if (items.length === 1) {
+            const WSDA_ADDR = (window.CONFIG?.WSDA || "").toLowerCase();
+            const ZERO_ADDR = "0x0000000000000000000000000000000000000000";
+            const only    = items[0];
+            const symUp   = (only.token?.symbol || "").toUpperCase();
+            const tokAddr = (only.token?.address_hash || only.token?.address || "").toLowerCase();
+            const isWsdaToken = symUp === "WSDA" || (WSDA_ADDR && tokAddr === WSDA_ADDR);
+            const oFrom = (only.from?.hash || "").toLowerCase();
+            const oTo   = (only.to?.hash   || "").toLowerCase();
+
+            if (isWsdaToken && oFrom === ZERO_ADDR && oTo === myAddr) {
+                const parsed = parseTokenTransferItem(only);
+                result.push({
+                    hash, from: oFrom, to: oTo,
+                    type:   "WRAP",
+                    value:  parsed?.value || "0",
+                    symbol: "SDA > WSDA",
+                    logo:   "img/sda.png",
+                    blockNumber: "0x" + (only.block_number || 0).toString(16),
+                    timestamp: only.timestamp ? Math.floor(new Date(only.timestamp).getTime() / 1000) : 0,
+                    status: "success", source: "blockscout", read: false
+                });
+                return;
+            }
+
+            if (isWsdaToken && oTo === ZERO_ADDR && oFrom === myAddr) {
+                const parsed = parseTokenTransferItem(only);
+                result.push({
+                    hash, from: oFrom, to: oTo,
+                    type:   "UNWRAP",
+                    value:  parsed?.value || "0",
+                    symbol: "WSDA > SDA",
+                    logo:   "img/sda.png",
+                    blockNumber: "0x" + (only.block_number || 0).toString(16),
+                    timestamp: only.timestamp ? Math.floor(new Date(only.timestamp).getTime() / 1000) : 0,
+                    status: "success", source: "blockscout", read: false
+                });
+                return;
+            }
+        }
+
         // -- COLLECT FEE LP --
         if (isCollectFee) {
             const received = items.filter(
@@ -853,7 +897,9 @@ function dedupeTxList(list) {
             t.type === "SWAP" ||
             t.type === "COLLECT_FEE" ||
             t.type === "REMOVE_LP" ||
-            t.type === "LP_NFT"
+            t.type === "LP_NFT" ||
+            t.type === "WRAP" ||
+            t.type === "UNWRAP"
         ) ? 1 : 0;
 
         if (priority(tx) > priority(existing)) map.set(key, tx);
@@ -1088,7 +1134,9 @@ function showTxDetail(tx) {
         ADD_LP:      t("tx_label_addlp")   || "Tambah Likuiditas",
         REMOVE_LP:   t("tx_label_removelp")|| "Hapus Likuiditas",
         COLLECT_FEE: t("tx_label_collect") || "Klaim Fee LP",
-        LP_NFT:      t("tx_label_lpnft")   || "LP NFT"
+        LP_NFT:      t("tx_label_lpnft")   || "LP NFT",
+        WRAP:        t("tx_label_wrap")    || "Wrap SDA",
+        UNWRAP:      t("tx_label_unwrap")  || "Unwrap WSDA"
     };
     set("txdLabel", isFailed ? (t("tx_label_failed") || "Transaksi Gagal") : (labelMap[tx.type] || tx.type));
 
@@ -1177,7 +1225,7 @@ function showTxDetail(tx) {
     const fromRow = document.getElementById("txdFromRow");
     const toRow   = document.getElementById("txdToRow");
 
-    if (isSwap || tx.type === "ADD_LP" || isRemoveLp || isCollect) {
+    if (isSwap || tx.type === "ADD_LP" || isRemoveLp || isCollect || tx.type === "WRAP" || tx.type === "UNWRAP") {
         if (fromRow) fromRow.style.display = "none";
         if (toRow)   toRow.style.display   = "none";
     } else {
@@ -1382,6 +1430,8 @@ function renderTxHistory() {
         else if (isRemoveLP)        { color = "#f59e0b"; icon = "lp";   type = "Remove LP"; }
         else if (isAddLP)           { color = "#f59e0b"; icon = "lp";   type = "Add LP"; }
         else if (isSwap)            { color = "#3b82f6"; icon = "swap"; type = "Swap"; }
+        else if (tx.type === "WRAP")   { color = "#8b5cf6"; icon = "wrap"; type = "Wrap"; }
+        else if (tx.type === "UNWRAP") { color = "#8b5cf6"; icon = "wrap"; type = "Unwrap"; }
         else if (type === "RECEIVE") { color = "#00d084"; icon = "down"; type = "Receive"; }
         else if (type === "SEND")    { type = "Send"; }
 
@@ -1408,23 +1458,27 @@ function renderTxHistory() {
         else if (isSwap)     valueFormatted = fmt(tx.amountOut || tx.value);
         else                 valueFormatted = fmt(tx.value);
 
-        const signPrefix = (isSwap||isAddLP||isRemoveLP||isLpNftTx||isCollectFee) ? "" : type === "Receive" ? "+" : "-";
+        const isWrapTx = tx.type === "WRAP" || tx.type === "UNWRAP";
+        const signPrefix = (isSwap||isAddLP||isRemoveLP||isLpNftTx||isCollectFee||isWrapTx) ? "" : type === "Receive" ? "+" : "-";
         const valueColor = isFailed ? "#555" : isLpNftTx ? "#888" : color;
 
         // -- Alamat pendek --
         const targetAddr = type === "Send" ? tx.to : tx.from;
         const shortAddr  = (isSwap||isAddLP||isRemoveLP||isCollectFee)
             ? "Liquidity Pool"
-            : isLpNftTx
-                ? (tx.subType === "RECEIVE" ? (tx.from?.slice(0,6)+"..."+tx.from?.slice(-4)) : (tx.to?.slice(0,6)+"..."+tx.to?.slice(-4)))
-                : targetAddr ? targetAddr.slice(0,6)+"..."+targetAddr.slice(-4) : "-";
+            : isWrapTx
+                ? "WSDA Contract"
+                : isLpNftTx
+                    ? (tx.subType === "RECEIVE" ? (tx.from?.slice(0,6)+"..."+tx.from?.slice(-4)) : (tx.to?.slice(0,6)+"..."+tx.to?.slice(-4)))
+                    : targetAddr ? targetAddr.slice(0,6)+"..."+targetAddr.slice(-4) : "-";
 
         // -- Icon badge --
         const iconHTML = {
             up:   '<i class="fa-solid fa-arrow-up"></i>',
             down: '<i class="fa-solid fa-arrow-down"></i>',
             swap: '<i class="fa-solid fa-right-left"></i>',
-            lp:   '<i class="fa-solid fa-droplet"></i>'
+            lp:   '<i class="fa-solid fa-droplet"></i>',
+            wrap: '<i class="fa-solid fa-arrows-rotate"></i>'
         }[icon];
 
         // -- Logo --
@@ -1436,6 +1490,8 @@ function renderTxHistory() {
 
         const logoHTML = (isLpNftTx || isBurnLp)
             ? `<div style="width:38px;height:38px;border-radius:50%;background:#1a1a2e;display:flex;align-items:center;justify-content:center;"><i class="fa-solid fa-droplet" style="color:#888;font-size:16px;"></i></div>`
+            : isWrapTx
+                ? `<img src="img/sda.png" onerror="this.src='img/default.png'" style="width:38px;height:38px;border-radius:50%;background:#111;padding:4px;object-fit:contain;flex-shrink:0;">`
             : isSingleSided
                 ? `<img src="${safeInLogo}" onerror="this.src='img/default.png'" style="width:38px;height:38px;border-radius:50%;background:#111;padding:4px;object-fit:contain;flex-shrink:0;">`
                 : (isSwap||isAddLP||isRemoveLP||isCollectFee)
