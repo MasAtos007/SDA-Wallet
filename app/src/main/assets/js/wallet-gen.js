@@ -23,7 +23,7 @@ function generateNewWallet() {
         };
     } catch (err) {
         console.error("generateNewWallet error:", err);
-        throw new Error("Gagal generate wallet");
+        throw new Error(LANG[CURRENT_LANG]?.err_gen_wallet_failed || "Gagal generate wallet");
     }
 }
 
@@ -44,7 +44,7 @@ function deriveAccount(mnemonic, index = 0) {
         };
     } catch (err) {
         console.error("deriveAccount error:", err);
-        throw new Error("Gagal derive account dari seed phrase");
+        throw new Error(LANG[CURRENT_LANG]?.err_derive_account_failed || "Gagal derive account dari seed phrase");
     }
 }
 
@@ -64,7 +64,7 @@ function importFromPrivateKey(pk) {
             mnemonic:    null
         };
     } catch {
-        throw new Error("Private key tidak valid");
+        throw new Error(LANG[CURRENT_LANG]?.err_pk_invalid || "Private key tidak valid");
     }
 }
 
@@ -78,11 +78,11 @@ function importFromMnemonic(phrase, index = 0) {
 
         // Validasi jumlah kata (12 atau 24)
         if (words.length !== 12 && words.length !== 24) {
-            throw new Error("Seed phrase harus 12 atau 24 kata");
+            throw new Error(LANG[CURRENT_LANG]?.err_seed_word_count || "Seed phrase harus 12 atau 24 kata");
         }
 
         if (!ethers.utils.isValidMnemonic(normalized)) {
-            throw new Error("Seed phrase tidak valid");
+            throw new Error(LANG[CURRENT_LANG]?.err_seed_invalid || "Seed phrase tidak valid");
         }
 
         const account = deriveAccount(normalized, index);
@@ -93,11 +93,17 @@ function importFromMnemonic(phrase, index = 0) {
             source:      "mnemonic"
         };
     } catch (err) {
-        // Re-throw dengan pesan yang user-friendly
-        if (err.message.includes("harus") || err.message.includes("tidak valid")) {
+        // Re-throw kalau sudah pesan yang di-lempar manual di atas
+        const knownMsgs = [
+            LANG[CURRENT_LANG]?.err_seed_word_count,
+            LANG[CURRENT_LANG]?.err_seed_invalid,
+            "Seed phrase harus 12 atau 24 kata",
+            "Seed phrase tidak valid"
+        ];
+        if (knownMsgs.includes(err.message)) {
             throw err;
         }
-        throw new Error("Seed phrase tidak valid. Periksa kembali setiap kata.");
+        throw new Error(LANG[CURRENT_LANG]?.err_seed_invalid_check || "Seed phrase tidak valid. Periksa kembali setiap kata.");
     }
 }
 
@@ -176,7 +182,7 @@ function generateVerifyQuiz(mnemonic) {
 
     return indices.map(i => ({
         index:  i,
-        label:  `Kata ke-${i + 1}`,
+        label:  (LANG[CURRENT_LANG]?.verify_word_label || 'Kata ke-{n}').replace('{n}', i + 1),
         answer: words[i]
     }));
 }
