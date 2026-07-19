@@ -161,8 +161,17 @@ function setGlobalToken(val) {
     renderAssets?.();
 }
 
+
 // =====================================
 // OPEN EXPLORER — selalu pakai built-in browser
 // Fallback ke window.open kalau AndroidWallet tidak tersedia (development)
 // =====================================
 // openExplorer didefinisikan di explorer-patch.js — tidak perlu duplikat di sini
+
+function spinRefreshIcon() {
+    const icon = document.getElementById("refreshIconBtn");
+    if (!icon) return;
+    icon.classList.add("spinning");
+    setTimeout(() => icon.classList.remove("spinning"), 700);
+}
+window.spinRefreshIcon = spinRefreshIcon;
