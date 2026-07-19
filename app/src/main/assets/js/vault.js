@@ -82,7 +82,7 @@ const vault = {
     // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     async createVault(walletData, pin) {
         if (!pin || pin.length < 4) {
-            throw new Error("PIN minimal 4 karakter");
+            throw new Error(LANG[CURRENT_LANG]?.err_pin_min4 || "PIN minimal 4 karakter");
         }
 
         const salt    = crypto.getRandomValues(new Uint8Array(16));
@@ -129,13 +129,13 @@ const vault = {
     // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     async unlockVault(pin) {
         const stored = localStorage.getItem(VAULT_STORAGE_KEY);
-        if (!stored) throw new Error("Vault tidak ditemukan. Buat wallet dulu.");
+        if (!stored) throw new Error(LANG[CURRENT_LANG]?.err_vault_not_found || "Vault tidak ditemukan. Buat wallet dulu.");
 
         let vaultObj;
         try {
             vaultObj = JSON.parse(stored);
         } catch {
-            throw new Error("Vault rusak. Perlu reset.");
+            throw new Error(LANG[CURRENT_LANG]?.err_vault_corrupt || "Vault rusak. Perlu reset.");
         }
 
         const iv     = this._fromBase64(vaultObj.iv);
@@ -153,7 +153,7 @@ const vault = {
             return JSON.parse(new TextDecoder().decode(plain));
         } catch {
             // AES-GCM gagal decrypt = PIN salah atau data rusak
-            throw new Error("PIN salah");
+            throw new Error(LANG[CURRENT_LANG]?.err_wrong_pin || "PIN salah");
         }
     },
 
@@ -196,7 +196,7 @@ const vault = {
     // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     async changePIN(oldPin, newPin) {
         if (!newPin || newPin.length < 4) {
-            throw new Error("PIN baru minimal 4 karakter");
+            throw new Error(LANG[CURRENT_LANG]?.err_new_pin_min4 || "PIN baru minimal 4 karakter");
         }
 
         // Decrypt dengan PIN lama
@@ -234,7 +234,7 @@ const vault = {
         const exists = data.accounts.some(
             a => a.address.toLowerCase() === newAccount.address.toLowerCase()
         );
-        if (exists) throw new Error("Account sudah ada di vault");
+        if (exists) throw new Error(LANG[CURRENT_LANG]?.err_account_exists_vault || "Account sudah ada di vault");
 
         data.accounts.push({
             index:   data.accounts.length,
@@ -254,7 +254,7 @@ const vault = {
     // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     async renameAccount(pin, index, newName) {
         const data = await this.unlockVault(pin);
-        if (!data.accounts[index]) throw new Error("Account tidak ditemukan");
+        if (!data.accounts[index]) throw new Error(LANG[CURRENT_LANG]?.err_account_not_found || "Account tidak ditemukan");
 
         data.accounts[index].name = newName;
         await this.updateVault(data, pin);
