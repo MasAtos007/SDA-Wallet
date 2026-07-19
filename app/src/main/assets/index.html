@@ -109,7 +109,7 @@
     No Wallet Selected
 </div>
     <div class="card-actions">
-        <i class="fa-solid fa-rotate" onclick="refreshAll()"></i>
+        <i class="fa-solid fa-rotate" id="refreshIconBtn" onclick="spinRefreshIcon(); refreshAll()"></i>
         
     </div>
 </div>
@@ -173,7 +173,7 @@
 <!-- card-header lama tetap dipakai untuk activeWalletName + refresh (disembunyikan visual, tetap fungsional) -->
 <div class="card-header" style="display:none;">
     <div id="activeWalletName">No Wallet Selected</div>
-    <div class="card-actions"><i class="fa-solid fa-rotate" onclick="refreshAll()"></i></div>
+    <div class="card-actions"><i class="fa-solid fa-rotate" id="refreshIconBtn" onclick="spinRefreshIcon(); refreshAll()"></i></div>
 </div>
 
 <div style="margin-top:15px; text-align:center;">
