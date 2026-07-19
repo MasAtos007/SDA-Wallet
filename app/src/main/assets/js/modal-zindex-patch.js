@@ -248,6 +248,10 @@
         { id: "swapModal",         close: () => { document.getElementById("swapModal")?.classList.remove("show"); setBottomNavActive?.("navHome"); } },
         { id: "sendModal",         close: () => { document.getElementById("sendModal")?.classList.remove("show"); setBottomNavActive?.("navHome"); } },
         { id: "txModal",           close: () => closeTxModal?.() },
+        { id: "accountDetailBox",  close: () => document.getElementById("accountDetailBox")?.remove() },
+        { id: "renameAccountBox",  close: () => document.getElementById("renameAccountBox")?.remove() },
+        { id: "deleteAccountBox",  close: () => document.getElementById("deleteAccountBox")?.remove() },
+        { id: "resetConfirmBox",   close: () => document.getElementById("resetConfirmBox")?.remove() },
         { id: "onboardingOverlay", close: () => {
             if (window.SESSION?.unlocked) _hideOnboarding?.();
         }},
