@@ -127,6 +127,8 @@ function _showOnboarding(html) {
     el.style.display = "block";
     el.scrollTop = 0;
     setTimeout(_injectBlockies, 10);
+    const badge = document.getElementById("_fetchFloatBadge");
+    if (badge) badge.style.display = "none";
 }
 
 function _hideOnboarding() {
@@ -136,6 +138,9 @@ function _hideOnboarding() {
         window._pinContext = null;
         if (typeof setBottomNavHidden === "function") setBottomNavHidden(false);
     }
+    const badge = document.getElementById("_fetchFloatBadge");
+    const txModal = document.getElementById("txModal");
+    if (badge && !txModal?.classList.contains("show")) badge.style.display = "";
 }
 
 // -------------------------------------
@@ -265,12 +270,14 @@ function showCreateSeedScreen() {
 
     _showOnboarding(`
         <div style="padding:24px 24px 100px;max-width:420px;margin:0 auto;box-sizing:border-box;">
-            <button onclick="showWelcomeScreen()" style="background:none;border:none;color:#888;font-size:20px;cursor:pointer;padding:0;margin-bottom:20px;">
-                <i class="fa-solid fa-arrow-left"></i>
-            </button>
-            <div style="font-size:20px;font-weight:700;color:#fff;margin-bottom:6px;">${LANG[CURRENT_LANG]?.seed_title || 'Seed Phrase Kamu'}</div>
-            <div style="font-size:13px;color:#888;line-height:1.6;margin-bottom:20px;">
-                ${LANG[CURRENT_LANG]?.seed_desc || 'Catat 12 kata ini di tempat aman. Jangan screenshot.'}
+            <div style="display:flex;align-items:flex-start;gap:14px;margin-bottom:20px;">
+                <button onclick="showWelcomeScreen()" style="width:40px;height:40px;min-width:40px;background:#1a1a1a;border:none;border-radius:12px;color:#fff;font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                    <i class="fa-solid fa-arrow-left"></i>
+                </button>
+                <div style="padding-top:2px;">
+                    <div style="font-size:19px;font-weight:700;color:#fff;line-height:1.3;">${LANG[CURRENT_LANG]?.seed_title || 'Seed Phrase Kamu'}</div>
+                    <div style="font-size:12px;color:#888;line-height:1.6;margin-top:4px;">${LANG[CURRENT_LANG]?.seed_desc || 'Catat 12 kata ini di tempat aman. Jangan screenshot.'}</div>
+                </div>
             </div>
             <div style="background:#2a1500;border:1px solid #ff7a0040;border-radius:12px;padding:12px 16px;margin-bottom:20px;font-size:12px;color:#ff9a30;line-height:1.6;">
                 ${LANG[CURRENT_LANG]?.seed_warn || '(!!) Jangan pernah bagikan seed phrase ke siapapun, termasuk tim Sidra.'}
@@ -310,12 +317,14 @@ function showVerifySeedScreen() {
 
     _showOnboarding(`
         <div style="padding:24px 24px 100px;max-width:420px;margin:0 auto;box-sizing:border-box;">
-            <button onclick="showCreateSeedScreen()" style="background:none;border:none;color:#888;font-size:20px;cursor:pointer;padding:0;margin-bottom:20px;">
-                <i class="fa-solid fa-arrow-left"></i>
-            </button>
-            <div style="font-size:20px;font-weight:700;color:#fff;margin-bottom:6px;">${LANG[CURRENT_LANG]?.verify_title || 'Verifikasi Seed Phrase'}</div>
-            <div style="font-size:13px;color:#888;line-height:1.6;margin-bottom:24px;">
-                ${LANG[CURRENT_LANG]?.verify_desc || 'Masukkan kata yang diminta untuk memastikan kamu sudah mencatatnya.'}
+            <div style="display:flex;align-items:flex-start;gap:14px;margin-bottom:24px;">
+                <button onclick="showCreateSeedScreen()" style="width:40px;height:40px;min-width:40px;background:#1a1a1a;border:none;border-radius:12px;color:#fff;font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                    <i class="fa-solid fa-arrow-left"></i>
+                </button>
+                <div style="padding-top:2px;">
+                    <div style="font-size:19px;font-weight:700;color:#fff;line-height:1.3;">${LANG[CURRENT_LANG]?.verify_title || 'Verifikasi Seed Phrase'}</div>
+                    <div style="font-size:12px;color:#888;line-height:1.6;margin-top:4px;">${LANG[CURRENT_LANG]?.verify_desc || 'Masukkan kata yang diminta untuk memastikan kamu sudah mencatatnya.'}</div>
+                </div>
             </div>
             ${fields}
             <div id="verifyError" style="display:none;color:#ff4444;font-size:13px;margin-bottom:12px;padding:10px 14px;background:#2a0000;border-radius:10px;"></div>
@@ -355,11 +364,15 @@ function showImportChoiceScreen() {
     _onboardState.screen = "IMPORT_CHOICE";
     _showOnboarding(`
         <div style="padding:24px 24px 100px;max-width:420px;margin:0 auto;box-sizing:border-box;">
-            <button onclick="showWelcomeScreen()" style="background:none;border:none;color:#888;font-size:20px;cursor:pointer;padding:0;margin-bottom:20px;">
-                <i class="fa-solid fa-arrow-left"></i>
-            </button>
-            <div style="font-size:20px;font-weight:700;color:#fff;margin-bottom:6px;">${LANG[CURRENT_LANG]?.import_wallet || 'Import Wallet'}</div>
-            <div style="font-size:13px;color:#888;line-height:1.6;margin-bottom:32px;">${LANG[CURRENT_LANG]?.import_choice_desc || 'Pilih metode import wallet kamu.'}</div>
+            <div style="display:flex;align-items:flex-start;gap:14px;margin-bottom:32px;">
+                <button onclick="showWelcomeScreen()" style="width:40px;height:40px;min-width:40px;background:#1a1a1a;border:none;border-radius:12px;color:#fff;font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                    <i class="fa-solid fa-arrow-left"></i>
+                </button>
+                <div style="padding-top:2px;">
+                    <div style="font-size:19px;font-weight:700;color:#fff;line-height:1.3;">${LANG[CURRENT_LANG]?.import_wallet || 'Import Wallet'}</div>
+                    <div style="font-size:12px;color:#888;line-height:1.6;margin-top:4px;">${LANG[CURRENT_LANG]?.import_choice_desc || 'Pilih metode import wallet kamu.'}</div>
+                </div>
+            </div>
             <button onclick="showImportPhraseScreen()" style="width:100%;padding:18px 20px;background:#141414;border:1px solid #2a2a2a;border-radius:14px;color:#fff;cursor:pointer;margin-bottom:12px;text-align:left;display:flex;align-items:flex-start;gap:16px;">
                 <div style="width:40px;height:40px;background:#ff7a0020;border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0;color:#ff7a00;font-size:18px;"><i class="fa-solid fa-seedling"></i></div>
                 <div>
@@ -385,11 +398,15 @@ function showImportPhraseScreen() {
     _onboardState.screen = "IMPORT_PHRASE";
     _showOnboarding(`
         <div style="padding:24px 24px 100px;max-width:420px;margin:0 auto;box-sizing:border-box;">
-            <button onclick="showImportChoiceScreen()" style="background:none;border:none;color:#888;font-size:20px;cursor:pointer;padding:0;margin-bottom:20px;">
-                <i class="fa-solid fa-arrow-left"></i>
-            </button>
-            <div style="font-size:20px;font-weight:700;color:#fff;margin-bottom:6px;">${LANG[CURRENT_LANG]?.import_phrase_title || 'Import Seed Phrase'}</div>
-            <div style="font-size:13px;color:#888;line-height:1.6;margin-bottom:24px;">${LANG[CURRENT_LANG]?.import_phrase_desc || 'Masukkan 12 atau 24 kata seed phrase, pisahkan dengan spasi.'}</div>
+            <div style="display:flex;align-items:flex-start;gap:14px;margin-bottom:24px;">
+                <button onclick="showImportChoiceScreen()" style="width:40px;height:40px;min-width:40px;background:#1a1a1a;border:none;border-radius:12px;color:#fff;font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                    <i class="fa-solid fa-arrow-left"></i>
+                </button>
+                <div style="padding-top:2px;">
+                    <div style="font-size:19px;font-weight:700;color:#fff;line-height:1.3;">${LANG[CURRENT_LANG]?.import_phrase_title || 'Import Seed Phrase'}</div>
+                    <div style="font-size:12px;color:#888;line-height:1.6;margin-top:4px;">${LANG[CURRENT_LANG]?.import_phrase_desc || 'Masukkan 12 atau 24 kata seed phrase, pisahkan dengan spasi.'}</div>
+                </div>
+            </div>
             <textarea id="importPhraseInput" placeholder="word1 word2 word3 ..."
                 autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" rows="4"
                 style="width:100%;box-sizing:border-box;padding:14px 16px;background:#141414;border:1px solid #2a2a2a;border-radius:12px;color:#fff;font-size:15px;outline:none;resize:none;line-height:1.6;margin-bottom:8px;"
@@ -434,13 +451,18 @@ function showImportPKScreen() {
     _onboardState.screen = "IMPORT_PK";
     _showOnboarding(`
         <div style="padding:24px 24px 100px;max-width:420px;margin:0 auto;box-sizing:border-box;">
-            <button onclick="showImportChoiceScreen()" style="background:none;border:none;color:#888;font-size:20px;cursor:pointer;padding:0;margin-bottom:20px;">
-                <i class="fa-solid fa-arrow-left"></i>
-            </button>
-            <div style="font-size:20px;font-weight:700;color:#fff;margin-bottom:6px;">${LANG[CURRENT_LANG]?.import_pk_title || 'Import Private Key'}</div>
-            <div style="font-size:13px;color:#888;line-height:1.6;margin-bottom:24px;">${LANG[CURRENT_LANG]?.import_pk_desc2 || 'Masukkan private key (format 0x...).'}</div>
-            <div style="background:#2a1500;border:1px solid #ff7a0030;border-radius:12px;padding:12px 16px;margin-bottom:20px;font-size:12px;color:#ff9a30;line-height:1.6;">
-                ${LANG[CURRENT_LANG]?.import_pk_warn || '(!!) Jangan pernah paste private key di browser lain atau website apapun.'}
+            <div style="display:flex;align-items:flex-start;gap:14px;margin-bottom:24px;">
+                <button onclick="showImportChoiceScreen()" style="width:40px;height:40px;min-width:40px;background:#1a1a1a;border:none;border-radius:12px;color:#fff;font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                    <i class="fa-solid fa-arrow-left"></i>
+                </button>
+                <div style="padding-top:2px;">
+                    <div style="font-size:19px;font-weight:700;color:#fff;line-height:1.3;">${LANG[CURRENT_LANG]?.import_pk_title || 'Import Private Key'}</div>
+                    <div style="font-size:12px;color:#888;line-height:1.6;margin-top:4px;">${LANG[CURRENT_LANG]?.import_pk_desc2 || 'Masukkan private key (format 0x...).'}</div>
+                </div>
+            </div>
+            <div style="background:#2a1500;border:1px solid #ff7a0030;border-radius:12px;padding:12px 16px;margin-bottom:20px;display:flex;align-items:flex-start;gap:10px;">
+                <i class="fa-solid fa-triangle-exclamation" style="color:#ff9a30;font-size:13px;margin-top:1px;flex-shrink:0;"></i>
+                <div style="font-size:12px;color:#ff9a30;line-height:1.6;">${LANG[CURRENT_LANG]?.import_pk_warn || '(!!) Jangan pernah paste private key di browser lain atau website apapun.'}</div>
             </div>
             <div style="position:relative;margin-bottom:4px;">
                 <input id="importPKInput" type="text" placeholder="0x..."
@@ -458,7 +480,7 @@ function showImportPKScreen() {
                 </button>
             </div>
             <div id="importPKError" style="display:none;color:#ff4444;font-size:13px;padding:10px 14px;background:#2a0000;border-radius:10px;margin-bottom:12px;"></div>
-            <button onclick="_submitImportPK()" style="width:100%;padding:16px;background:#ff7a00;border:none;border-radius:14px;color:#fff;font-size:16px;font-weight:600;cursor:pointer;">Import</button>
+            <button onclick="_submitImportPK()" style="width:100%;padding:16px;background:#ff7a00;border:none;border-radius:14px;color:#fff;font-size:16px;font-weight:600;cursor:pointer;">${LANG[CURRENT_LANG]?.import_btn || 'Import'}</button>
         </div>
     `);
 }
@@ -523,12 +545,12 @@ async function _importPKPaste() {
         text = await navigator.clipboard?.readText().catch(() => "") || "";
     }
     text = text.trim();
-    if (!text) { showToast?.("Clipboard kosong", "error"); return; }
+    if (!text) { showToast?.(LANG[CURRENT_LANG]?.toast_clipboard_empty || "Clipboard kosong", "error"); return; }
     inp.dataset.pkReal = text;
     inp.value = window._pkMasked ? "*".repeat(text.length) : text;
     const hint = document.getElementById("importPKHint");
     if (hint) hint.textContent = text.length + " karakter";
-    showToast?.("Private key dipaste", "success");
+    showToast?.(LANG[CURRENT_LANG]?.toast_pk_pasted || "Private key dipaste", "success");
 }
 
 function _submitImportPK() {
@@ -556,15 +578,15 @@ function showSetPINScreen(isChange = false) {
 
     _showOnboarding(`
         <div style="padding:24px 24px 100px;max-width:420px;margin:0 auto;box-sizing:border-box;">
-            ${!isChange ? `
-            <button onclick="window._pinBackScreen ? window[window._pinBackScreen]() : showVerifySeedScreen()" style="background:none;border:none;color:#888;font-size:20px;cursor:pointer;padding:0;margin-bottom:20px;">
-                <i class="fa-solid fa-arrow-left"></i>
-            </button>` : `
-            <button onclick="showWalletManageScreen()" style="background:none;border:none;color:#888;font-size:20px;cursor:pointer;padding:0;margin-bottom:20px;">
-                <i class="fa-solid fa-arrow-left"></i>
-            </button>`}
-            <div style="font-size:20px;font-weight:700;color:#fff;margin-bottom:6px;">${title}</div>
-            <div style="font-size:13px;color:#888;line-height:1.6;margin-bottom:24px;">${sub}</div>
+            <div style="display:flex;align-items:flex-start;gap:14px;margin-bottom:24px;">
+                <button onclick="${!isChange ? "window._pinBackScreen ? window[window._pinBackScreen]() : showVerifySeedScreen()" : "showWalletManageScreen()"}" style="width:40px;height:40px;min-width:40px;background:#1a1a1a;border:none;border-radius:12px;color:#fff;font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                    <i class="fa-solid fa-arrow-left"></i>
+                </button>
+                <div style="padding-top:2px;">
+                    <div style="font-size:19px;font-weight:700;color:#fff;line-height:1.3;">${title}</div>
+                    <div style="font-size:12px;color:#888;line-height:1.6;margin-top:4px;">${sub}</div>
+                </div>
+            </div>
             ${isChange ? `
             <div style="margin-bottom:16px;">
                 <div style="font-size:13px;color:#888;margin-bottom:6px;">${LANG[CURRENT_LANG]?.pin_old || 'PIN Lama'}</div>
@@ -599,10 +621,10 @@ function _pinInputStyle() {
 async function _submitSetPIN() {
     const pin1 = document.getElementById("newPIN1Input")?.value || "";
     const pin2 = document.getElementById("newPIN2Input")?.value || "";
-    if (pin1.length < 6) { _showPINError("PIN minimal 6 digit"); return; }
-    if (pin1 !== pin2)   { _showPINError("PIN tidak cocok"); return; }
+    if (pin1.length < 6) { _showPINError(LANG[CURRENT_LANG]?.err_pin_min6 || "PIN minimal 6 digit"); return; }
+    if (pin1 !== pin2)   { _showPINError(LANG[CURRENT_LANG]?.err_pin_mismatch || "PIN tidak cocok"); return; }
     const { walletData } = _onboardState;
-    if (!walletData) { _showPINError("Data wallet hilang. Mulai ulang."); return; }
+    if (!walletData) { _showPINError(LANG[CURRENT_LANG]?.err_wallet_data_missing || "Data wallet hilang. Mulai ulang."); return; }
     try {
         await vault.createVault(walletData, pin1);
         await unlockWallet(pin1);
@@ -610,7 +632,7 @@ async function _submitSetPIN() {
         showSuccessScreen();
         document.dispatchEvent(new Event("sidra:unlocked"));
     } catch (err) {
-        _showPINError(err.message || "Gagal menyimpan wallet");
+        _showPINError(err.message || LANG[CURRENT_LANG]?.err_save_wallet_failed || "Gagal menyimpan wallet");
     }
 }
 
@@ -618,15 +640,15 @@ async function _submitChangePIN() {
     const oldPin = document.getElementById("oldPINInput")?.value || "";
     const pin1   = document.getElementById("newPIN1Input")?.value || "";
     const pin2   = document.getElementById("newPIN2Input")?.value || "";
-    if (!oldPin)         { _showPINError("Masukkan PIN lama"); return; }
-    if (pin1.length < 6) { _showPINError("PIN baru minimal 6 digit"); return; }
-    if (pin1 !== pin2)   { _showPINError("PIN baru tidak cocok"); return; }
+    if (!oldPin)         { _showPINError(LANG[CURRENT_LANG]?.err_old_pin_required || "Masukkan PIN lama"); return; }
+    if (pin1.length < 6) { _showPINError(LANG[CURRENT_LANG]?.err_new_pin_min6 || "PIN baru minimal 6 digit"); return; }
+    if (pin1 !== pin2)   { _showPINError(LANG[CURRENT_LANG]?.err_new_pin_mismatch || "PIN baru tidak cocok"); return; }
     try {
         await vault.changePIN(oldPin, pin1);
         _hideOnboarding();
-        showToast?.("PIN berhasil diubah", "success");
+        showToast?.(LANG[CURRENT_LANG]?.toast_pin_changed || "PIN berhasil diubah", "success");
     } catch (err) {
-        _showPINError(err.message || "Gagal ubah PIN");
+        _showPINError(err.message || LANG[CURRENT_LANG]?.err_change_pin_failed || "Gagal ubah PIN");
     }
 }
 
@@ -687,7 +709,7 @@ async function _submitPINUnlock() {
     const input = document.getElementById("pinUnlockInput");
 
     if (!pin) {
-        if (errEl) { errEl.textContent = "Masukkan PIN"; errEl.style.display = "block"; }
+        if (errEl) { errEl.textContent = LANG[CURRENT_LANG]?.err_enter_pin || "Masukkan PIN"; errEl.style.display = "block"; }
         return;
     }
 
@@ -701,11 +723,11 @@ async function _submitPINUnlock() {
             await _reconcileSessionToSelectedWallet();
             await _syncAllAccountsToLegacy();
             _hideOnboarding();
-            showToast?.("Wallet unlocked", "success");
+            showToast?.(LANG[CURRENT_LANG]?.toast_wallet_unlocked || "Wallet unlocked", "success");
             // Baru sekarang boleh fetch RPC/Blockscout — wallet sudah terbukti dimiliki user
             document.dispatchEvent(new Event("sidra:unlocked"));
         } catch (err) {
-            if (errEl) { errEl.textContent = err.message || "PIN salah"; errEl.style.display = "block"; }
+            if (errEl) { errEl.textContent = err.message || LANG[CURRENT_LANG]?.err_wrong_pin || "PIN salah"; errEl.style.display = "block"; }
             if (input) { input.style.borderColor = "#ff4444"; input.value = ""; }
         }
         return;
@@ -714,12 +736,12 @@ async function _submitPINUnlock() {
     try {
         const legacy = JSON.parse(localStorage.getItem("PK_SESSION") || "null");
         if (!legacy?.pk) {
-            if (errEl) { errEl.textContent = "Tidak ada wallet ditemukan. Buat wallet baru."; errEl.style.display = "block"; }
+            if (errEl) { errEl.textContent = LANG[CURRENT_LANG]?.err_no_wallet_found || "Tidak ada wallet ditemukan. Buat wallet baru."; errEl.style.display = "block"; }
             return;
         }
         const inputHash = await hashPIN(pin);
         if (inputHash !== legacy.pinHash) {
-            if (errEl) { errEl.textContent = "PIN salah"; errEl.style.display = "block"; }
+            if (errEl) { errEl.textContent = LANG[CURRENT_LANG]?.err_wrong_pin || "PIN salah"; errEl.style.display = "block"; }
             if (input) { input.style.borderColor = "#ff4444"; input.value = ""; }
             return;
         }
@@ -733,10 +755,10 @@ async function _submitPINUnlock() {
         localStorage.removeItem("sda_pk_wallet");
         await _syncAllAccountsToLegacy();
         _hideOnboarding();
-        showToast?.("Wallet dimigrasikan ke sistem baru", "success");
+        showToast?.(LANG[CURRENT_LANG]?.toast_wallet_migrated || "Wallet dimigrasikan ke sistem baru", "success");
         document.dispatchEvent(new Event("sidra:unlocked"));
     } catch (err) {
-        if (errEl) { errEl.textContent = err.message || "Gagal unlock"; errEl.style.display = "block"; }
+        if (errEl) { errEl.textContent = err.message || LANG[CURRENT_LANG]?.err_unlock_failed || "Gagal unlock"; errEl.style.display = "block"; }
         if (input) { input.style.borderColor = "#ff4444"; input.value = ""; }
     }
 }
@@ -839,6 +861,10 @@ function showWalletManageScreen() {
     const _activeSessionIdx  = SESSION.accounts.findIndex(a => a.address?.toLowerCase() === _activeAddr);
     const _displayActiveIdx  = _activeSessionIdx !== -1 ? _activeSessionIdx : SESSION.accountIndex;
 
+    // Style helper untuk tombol icon kotak (copy, explorer, detail, edit, delete)
+    const _iconBtn = (onclick, icon, title, danger) =>
+        `<button onclick="${onclick}" style="background:${danger ? "rgba(255,68,68,0.12)" : "#1a1a1a"};border:${danger ? "1px solid rgba(255,68,68,0.25)" : "none"};color:${danger ? "#ff4444" : "#888"};font-size:14px;cursor:pointer;padding:0;width:38px;height:38px;border-radius:10px;display:flex;align-items:center;justify-content:center;" title="${title}"><i class="fa-solid ${icon}"></i></button>`;
+
     const accountList = SESSION.accounts.map((a, i) => {
         const isActive     = i === _displayActiveIdx;
         const addr         = (a.address || "").trim();
@@ -850,22 +876,24 @@ function showWalletManageScreen() {
         const blockieUrl   = addr ? _generateBlockie(addr.toLowerCase()) : "";
 
         return (
-            `<div style="background:${isActive ? "#1a1a1a" : "#0d0d0d"};border:1px solid ${isActive ? "rgba(255,122,0,0.4)" : "#222"};border-radius:14px;margin-bottom:8px;overflow:hidden;">` +
-            `<div style="padding:12px 14px 8px;display:flex;align-items:center;gap:10px;cursor:pointer;box-sizing:border-box;" onclick="_selectAccountFromManage(${i})">` +
+            `<div style="background:${isActive ? "#1a1a1a" : "#0d0d0d"};border:1px solid ${isActive ? "rgba(255,122,0,0.4)" : "#222"};border-radius:14px;margin-bottom:10px;overflow:hidden;">` +
+            `<div style="padding:14px 14px 10px;display:flex;align-items:center;gap:12px;cursor:pointer;box-sizing:border-box;" onclick="_selectAccountFromManage(${i})">` +
             `<div style="width:36px;height:36px;min-width:36px;border-radius:10px;overflow:hidden;flex-shrink:0;pointer-events:none;border:2px solid ${isActive ? "rgba(255,122,0,0.5)" : "#2a2a2a"};">` +
             (blockieUrl ? `<img src="${blockieUrl}" style="width:100%;height:100%;display:block;image-rendering:pixelated;" />` : `<div style="width:100%;height:100%;background:#1a1a1a;display:flex;align-items:center;justify-content:center;color:#555;font-size:14px;"><i class="fa-solid fa-wallet"></i></div>`) +
             `</div>` +
             `<div style="flex:1;min-width:0;pointer-events:none;">` +
-            `<div style="font-size:14px;font-weight:600;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${name}${isActive ? ` <span style="font-size:10px;color:#ff7a00;font-weight:400;margin-left:4px;">Aktif</span>` : ``}</div>` +
-            `<div style="font-size:11px;color:#555;font-family:monospace;margin-top:2px;">${shortAddress}</div>` +
-            `</div></div>` +
-            `<div style="display:flex;align-items:center;gap:2px;padding:4px 10px 10px;border-top:1px solid #1a1a1a;" onclick="event.stopPropagation()">` +
-            `<button onclick="_copyAddress('${safeAddr}');_flashBtn(this);" style="background:transparent;border:none;color:#666;font-size:14px;cursor:pointer;padding:7px 9px;border-radius:6px;" title="Copy address"><i class="fa-solid fa-copy"></i></button>` +
-            `<button onclick="_openExplorerForAccount('${safeAddr}')" style="background:transparent;border:none;color:#666;font-size:14px;cursor:pointer;padding:7px 9px;border-radius:6px;" title="Lihat di Explorer"><i class="fa-solid fa-arrow-up-right-from-square"></i></button>` +
-            `<button onclick="_showAccountDetail(${i})" style="background:transparent;border:none;color:#666;font-size:14px;cursor:pointer;padding:7px 9px;border-radius:6px;" title="Detail"><i class="fa-solid fa-circle-info"></i></button>` +
-            `<button onclick="_showRenameAccount(${i},'${safeName}')" style="background:transparent;border:none;color:#666;font-size:14px;cursor:pointer;padding:7px 9px;border-radius:6px;" title="Ubah nama"><i class="fa-solid fa-pen"></i></button>` +
+            `<div style="font-size:15px;font-weight:600;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:flex;align-items:center;gap:8px;">${name}${isActive ? `<span style="font-size:10px;color:#ff7a00;font-weight:600;padding:3px 9px;background:rgba(255,122,0,0.15);border-radius:20px;flex-shrink:0;">${LANG[CURRENT_LANG]?.account_active_badge || 'Aktif'}</span>` : ``}</div>` +
+            `<div style="font-size:11px;color:#555;font-family:monospace;margin-top:3px;">${shortAddress}</div>` +
+            `</div>` +
+            `<i class="fa-solid fa-chevron-right" style="color:#555;font-size:13px;pointer-events:none;"></i>` +
+            `</div>` +
+            `<div style="display:flex;align-items:center;gap:8px;padding:6px 14px 14px;border-top:1px solid #1a1a1a;" onclick="event.stopPropagation()">` +
+            _iconBtn(`_copyAddress('${safeAddr}');_flashBtn(this);`, "fa-copy", "Copy address") +
+            _iconBtn(`_openExplorerForAccount('${safeAddr}')`, "fa-arrow-up-right-from-square", "Lihat di Explorer") +
+            _iconBtn(`_showAccountDetail(${i})`, "fa-circle-info", "Detail") +
+            _iconBtn(`_showRenameAccount(${i},'${safeName}')`, "fa-pen", "Ubah nama") +
             `<div style="flex:1;"></div>` +
-            (canDelete ? `<button onclick="_confirmDeleteAccount(${i})" style="background:transparent;border:none;color:#ff4444;font-size:14px;cursor:pointer;padding:7px 9px;border-radius:6px;" title="Hapus account"><i class="fa-solid fa-trash"></i></button>` : ``) +
+            (canDelete ? _iconBtn(`_confirmDeleteAccount(${i})`, "fa-trash", "Hapus account", true) : ``) +
             `</div></div>`
         );
     }).join("");
@@ -874,25 +902,32 @@ function showWalletManageScreen() {
 
     _showOnboarding(`
         <div style="padding:24px 24px 100px;max-width:420px;margin:0 auto;box-sizing:border-box;">
-            <div style="display:flex;align-items:center;gap:12px;margin-bottom:24px;">
-                <button onclick="_hideOnboarding()" style="background:none;border:none;color:#888;font-size:20px;cursor:pointer;padding:0;">
+            <div style="display:flex;align-items:center;gap:14px;margin-bottom:24px;">
+                <button onclick="_hideOnboarding()" style="width:40px;height:40px;min-width:40px;background:#1a1a1a;border:none;border-radius:12px;color:#fff;font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;">
                     <i class="fa-solid fa-arrow-left"></i>
                 </button>
-                <div style="font-size:18px;font-weight:700;color:#fff;flex:1;">${LANG[CURRENT_LANG]?.wallet_manager_title || 'Wallet Manager'}</div>
+                <div>
+                    <div style="font-size:19px;font-weight:700;color:#fff;line-height:1.3;">${LANG[CURRENT_LANG]?.wallet_manager_title || 'Wallet Manager'}</div>
+                    <div style="font-size:12px;color:#888;margin-top:2px;">${LANG[CURRENT_LANG]?.wallet_manager_subtitle || 'Kelola akun dan pengaturan wallet Anda'}</div>
+                </div>
             </div>
             <div style="margin-bottom:16px;">${accountList}</div>
             ${canAddAccount ? `
-            <button onclick="showAddAccountScreen()" style="width:100%;padding:13px;background:#1a1a1a;border:1px dashed #333;border-radius:12px;color:#888;font-size:14px;cursor:pointer;margin-bottom:8px;display:flex;align-items:center;justify-content:center;gap:8px;">
-                <i class="fa-solid fa-plus"></i> ${LANG[CURRENT_LANG]?.add_account_btn || 'Tambah Account (seed sama)'}
+            <button onclick="showAddAccountScreen()" style="width:100%;padding:13px 16px;background:#0d0d0d;border:1px dashed #333;border-radius:14px;color:#aaa;font-size:14px;cursor:pointer;margin-bottom:10px;display:flex;align-items:center;gap:12px;">
+                <div style="width:34px;height:34px;min-width:34px;background:#1a1a1a;border-radius:10px;display:flex;align-items:center;justify-content:center;color:#888;font-size:14px;"><i class="fa-solid fa-plus"></i></div>
+                ${LANG[CURRENT_LANG]?.add_account_btn || 'Tambah Account (seed sama)'}
             </button>` : ""}
-            <button onclick="showImportExternalPKScreen()" style="width:100%;padding:13px;background:#141414;border:1px dashed #2a4a7f;border-radius:12px;color:#6699ff;font-size:14px;cursor:pointer;margin-bottom:20px;display:flex;align-items:center;justify-content:center;gap:8px;">
-                <i class="fa-solid fa-file-import"></i> ${LANG[CURRENT_LANG]?.import_external_btn || 'Import dari Seed / PK Lain'}
+            <button onclick="showImportExternalPKScreen()" style="width:100%;padding:13px 16px;background:#0d1420;border:1px dashed #2a4a7f;border-radius:14px;color:#6699ff;font-size:14px;cursor:pointer;margin-bottom:20px;display:flex;align-items:center;gap:12px;">
+                <div style="width:34px;height:34px;min-width:34px;background:rgba(102,153,255,0.15);border-radius:10px;display:flex;align-items:center;justify-content:center;color:#6699ff;font-size:14px;"><i class="fa-solid fa-file-import"></i></div>
+                ${LANG[CURRENT_LANG]?.import_external_btn || 'Import dari Seed / PK Lain'}
             </button>
-            <button onclick="showSetPINScreen(true)" style="width:100%;padding:14px;background:#141414;border:1px solid #2a2a2a;border-radius:12px;color:#fff;font-size:14px;cursor:pointer;margin-bottom:10px;">
-                <i class="fa-solid fa-key"></i> ${LANG[CURRENT_LANG]?.pin_change_title || 'Ubah PIN'}
+            <button onclick="showSetPINScreen(true)" style="width:100%;padding:14px 16px;background:#141414;border:1px solid #2a2a2a;border-radius:14px;color:#fff;font-size:14px;cursor:pointer;margin-bottom:10px;display:flex;align-items:center;gap:12px;">
+                <div style="width:34px;height:34px;min-width:34px;background:rgba(153,102,255,0.15);border-radius:10px;display:flex;align-items:center;justify-content:center;color:#a370ff;font-size:14px;"><i class="fa-solid fa-key"></i></div>
+                ${LANG[CURRENT_LANG]?.pin_change_title || 'Ubah PIN'}
             </button>
-            <button onclick="lockWallet();_hideOnboarding();" style="width:100%;padding:14px;background:#1a0000;border:1px solid #ff333330;border-radius:12px;color:#ff6666;font-size:14px;cursor:pointer;">
-                <i class="fa-solid fa-lock"></i> ${LANG[CURRENT_LANG]?.lock_wallet_btn || 'Kunci Wallet'}
+            <button onclick="lockWallet();_hideOnboarding();" style="width:100%;padding:14px 16px;background:#1a0000;border:1px solid #ff333330;border-radius:14px;color:#ff6666;font-size:14px;cursor:pointer;display:flex;align-items:center;gap:12px;">
+                <div style="width:34px;height:34px;min-width:34px;background:rgba(255,51,51,0.15);border-radius:10px;display:flex;align-items:center;justify-content:center;color:#ff6666;font-size:14px;"><i class="fa-solid fa-lock"></i></div>
+                ${LANG[CURRENT_LANG]?.lock_wallet_btn || 'Kunci Wallet'}
             </button>
         </div>
     `);
@@ -910,9 +945,10 @@ function _flashBtn(btn) {
 
 function _copyAddress(addr) {
     if (!addr) return;
-    navigator.clipboard?.writeText(addr).then(() => { showToast?.("Address disalin", "success"); }).catch(() => {
+    const msg = LANG[CURRENT_LANG]?.address_copied || "Address disalin";
+    navigator.clipboard?.writeText(addr).then(() => { showToast?.(msg, "success"); }).catch(() => {
         const t = document.createElement("textarea"); t.value = addr; document.body.appendChild(t); t.select();
-        document.execCommand("copy"); document.body.removeChild(t); showToast?.("Address disalin", "success");
+        document.execCommand("copy"); document.body.removeChild(t); showToast?.(msg, "success");
     });
 }
 
@@ -931,33 +967,40 @@ function _showAccountDetail(index) {
     box.style.cssText = "position:fixed;inset:0;z-index:100001;background:rgba(0,0,0,0.9);display:flex;align-items:center;justify-content:center;padding:24px;box-sizing:border-box;overflow-y:auto;";
     box.innerHTML = `
         <div style="background:#111;border:1px solid #2a2a2a;border-radius:20px;padding:24px;max-width:340px;width:100%;">
-            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;">
-                <div style="display:flex;align-items:center;gap:10px;">
-                    ${blockieUrl ? `<div style="width:32px;height:32px;border-radius:8px;overflow:hidden;border:1px solid #333;flex-shrink:0;"><img src="${blockieUrl}" style="width:100%;height:100%;display:block;image-rendering:pixelated;" /></div>` : ""}
-                    <div style="font-size:16px;font-weight:700;color:#fff;">${L.detail_title || 'Detail Account'}</div>
+            <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:20px;">
+                <div style="display:flex;align-items:center;gap:10px;min-width:0;">
+                    ${blockieUrl ? `<div style="width:36px;height:36px;min-width:36px;border-radius:10px;overflow:hidden;border:1px solid #333;flex-shrink:0;"><img src="${blockieUrl}" style="width:100%;height:100%;display:block;image-rendering:pixelated;" /></div>` : ""}
+                    <div style="font-size:16px;font-weight:700;color:#fff;line-height:1.3;">${L.detail_title || 'Detail Account'}</div>
                 </div>
-                <button onclick="document.getElementById('accountDetailBox').remove()" style="background:none;border:none;color:#555;font-size:18px;cursor:pointer;padding:4px;"><i class="fa-solid fa-xmark"></i></button>
+                <button onclick="document.getElementById('accountDetailBox').remove()" style="background:#1a1a1a;border:none;color:#888;font-size:15px;cursor:pointer;padding:0;width:34px;height:34px;min-width:34px;border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0;"><i class="fa-solid fa-xmark"></i></button>
             </div>
-            <div style="font-size:12px;color:#888;margin-bottom:4px;">${L.detail_name_label || 'Nama'}</div>
-            <div style="font-size:15px;font-weight:600;color:#fff;margin-bottom:16px;">${name}</div>
-            <div style="font-size:12px;color:#888;margin-bottom:4px;">${L.detail_address_label || 'Address'}</div>
-            <div style="font-size:11px;color:#aaa;font-family:monospace;background:#0d0d0d;border:1px solid #222;border-radius:10px;padding:10px 12px;margin-bottom:4px;word-break:break-all;line-height:1.6;">${addr}</div>
-            <button onclick="_copyAddress('${addr}');_flashBtn(this)" style="background:none;border:none;color:#ff7a00;font-size:12px;cursor:pointer;padding:0;margin-bottom:20px;display:flex;align-items:center;gap:5px;"><i class="fa-solid fa-copy"></i> ${L.detail_copy_address || 'Salin address'}</button>
+            <div style="background:#0d0d0d;border:1px solid #222;border-radius:14px;padding:14px 16px;margin-bottom:16px;">
+                <div style="font-size:11px;color:#888;margin-bottom:3px;">${L.detail_name_label || 'Nama'}</div>
+                <div style="font-size:15px;font-weight:600;color:#fff;margin-bottom:14px;">${name}</div>
+                <div style="font-size:11px;color:#888;margin-bottom:6px;">${L.detail_address_label || 'Address'}</div>
+                <div style="display:flex;align-items:flex-start;gap:8px;">
+                    <div style="flex:1;font-size:11px;color:#ccc;font-family:monospace;word-break:break-all;line-height:1.6;">${addr}</div>
+                    <button onclick="_copyAddress('${addr}');_flashBtn(this)" style="background:#1a1a1a;border:none;color:#ff7a00;font-size:13px;cursor:pointer;padding:0;width:30px;height:30px;min-width:30px;border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0;" title="${L.detail_copy_address || 'Salin address'}"><i class="fa-solid fa-copy"></i></button>
+                </div>
+            </div>
             <div style="font-size:12px;color:#888;margin-bottom:6px;">${L.detail_pk_label || 'Private Key'}</div>
-            <div style="background:#2a1500;border:1px solid #ff7a0030;border-radius:10px;padding:10px 12px;font-size:11px;color:#ff9a30;margin-bottom:12px;line-height:1.5;">
-                ${L.detail_pk_warn || '(!!) Masukkan PIN untuk melihat private key. Jangan bagikan ke siapapun.'}
+            <div style="background:#2a1500;border:1px solid #ff7a0030;border-radius:12px;padding:12px 14px;margin-bottom:16px;display:flex;align-items:flex-start;gap:10px;">
+                <i class="fa-solid fa-triangle-exclamation" style="color:#ff9a30;font-size:13px;margin-top:1px;flex-shrink:0;"></i>
+                <div style="font-size:11.5px;color:#ff9a30;line-height:1.5;">${L.detail_pk_warn || '(!!) Masukkan PIN untuk melihat private key. Jangan bagikan ke siapapun.'}</div>
             </div>
             <input id="detailPINInput" type="password" inputmode="numeric" maxlength="12" placeholder="${L.detail_pk_placeholder || 'Masukkan PIN'}"
                 style="width:100%;box-sizing:border-box;padding:12px 16px;background:#141414;border:1px solid #2a2a2a;border-radius:12px;color:#fff;font-size:16px;letter-spacing:4px;outline:none;text-align:center;margin-bottom:8px;"
                 oninput="document.getElementById('detailPINError').style.display='none'">
             <div id="detailPINError" style="display:none;color:#ff4444;font-size:12px;margin-bottom:8px;"></div>
-            <button onclick="_revealPrivateKey(${index})" style="width:100%;padding:13px;background:#ff7a00;border:none;border-radius:12px;color:#fff;font-size:14px;font-weight:600;cursor:pointer;">
+            <button onclick="_revealPrivateKey(${index})" style="width:100%;padding:13px;background:#ff7a00;border:none;border-radius:12px;color:#fff;font-size:14px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;">
                 <i class="fa-solid fa-eye"></i> ${L.detail_pk_show || 'Tampilkan Private Key'}
             </button>
-            <div id="pkRevealBox" style="display:none;margin-top:16px;">
-                <div style="font-size:12px;color:#888;margin-bottom:6px;">Private Key</div>
-                <div id="pkRevealText" style="font-size:10.5px;color:#fff;font-family:monospace;background:#0d0d0d;border:1px solid #2a2a2a;border-radius:10px;padding:10px 12px;word-break:break-all;line-height:1.7;user-select:all;"></div>
-                <button onclick="_copyPKFromDetail();_flashBtn(this)" style="background:none;border:none;color:#ff7a00;font-size:12px;cursor:pointer;padding:0;margin-top:6px;display:flex;align-items:center;gap:5px;"><i class="fa-solid fa-copy"></i> ${L.detail_pk_copy || 'Salin private key'}</button>
+            <div id="pkRevealBox" style="display:none;margin-top:16px;background:#0d0d0d;border:1px solid #2a2a2a;border-radius:14px;padding:14px 16px;">
+                <div style="font-size:11px;color:#888;margin-bottom:6px;">Private Key</div>
+                <div style="display:flex;align-items:flex-start;gap:8px;">
+                    <div id="pkRevealText" style="flex:1;font-size:10.5px;color:#fff;font-family:monospace;word-break:break-all;line-height:1.7;user-select:all;"></div>
+                    <button onclick="_copyPKFromDetail();_flashBtn(this)" style="background:#1a1a1a;border:none;color:#ff7a00;font-size:13px;cursor:pointer;padding:0;width:30px;height:30px;min-width:30px;border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0;" title="${L.detail_pk_copy || 'Salin private key'}"><i class="fa-solid fa-copy"></i></button>
+                </div>
             </div>
         </div>
     `;
@@ -967,29 +1010,30 @@ function _showAccountDetail(index) {
 async function _revealPrivateKey(index) {
     const pin   = document.getElementById("detailPINInput")?.value || "";
     const errEl = document.getElementById("detailPINError");
-    if (!pin) { if (errEl) { errEl.textContent = "Masukkan PIN"; errEl.style.display = "block"; } return; }
+    if (!pin) { if (errEl) { errEl.textContent = LANG[CURRENT_LANG]?.err_enter_pin || "Masukkan PIN"; errEl.style.display = "block"; } return; }
     try {
         const data    = await vault.unlockVault(pin);
         const account = data.accounts[index];
-        if (!account?.privateKey) throw new Error("Private key tidak ditemukan di vault");
+        if (!account?.privateKey) throw new Error(LANG[CURRENT_LANG]?.err_pk_not_found || "Private key tidak ditemukan di vault");
         window._tempRevealedPK = account.privateKey;
         const pkBox  = document.getElementById("pkRevealBox");
         const pkText = document.getElementById("pkRevealText");
         if (pkBox && pkText) { pkText.textContent = account.privateKey; pkBox.style.display = "block"; }
         const btn = document.querySelector("#accountDetailBox button[onclick*='_revealPrivateKey']");
         if (btn) btn.style.display = "none";
-        setTimeout(() => { window._tempRevealedPK = null; if (pkText) pkText.textContent = "[ PK dihapus dari memori ]"; }, 60000);
+        setTimeout(() => { window._tempRevealedPK = null; if (pkText) pkText.textContent = LANG[CURRENT_LANG]?.pk_cleared_memory || "[ PK dihapus dari memori ]"; }, 60000);
     } catch (err) {
-        if (errEl) { errEl.textContent = err.message || "PIN salah"; errEl.style.display = "block"; }
+        if (errEl) { errEl.textContent = err.message || LANG[CURRENT_LANG]?.err_wrong_pin || "PIN salah"; errEl.style.display = "block"; }
     }
 }
 
 function _copyPKFromDetail() {
     const pk = window._tempRevealedPK;
     if (!pk) return;
-    navigator.clipboard?.writeText(pk).then(() => { showToast?.("Private key disalin", "success"); }).catch(() => {
+    const msg = LANG[CURRENT_LANG]?.toast_pk_copied || "Private key disalin";
+    navigator.clipboard?.writeText(pk).then(() => { showToast?.(msg, "success"); }).catch(() => {
         const t = document.createElement("textarea"); t.value = pk; document.body.appendChild(t); t.select();
-        document.execCommand("copy"); document.body.removeChild(t); showToast?.("Private key disalin", "success");
+        document.execCommand("copy"); document.body.removeChild(t); showToast?.(msg, "success");
     });
 }
 
@@ -1022,7 +1066,7 @@ async function _executeDeleteAccount(index) {
     if (index === 0) return;
     const pin   = document.getElementById("deletePINInput")?.value || "";
     const errEl = document.getElementById("deletePINError");
-    if (!pin) { if (errEl) { errEl.textContent = "Masukkan PIN"; errEl.style.display = "block"; } return; }
+    if (!pin) { if (errEl) { errEl.textContent = LANG[CURRENT_LANG]?.err_enter_pin || "Masukkan PIN"; errEl.style.display = "block"; } return; }
     try {
         const data = await vault.unlockVault(pin);
         const deletedAddr = data.accounts[index]?.address;
@@ -1038,10 +1082,10 @@ async function _executeDeleteAccount(index) {
         }
         if (SESSION.accountIndex >= SESSION.accounts.length) { await switchSessionAccount(0); }
         document.getElementById("deleteAccountBox")?.remove();
-        showToast?.("Account dihapus", "success");
+        showToast?.(LANG[CURRENT_LANG]?.toast_account_deleted || "Account dihapus", "success");
         showWalletManageScreen();
     } catch (err) {
-        if (errEl) { errEl.textContent = err.message || "PIN salah"; errEl.style.display = "block"; }
+        if (errEl) { errEl.textContent = err.message || LANG[CURRENT_LANG]?.err_wrong_pin || "PIN salah"; errEl.style.display = "block"; }
     }
 }
 
@@ -1053,9 +1097,15 @@ function showAddAccountScreen() {
     const nextIndex = SESSION.accounts.length;
     _showOnboarding(`
         <div style="padding:24px 24px 100px;max-width:420px;margin:0 auto;box-sizing:border-box;">
-            <button onclick="showWalletManageScreen()" style="background:none;border:none;color:#888;font-size:20px;cursor:pointer;padding:0;margin-bottom:20px;"><i class="fa-solid fa-arrow-left"></i></button>
-            <div style="font-size:20px;font-weight:700;color:#fff;margin-bottom:6px;">${LANG[CURRENT_LANG]?.add_account_title || 'Tambah Account'}</div>
-            <div style="font-size:13px;color:#888;line-height:1.6;margin-bottom:24px;">${(LANG[CURRENT_LANG]?.add_account_desc || 'Account baru di-derive dari seed phrase yang sama (index {n}).').replace('{n}', nextIndex)}</div>
+            <div style="display:flex;align-items:flex-start;gap:14px;margin-bottom:24px;">
+                <button onclick="showWalletManageScreen()" style="width:40px;height:40px;min-width:40px;background:#1a1a1a;border:none;border-radius:12px;color:#fff;font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                    <i class="fa-solid fa-arrow-left"></i>
+                </button>
+                <div style="padding-top:2px;">
+                    <div style="font-size:19px;font-weight:700;color:#fff;line-height:1.3;">${LANG[CURRENT_LANG]?.add_account_title || 'Tambah Account'}</div>
+                    <div style="font-size:12px;color:#888;line-height:1.6;margin-top:4px;">${(LANG[CURRENT_LANG]?.add_account_desc || 'Account baru di-derive dari seed phrase yang sama (index {n}).').replace('{n}', nextIndex)}</div>
+                </div>
+            </div>
             <div style="margin-bottom:16px;">
                 <div style="font-size:13px;color:#888;margin-bottom:6px;">${LANG[CURRENT_LANG]?.add_account_name_label || 'Nama Account (opsional)'}</div>
                 <input id="newAccountName" type="text" placeholder="Account ${nextIndex + 1}"
@@ -1075,10 +1125,10 @@ async function _submitAddAccount() {
     const pin   = document.getElementById("addAccountPIN")?.value || "";
     const name  = document.getElementById("newAccountName")?.value?.trim();
     const errEl = document.getElementById("addAccountError");
-    if (!pin) { if (errEl) { errEl.textContent = "Masukkan PIN"; errEl.style.display = "block"; } return; }
+    if (!pin) { if (errEl) { errEl.textContent = LANG[CURRENT_LANG]?.err_enter_pin || "Masukkan PIN"; errEl.style.display = "block"; } return; }
     try {
         const data = await vault.unlockVault(pin);
-        if (!data.mnemonic) throw new Error("Vault tidak memiliki seed phrase");
+        if (!data.mnemonic) throw new Error(LANG[CURRENT_LANG]?.err_vault_no_seed || "Vault tidak memiliki seed phrase");
         const nextIndex  = data.accounts.length;
         const newAccount = deriveAccount(data.mnemonic, nextIndex);
         newAccount.name  = name || `Account ${nextIndex + 1}`;
@@ -1088,10 +1138,11 @@ async function _submitAddAccount() {
             _addAccountToPrivateCache({ index: nextIndex, address: newAccount.address, privateKey: newAccount.privateKey, name: newAccount.name, source: "derived" });
         }
         _syncWalletToLegacySystem({ address: newAccount.address, name: newAccount.name });
-        showToast?.(`${newAccount.name} ditambahkan`, "success");
+        const addedMsg = (LANG[CURRENT_LANG]?.toast_account_added || "{name} ditambahkan").replace("{name}", newAccount.name);
+        showToast?.(addedMsg, "success");
         showWalletManageScreen();
     } catch (err) {
-        if (errEl) { errEl.textContent = err.message || "Gagal tambah account"; errEl.style.display = "block"; }
+        if (errEl) { errEl.textContent = err.message || LANG[CURRENT_LANG]?.err_add_account_failed || "Gagal tambah account"; errEl.style.display = "block"; }
     }
 }
 
@@ -1102,15 +1153,22 @@ function showImportExternalPKScreen() {
     window._onboardState.screen = "IMPORT_EXT";
     _showOnboarding(`
         <div style="padding:24px 24px 100px;max-width:420px;margin:0 auto;box-sizing:border-box;">
-            <button onclick="showWalletManageScreen()" style="background:none;border:none;color:#888;font-size:20px;cursor:pointer;padding:0;margin-bottom:20px;"><i class="fa-solid fa-arrow-left"></i></button>
-            <div style="font-size:20px;font-weight:700;color:#fff;margin-bottom:6px;">${LANG[CURRENT_LANG]?.import_ext_title || 'Import dari Seed / PK Lain'}</div>
-            <div style="font-size:13px;color:#888;line-height:1.6;margin-bottom:20px;">${LANG[CURRENT_LANG]?.import_ext_desc || 'Tambahkan account dari seed phrase atau private key yang berbeda.'}</div>
-            <div style="background:#2a1500;border:1px solid #ff7a0030;border-radius:12px;padding:12px 16px;margin-bottom:20px;font-size:12px;color:#ff9a30;line-height:1.6;">
-                ${LANG[CURRENT_LANG]?.import_ext_warn || '(!!) Private key akan disimpan terenkripsi di vault yang sama.'}
+            <div style="display:flex;align-items:flex-start;gap:14px;margin-bottom:20px;">
+                <button onclick="showWalletManageScreen()" style="width:40px;height:40px;min-width:40px;background:#1a1a1a;border:none;border-radius:12px;color:#fff;font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                    <i class="fa-solid fa-arrow-left"></i>
+                </button>
+                <div style="padding-top:2px;">
+                    <div style="font-size:19px;font-weight:700;color:#fff;line-height:1.3;">${LANG[CURRENT_LANG]?.import_ext_title || 'Import dari Seed / PK Lain'}</div>
+                    <div style="font-size:12px;color:#888;line-height:1.6;margin-top:4px;">${LANG[CURRENT_LANG]?.import_ext_desc || 'Tambahkan account dari seed phrase atau private key yang berbeda.'}</div>
+                </div>
+            </div>
+            <div style="background:#2a1500;border:1px solid #ff7a0030;border-radius:12px;padding:12px 16px;margin-bottom:20px;display:flex;align-items:flex-start;gap:10px;">
+                <i class="fa-solid fa-triangle-exclamation" style="color:#ff9a30;font-size:13px;margin-top:1px;flex-shrink:0;"></i>
+                <div style="font-size:12px;color:#ff9a30;line-height:1.6;">${LANG[CURRENT_LANG]?.import_ext_warn || '(!!) Private key akan disimpan terenkripsi di vault yang sama.'}</div>
             </div>
             <div style="display:flex;gap:8px;margin-bottom:20px;">
-                <button id="tabSeedBtn" onclick="_switchImportTab('seed')" style="flex:1;padding:10px;border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;background:#ff7a00;border:none;color:#fff;">Seed Phrase</button>
-                <button id="tabPKBtn" onclick="_switchImportTab('pk')" style="flex:1;padding:10px;border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;background:#1a1a1a;border:1px solid #333;color:#888;">Private Key</button>
+                <button id="tabSeedBtn" onclick="_switchImportTab('seed')" style="flex:1;padding:10px;border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;background:#ff7a00;border:none;color:#fff;">${LANG[CURRENT_LANG]?.import_ext_tab_seed || 'Seed Phrase'}</button>
+                <button id="tabPKBtn" onclick="_switchImportTab('pk')" style="flex:1;padding:10px;border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;background:#1a1a1a;border:1px solid #333;color:#888;">${LANG[CURRENT_LANG]?.import_ext_tab_pk || 'Private Key'}</button>
             </div>
             <div id="panelSeed">
                 <div style="font-size:13px;color:#888;margin-bottom:6px;">${LANG[CURRENT_LANG]?.import_ext_seed_label || 'Seed Phrase (12 atau 24 kata)'}</div>
@@ -1199,12 +1257,12 @@ async function _extPkPaste() {
         text = await navigator.clipboard?.readText().catch(() => "") || "";
     }
     text = text.trim();
-    if (!text) { showToast?.("Clipboard kosong", "error"); return; }
+    if (!text) { showToast?.(LANG[CURRENT_LANG]?.toast_clipboard_empty || "Clipboard kosong", "error"); return; }
     inp.dataset.pkReal = text;
     inp.value = window._extPkMasked ? "*".repeat(text.length) : text;
     const hint = document.getElementById("extPKHint");
     if (hint) hint.textContent = text.length + " karakter";
-    showToast?.("Private key dipaste", "success");
+    showToast?.(LANG[CURRENT_LANG]?.toast_pk_pasted || "Private key dipaste", "success");
 }
 
 function _switchImportTab(tab) {
@@ -1230,24 +1288,24 @@ async function _submitImportExternal() {
     const errEl  = document.getElementById("extImportError");
     const isPKTab = document.getElementById("panelPK")?.style.display !== "none";
     const _showErr = (msg) => { if (errEl) { errEl.textContent = msg; errEl.style.display = "block"; } };
-    if (!pin) { _showErr("Masukkan PIN"); return; }
+    if (!pin) { _showErr(LANG[CURRENT_LANG]?.err_enter_pin || "Masukkan PIN"); return; }
     let importedWallet;
     try {
         if (isPKTab) {
             const inp = document.getElementById("extPKInput");
             const pk = (inp?.dataset?.pkReal || inp?.value || "").trim();
-            if (!pk) { _showErr("Masukkan private key"); return; }
+            if (!pk) { _showErr(LANG[CURRENT_LANG]?.err_enter_pk || "Masukkan private key"); return; }
             importedWallet = importFromPrivateKey(pk);
         } else {
             const phrase = document.getElementById("extSeedInput")?.value?.trim() || "";
-            if (!phrase) { _showErr("Masukkan seed phrase"); return; }
+            if (!phrase) { _showErr(LANG[CURRENT_LANG]?.err_enter_seed || "Masukkan seed phrase"); return; }
             importedWallet = importFromMnemonic(phrase, 0);
         }
-    } catch (err) { _showErr(err.message || "Data tidak valid"); return; }
+    } catch (err) { _showErr(err.message || LANG[CURRENT_LANG]?.invalid_format || "Data tidak valid"); return; }
     try {
         const data = await vault.unlockVault(pin);
         const exists = data.accounts.some(a => a.address?.toLowerCase() === importedWallet.address?.toLowerCase());
-        if (exists) { _showErr("Address ini sudah ada di wallet kamu"); return; }
+        if (exists) { _showErr(LANG[CURRENT_LANG]?.err_address_exists || "Address ini sudah ada di wallet kamu"); return; }
         const newAccount = { address: importedWallet.address, privateKey: importedWallet.privateKey, name, source: isPKTab ? "privateKey" : "mnemonic-external" };
         await vault.addAccount(pin, newAccount);
         const nextIndex = SESSION.accounts.length;
@@ -1256,9 +1314,10 @@ async function _submitImportExternal() {
             _addAccountToPrivateCache({ index: nextIndex, address: newAccount.address, privateKey: newAccount.privateKey, name: newAccount.name, source: newAccount.source });
         }
         _syncWalletToLegacySystem({ address: newAccount.address, name: newAccount.name });
-        showToast?.(`${name} berhasil diimport`, "success");
+        const importMsg = (LANG[CURRENT_LANG]?.toast_import_success_name || "{name} berhasil diimport").replace("{name}", name);
+        showToast?.(importMsg, "success");
         showWalletManageScreen();
-    } catch (err) { _showErr(err.message || "Gagal import"); }
+    } catch (err) { _showErr(err.message || LANG[CURRENT_LANG]?.err_import_failed || "Gagal import"); }
 }
 
 // -------------------------------------
@@ -1389,8 +1448,8 @@ async function _submitRenameAccount(index) {
     const errEl   = document.getElementById("renameAccountError");
     const showErr = (msg) => { if (errEl) { errEl.textContent = msg; errEl.style.display = "block"; } };
 
-    if (!newName) { showErr("Nama tidak boleh kosong"); return; }
-    if (!pin)     { showErr("Masukkan PIN"); return; }
+    if (!newName) { showErr(LANG[CURRENT_LANG]?.err_name_empty || "Nama tidak boleh kosong"); return; }
+    if (!pin)     { showErr(LANG[CURRENT_LANG]?.err_enter_pin || "Masukkan PIN"); return; }
 
     try {
         const data = await vault.unlockVault(pin);
@@ -1412,9 +1471,9 @@ async function _submitRenameAccount(index) {
         }
 
         document.getElementById("renameAccountBox")?.remove();
-        showToast?.("Nama account diubah", "success");
+        showToast?.(LANG[CURRENT_LANG]?.toast_account_renamed || "Nama account diubah", "success");
         showWalletManageScreen();
     } catch (err) {
-        showErr(err.message || "PIN salah");
+        showErr(err.message || LANG[CURRENT_LANG]?.err_wrong_pin || "PIN salah");
     }
 }
