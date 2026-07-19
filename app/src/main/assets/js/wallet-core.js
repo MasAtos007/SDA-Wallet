@@ -40,7 +40,7 @@ document.addEventListener("DOMContentLoaded", () => {
 // =====================================
 function unlockPK() {
     const pk = document.getElementById("globalPKInput")?.value?.trim();
-    if (!pk) return showToast?.("Private key kosong", "error");
+    if (!pk) return showToast?.(LANG[CURRENT_LANG]?.err_pk_empty || "Private key kosong", "error");
 
     try {
         const wallet = new ethers.Wallet(pk, window.pkProvider);
@@ -63,10 +63,10 @@ function unlockPK() {
 
         savePKSession();
         updatePKStatusBar();
-        showToast?.("Wallet imported", "success");
+        showToast?.(LANG[CURRENT_LANG]?.toast_wallet_imported || "Wallet imported", "success");
 
     } catch {
-        showToast?.("Private Key tidak valid", "error");
+        showToast?.(LANG[CURRENT_LANG]?.err_pk_invalid || "Private Key tidak valid", "error");
     }
 }
 
@@ -90,7 +90,7 @@ function lockPK() {
 
     savePKSession();
     updatePKStatusBar();
-    showToast?.("Wallet locked", "success");
+    showToast?.(LANG[CURRENT_LANG]?.toast_wallet_locked || "Wallet locked", "success");
 }
 
 
@@ -99,7 +99,7 @@ function lockPK() {
 // =====================================
 function resetPKWallet() {
     showConfirm?.(
-        "PERINGATAN: Semua wallet PK akan dihapus permanen. Pastikan kamu sudah backup private key. Lanjutkan?",
+        LANG[CURRENT_LANG]?.confirm_reset_pk_warning || "PERINGATAN: Semua wallet PK akan dihapus permanen. Pastikan kamu sudah backup private key. Lanjutkan?",
         () => {
             _removePKFromWalletList();
             resetPKState();
@@ -114,7 +114,7 @@ function resetPKWallet() {
             loadBalance?.();
 
             updatePKStatusBar();
-            showToast?.("Wallet PK dihapus", "success");
+            showToast?.(LANG[CURRENT_LANG]?.toast_pk_deleted || "Wallet PK dihapus", "success");
 
             // Kembali ke welcome screen
             showWelcomeScreen?.();
@@ -127,7 +127,7 @@ function resetPKWallet() {
 // DELETE PK WALLET
 // =====================================
 function deletePKWallet() {
-    showConfirm?.("Hapus wallet PK ini?", () => {
+    showConfirm?.(LANG[CURRENT_LANG]?.confirm_delete_pk || "Hapus wallet PK ini?", () => {
         _removePKFromWalletList();
         resetPKState();
         localStorage.setItem("PK_DELETED", "1");
@@ -140,7 +140,7 @@ function deletePKWallet() {
         loadBalance?.();
 
         updatePKStatusBar();
-        showToast?.("PK wallet dihapus", "success");
+        showToast?.(LANG[CURRENT_LANG]?.toast_pk_deleted || "PK wallet dihapus", "success");
         showWelcomeScreen?.();
     });
 }
@@ -221,7 +221,7 @@ function updatePKStatusBar() {
         return;
     }
 
-    if (text) text.innerHTML = '<i class="fa-solid fa-lock-open" style="margin-right:5px;"></i>Aktif';
+    if (text) text.innerHTML = '<i class="fa-solid fa-lock-open" style="margin-right:5px;"></i>' + (LANG[CURRENT_LANG]?.account_active_badge || 'Aktif');
     if (dot)  dot.style.background = "#00ff88";
     bar.style.background           = "#1a1a1a";
 }
@@ -263,11 +263,11 @@ function requirePK() {
     const s = window.WALLET_SESSION;
     if (!s.pkWallet || s.pkWallet._locked) {
         openPKModal();
-        throw new Error("Wallet belum diimport");
+        throw new Error(LANG[CURRENT_LANG]?.err_wallet_not_imported || "Wallet belum diimport");
     }
     if (s.pkLocked) {
         openPKModal();
-        throw new Error("Wallet terkunci");
+        throw new Error(LANG[CURRENT_LANG]?.err_wallet_locked_core || "Wallet terkunci");
     }
     return s.pkWallet;
 }
@@ -282,12 +282,13 @@ async function sendWithPK(to, amount, tokenAddress = null) {
     const wallet = requirePK();
 
     try {
+        const txSentPrefix = LANG[CURRENT_LANG]?.toast_tx_sent || "TX sent: ";
         if (!tokenAddress) {
             const tx = await wallet.sendTransaction({
                 to,
                 value: ethers.utils.parseEther(amount)
             });
-            showToast?.("TX sent: " + tx.hash, "success");
+            showToast?.(txSentPrefix + tx.hash, "success");
             return tx;
         }
 
@@ -295,12 +296,12 @@ async function sendWithPK(to, amount, tokenAddress = null) {
         const contract = new ethers.Contract(tokenAddress, abi, wallet);
         const tx       = await contract.transfer(to, ethers.utils.parseUnits(amount, 18));
 
-        showToast?.("TX sent: " + tx.hash, "success");
+        showToast?.(txSentPrefix + tx.hash, "success");
         return tx;
 
     } catch (err) {
         console.error(err);
-        showToast?.("Transaction failed", "error");
+        showToast?.(LANG[CURRENT_LANG]?.err_tx_failed || "Transaction failed", "error");
     }
 }
 
