@@ -1460,7 +1460,8 @@ function renderTxHistory() {
 
         const isWrapTx = tx.type === "WRAP" || tx.type === "UNWRAP";
         const signPrefix = (isSwap||isAddLP||isRemoveLP||isLpNftTx||isCollectFee||isWrapTx) ? "" : type === "Receive" ? "+" : "-";
-        const valueColor = isFailed ? "#555" : isLpNftTx ? "#888" : color;
+        const isNeutralValueType = isSwap || isAddLP || isRemoveLP || isCollectFee || isWrapTx;
+const valueColor = isFailed ? "#555" : isLpNftTx ? "#888" : (isNeutralValueType ? "#f0f0f2" : color);
 
         // -- Alamat pendek --
         const targetAddr = type === "Send" ? tx.to : tx.from;
@@ -1496,18 +1497,18 @@ function renderTxHistory() {
                 ? `<img src="${safeInLogo}" onerror="this.src='img/default.png'" style="width:38px;height:38px;border-radius:50%;background:#111;padding:4px;object-fit:contain;flex-shrink:0;">`
                 : (isSwap||isAddLP||isRemoveLP||isCollectFee)
                     ? `<div style="position:relative;width:42px;height:38px;flex-shrink:0;">
-                        <img src="${safeOutLogo}" onerror="this.src='img/default.png'" style="width:26px;height:26px;border-radius:50%;position:absolute;left:0;top:6px;background:#111;padding:2px;z-index:1;object-fit:contain;border:1.5px solid #1a1a1a;">
-                        <img src="${safeInLogo}"  onerror="this.src='img/default.png'" style="width:26px;height:26px;border-radius:50%;position:absolute;right:0;top:6px;background:#111;padding:2px;z-index:2;object-fit:contain;border:2px solid #0b0f17;">
+                        <img src="${safeOutLogo}" onerror="this.src='img/default.png'" style="width:26px;height:26px;border-radius:50%;position:absolute;left:0;top:6px;background:#111;padding:2px;z-index:1;object-fit:contain;border:2px solid #141416;">
+                        <img src="${safeInLogo}"  onerror="this.src='img/default.png'" style="width:26px;height:26px;border-radius:50%;position:absolute;right:0;top:6px;background:#111;padding:2px;z-index:2;object-fit:contain;border:2px solid #141416;box-shadow:0 0 0 1px rgba(255,255,255,0.06);">
                        </div>`
                     : `<img src="${logo}" onerror="this.src='img/default.png'" style="width:38px;height:38px;border-radius:50%;background:#111;padding:4px;object-fit:contain;flex-shrink:0;">`;
 
         const sourceBadge = tx.source === "blockscout"
-            ? `<span style="font-size:9px;color:#3b82f6;opacity:0.5;margin-left:3px;">live</span>`
-            : "";
+    ? `<span style="font-size:9px;font-weight:600;color:#3b82f6;background:rgba(59,130,246,0.15);border-radius:5px;padding:1px 6px;margin-left:5px;letter-spacing:.3px;">LIVE</span>`
+    : "";
 
         const el = document.createElement("div");
         el.className = "asset-item";
-        el.style.cssText = `opacity:${isFailed?"0.5":"1"};padding:12px;border-bottom:1px solid #1a1a1a;cursor:pointer;`;
+        el.style.cssText = `opacity:${isFailed?"0.5":"1"};cursor:pointer;--tx-accent:${color};`;
 
         el.innerHTML = `
 <div style="display:flex;align-items:center;gap:10px;">
@@ -1520,11 +1521,11 @@ function renderTxHistory() {
     </div>
 
     <div style="flex:1;min-width:0;">
-        <div style="font-size:13px;font-weight:600;color:#fff;display:flex;align-items:center;gap:4px;">
+        <div style="font-size:13px;font-weight:600;color:#fff;display:flex;align-items:center;gap:4px;margin-bottom:3px;">
             ${type}${isFailed ? `<span style="font-size:9px;background:#ff4d4f22;color:#ff4d4f;border-radius:4px;padding:1px 5px;">${t("tx_failed") || "Gagal"}</span>` : ""}
         </div>
-        <div style="font-size:11px;color:#666;margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${shortAddr}</div>
-        <div style="font-size:10px;color:#444;margin-top:1px;">${formatDate(normalizeTimestamp(tx.timestamp))}${sourceBadge}</div>
+        <div style="font-size:11px;color:#999;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${shortAddr}</div>
+        <div style="font-size:10px;color:#4a4a4a;margin-top:3px;">${formatDate(normalizeTimestamp(tx.timestamp))}${sourceBadge}</div>
     </div>
 
     <div style="flex-shrink:0;text-align:right;min-width:90px;">
