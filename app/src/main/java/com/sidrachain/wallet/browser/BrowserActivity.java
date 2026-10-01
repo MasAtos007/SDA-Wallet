@@ -1,6 +1,8 @@
 package com.sidrachain.wallet.browser;
 
 import android.content.BroadcastReceiver;
+import android.content.ClipData;
+import android.content.ClipboardManager;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
@@ -24,6 +26,8 @@ import android.widget.ImageButton;
 import android.widget.LinearLayout;
 import android.widget.ProgressBar;
 import android.widget.TextView;
+import android.widget.Toast;
+import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 import androidx.webkit.WebViewCompat;
@@ -31,6 +35,8 @@ import androidx.webkit.WebViewFeature;
 import com.sidrachain.wallet.MainActivity;
 import com.sidrachain.wallet.R;
 import com.sidrachain.wallet.bridge.AndroidBridge;
+
+import org.json.JSONTokener;
 
 import java.net.URL;
 import java.util.ArrayList;
@@ -67,6 +73,7 @@ public class BrowserActivity extends AppCompatActivity {
         volatile String origin = null;   // diisi Java, bukan dipercaya dari JS
         String url = "";
         boolean home = true;             // true = tampilkan halaman awal
+        boolean titled = false;          // true setelah halaman memberi judul
         LinearLayout chip;
         TextView chipTitle;
     }
@@ -281,6 +288,9 @@ public class BrowserActivity extends AppCompatActivity {
             });
         }
 
+        View btnMenu = findViewById(R.id.btnMenu);
+        if (btnMenu != null) btnMenu.setOnClickListener(v -> showMenu());
+
         View btnNewTab = findViewById(R.id.btnNewTab);
         if (btnNewTab != null) btnNewTab.setOnClickListener(v -> createTab(""));
 
@@ -386,6 +396,7 @@ public class BrowserActivity extends AppCompatActivity {
             @Override
             public void onReceivedTitle(WebView view, String title) {
                 if (tab.chipTitle != null && !TextUtils.isEmpty(title)) {
+                    tab.titled = true;
                     tab.chipTitle.setText(title);
                 }
             }
@@ -412,7 +423,7 @@ public class BrowserActivity extends AppCompatActivity {
         chip.setLayoutParams(lp);
 
         TextView title = new TextView(this);
-        title.setText("Tab baru");
+        title.setText(tr("browser_new_tab_title", "New tab"));
         title.setTextSize(12);
         title.setSingleLine(true);
         title.setEllipsize(TextUtils.TruncateAt.END);
@@ -566,6 +577,144 @@ public class BrowserActivity extends AppCompatActivity {
         return "https://www.google.com/search?q=" + android.net.Uri.encode(input);
     }
 
+    // ---------------------------------------------------------------
+    // BAHASA (ikut bahasa wallet, lihat BrowserLang)
+    // ---------------------------------------------------------------
+    private String tr(String key, String fallback) {
+        return BrowserLang.t(this, key, fallback);
+    }
+
+    private void applyTexts() {
+        TextView w = findViewById(R.id.btnWallet);
+        if (w != null) w.setText(tr("browser_wallet", "Wallet"));
+        if (urlBar != null) urlBar.setHint(tr("browser_url_hint", "Search or enter URL..."));
+        setText(R.id.startTitle, tr("browser_start_title", "Sidra Chain Ecosystem"));
+        setText(R.id.startSub,   tr("browser_start_sub", "Official links. Or type a URL / search above."));
+        setText(R.id.mainDesc,   tr("browser_main_desc", "Official main site"));
+        setText(R.id.dexDesc,    tr("browser_dex_desc", "Swap tokens & liquidity"));
+        for (Tab t : tabs) {
+            if (!t.titled && t.chipTitle != null) {
+                t.chipTitle.setText(tr("browser_new_tab_title", "New tab"));
+            }
+        }
+    }
+
+    private void setText(int id, String text) {
+        TextView v = findViewById(id);
+        if (v != null) v.setText(text);
+    }
+
+    // ---------------------------------------------------------------
+    // MENU (titik tiga): cabut koneksi wallet, salin link, tutup semua tab
+    // ---------------------------------------------------------------
+    private void showMenu() {
+        final Tab tab = active;
+        if (tab == null) return;
+        final String origin = tab.home ? null : tab.origin;
+        WebView wallet = MainActivity.walletWebView;
+        if (origin == null || wallet == null) {
+            showMenuDialog(tab, origin, null);
+            return;
+        }
+        // Tanya wallet: situs ini punya koneksi? (balikannya alamat, atau kosong)
+        String js = "(function(){try{var c=window.dappConnectionManager.getConnection("
+            + jsStr(origin) + ");return (c&&c.address)?c.address:'';}catch(e){return '';}})()";
+        wallet.evaluateJavascript(js, value -> {
+            String addr = null;
+            try {
+                Object o = new JSONTokener(value == null ? "null" : value).nextValue();
+                if (o instanceof String && !((String) o).isEmpty()) addr = (String) o;
+            } catch (Exception ignored) {}
+            showMenuDialog(tab, origin, addr);
+        });
+    }
+
+    private void showMenuDialog(final Tab tab, final String origin, final String address) {
+        if (isFinishing()) return;
+        final List<String> labels = new ArrayList<>();
+        final List<Runnable> actions = new ArrayList<>();
+
+        if (origin != null && address != null) {
+            labels.add(tr("browser_disconnect", "Disconnect wallet"));
+            actions.add(() -> disconnectSite(origin));
+        }
+        if (!tab.home && tab.web.getUrl() != null) {
+            labels.add(tr("browser_copy_link", "Copy link"));
+            actions.add(() -> copyLink(tab));
+        }
+        if (tabs.size() > 1) {
+            labels.add(tr("browser_close_all", "Close all tabs"));
+            actions.add(this::closeAllTabs);
+        }
+
+        String title;
+        if (origin != null) {
+            String status = address != null
+                ? tr("browser_connected", "Connected") + " \u00B7 " + shortAddr(address)
+                : tr("browser_not_connected", "Not connected");
+            title = hostOf(origin) + "\n" + status;
+        } else {
+            title = tr("browser_menu", "Menu");
+        }
+
+        if (labels.isEmpty()) {
+            Toast.makeText(this, tr("browser_not_connected", "Not connected"), Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        new AlertDialog.Builder(this)
+            .setTitle(title)
+            .setItems(labels.toArray(new String[0]), (d, which) -> actions.get(which).run())
+            .show();
+    }
+
+    // Cabut izin di wallet (dappConnectionManager.disconnect) lalu beri tahu tab dApp
+    private void disconnectSite(String origin) {
+        WebView wallet = MainActivity.walletWebView;
+        if (wallet != null) {
+            wallet.evaluateJavascript(
+                "(function(){try{window.dappConnectionManager.disconnect("
+                    + jsStr(origin) + ");}catch(e){}})();", null);
+        }
+        for (Tab t : new ArrayList<>(tabs)) {
+            if (origin.equals(t.origin)) {
+                t.web.evaluateJavascript(
+                    "window.__sidraAndroidEvent&&window.__sidraAndroidEvent('accountsChanged',[]);",
+                    null);
+            }
+        }
+        Toast.makeText(this,
+            String.format(tr("browser_disconnected", "Wallet disconnected from %s"), hostOf(origin)),
+            Toast.LENGTH_SHORT).show();
+    }
+
+    private void copyLink(Tab tab) {
+        String url = tab.web.getUrl();
+        if (url == null) return;
+        try {
+            ClipboardManager cm = (ClipboardManager) getSystemService(Context.CLIPBOARD_SERVICE);
+            if (cm != null) cm.setPrimaryClip(ClipData.newPlainText("url", url));
+            Toast.makeText(this, tr("browser_link_copied", "Link copied"), Toast.LENGTH_SHORT).show();
+        } catch (Exception ignored) {}
+    }
+
+    private void closeAllTabs() {
+        for (Tab t : new ArrayList<>(tabs)) closeTab(t);
+    }
+
+    private String hostOf(String origin) {
+        return origin == null ? "" : origin.replaceFirst("^https?://", "");
+    }
+
+    private String shortAddr(String a) {
+        return a.length() > 12 ? a.substring(0, 6) + "\u2026" + a.substring(a.length() - 4) : a;
+    }
+
+    private String jsStr(String v) {
+        return "'" + v.replace("\\", "\\\\").replace("'", "\\'")
+                      .replace("\n", "").replace("\r", "") + "'";
+    }
+
     private android.graphics.drawable.GradientDrawable roundBg(String fill, String stroke, int radiusDp) {
         android.graphics.drawable.GradientDrawable g = new android.graphics.drawable.GradientDrawable();
         g.setColor(Color.parseColor(fill));
@@ -597,6 +746,7 @@ public class BrowserActivity extends AppCompatActivity {
         super.onResume();
         // Browser kembali di depan: back di wallet tidak perlu "menarik" ke browser lagi
         returnToBrowserOnBack = false;
+        applyTexts();
     }
 
     @Override
