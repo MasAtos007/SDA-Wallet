@@ -118,7 +118,7 @@ function renderAssets() {
                     <img class="asset-icon" src="img/sda.png"
                          onerror="this.src='img/default.png'">
                     <div>
-                        <div class="asset-name">Sidra Digital Asset</div>
+                        <div class="asset-name">Sidra Digital Asset ${tokenVerifyBadgeHTML("native")}</div>
                         <div class="asset-subtitle">${t("native_token") || "Native Token"}</div>
                     </div>
                 </div>
@@ -167,12 +167,13 @@ function renderAssets() {
 
         // Sembunyikan token saldo 0 â€” KECUALI token yang user tambah
         // sendiri, ATAU kalau toggle "tampilkan semua" aktif.
-        if (amount <= 0 && !token.userAdded && !assetShowHidden) return;
+        if (amount <= 0 && !token.userAdded && !token.isSpamDetected && !assetShowHidden) return;
 
         visibleTokens.push(token);
 
-        const isWSDA = token.symbol === "WSDA";
-        const logo   = token.logo || token.icon || "img/default.png";
+        const isWSDA  = token.symbol === "WSDA";
+        // Terdeteksi dari luar DAN tidak ada di tokens.json
+        const flagged = token.isSpamDetected && !isVerifiedToken(token.address);
 
         // Kartu di tab Assets sengaja dibuat ringkas: TANPA tap-to-copy
         // dan TANPA baris peringatan kontrak. Ini supaya kartu tidak
@@ -184,18 +185,17 @@ function renderAssets() {
             <div class="asset-card">
                 <div class="asset-card-top">
                     <div class="asset-card-info">
-                        <img class="asset-icon" src="${logo}"
-                             onerror="this.src='img/default.png'">
+                        ${tokenLogoHTML(token, { cls: "asset-icon" })}
                         <div>
                             <div class="asset-name">
-                                ${token.name || token.symbol}
+                                ${token.name || token.symbol} ${tokenVerifyBadgeHTML(token.address)}
                             </div>
                             <div class="asset-subtitle">
                                 ${t("erc20_token") || "ERC-20 Token"}
                                 <span style="margin-left:6px;padding:1px 6px;border-radius:6px;font-size:10px;
-                                    background:${token.userAdded ? 'rgba(43,124,255,0.15)' : 'rgba(255,138,31,0.15)'};
-                                    color:${token.userAdded ? '#5b9bff' : '#ff8a1f'};">
-                                    ${token.userAdded ? (t("badge_manual") || "Manual") : (t("badge_auto") || "Auto")}
+                                    background:${flagged ? 'rgba(255,68,68,0.15)' : token.userAdded ? 'rgba(43,124,255,0.15)' : 'rgba(255,138,31,0.15)'};
+                                    color:${flagged ? '#ff5c5c' : token.userAdded ? '#5b9bff' : '#ff8a1f'};">
+                                    ${flagged ? _t("badge_detected", "Terdeteksi") : token.userAdded ? (t("badge_manual") || "Manual") : (t("badge_auto") || "Auto")}
                                 </span>
                             </div>
                         </div>
@@ -250,7 +250,7 @@ function renderAssets() {
                     const cacheKey = wallet.address + "_" + token.address;
                     const cached   = localStorage.getItem(cacheKey) || ("0.00 " + token.symbol);
                     const amount   = parseFloat(cached) || 0;
-                    const price    = priceMap[token.symbol] || 0;
+                    const price    = token.isSpamDetected ? 0 : (Number(priceMap[token.symbol]) || 0);
                     const usd      = amount * price;
 
                     const el = document.getElementById("assetUsd_" + token.address);
@@ -269,10 +269,16 @@ function renderAssets() {
 }
 
 // ==========================
-// DETEKSI SALDO TERSEMBUNYI
+// DETEKSI SALDO TERSEMBUNYI — Dynamic Token Discovery
 // Hanya jalan saat tombol diklik (bukan auto).
-// Scan token yang BELUM ditambahkan saja,
-// pakai Promise.all supaya satu batch paralel.
+//
+// Sumber utama: token yang SEDANG DIPEGANG wallet (Blockscout
+// /addresses/{addr}/tokens). Hasil dibagi dua:
+//   - ada di tokens.json  -> masuk customTokens sebagai token biasa
+//   - tidak ada di JSON   -> masuk customTokens dgn isSpamDetected:true
+// Kalau Blockscout gagal: fallback scan RPC utk token JSON +
+// riwayat token-transfers utk token luar.
+// TIDAK ada batas jumlah (MAX_CUSTOM_TOKENS hanya utk tambah manual).
 // ==========================
 async function detectHiddenBalances() {
 
@@ -283,97 +289,144 @@ async function detectHiddenBalances() {
     const btnText = document.getElementById("detectBalanceBtnText");
 
     if (btn) btn.disabled = true;
-    if (btnText) btnText.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> ' + (t("detect_balance_scanning") || "Memindai saldo...");
+    if (btnText) btnText.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> ' + _t("detect_balance_detecting", "Mendeteksi...");
 
     try {
 
-        const custom     = getCustomTokens();
-        const addedAddr  = new Set(custom.map(x => x.address.toLowerCase()));
+        const custom    = getCustomTokens();
+        const customSet = new Set(custom.map(x => (x.address || "").toLowerCase()));
 
-        const emptyCacheKey = "emptyScanned_" + wallet.address;
-        const EMPTY_TTL = 24 * 60 * 60 * 1000; // 24 jam
-        const _now = Date.now();
-        const emptyRaw = JSON.parse(localStorage.getItem(emptyCacheKey) || "[]")
-            .map(x => typeof x === "string" ? { address: x, ts: 0 } : x); // migrasi format lama
-        const emptyScanned = new Set(
-            emptyRaw.filter(e => _now - e.ts < EMPTY_TTL).map(e => e.address)
+        // Token dari tokens.json (selain native), key = alamat lowercase
+        const jsonMap = new Map(
+            (DEFAULT_TOKENS || [])
+                .filter(x => x.address && x.address !== "native")
+                .map(x => [x.address.toLowerCase(), x])
         );
 
-        const candidates = (DEFAULT_TOKENS || []).filter(
-            x => x.address !== "native"
-              && !addedAddr.has(x.address.toLowerCase())
-              && !emptyScanned.has(x.address.toLowerCase())
-        );
+        const seen  = new Set();
+        const found = [];   // { token, external, raw, decimals }
 
-        if (!candidates.length) {
+        const pushFound = (tk, raw) => {
+            if (!tk || isLpNft(tk)) return;
+
+            const addr = tk.address_hash || tk.address;     // v2 baru: address_hash
+            if (!addr || !ethers.utils.isAddress(addr)) return;
+
+            const key = addr.toLowerCase();
+            if (customSet.has(key) || seen.has(key)) return;
+            seen.add(key);
+
+            const meta = jsonMap.get(key);
+            found.push({
+                key,
+                json:     meta || null,
+                external: tk,
+                raw:      raw ?? null,
+                decimals: parseInt(tk.decimals, 10)
+            });
+        };
+
+        // ---------- Sumber utama: token yang dipegang ----------
+        const holdings = await fetchTokenHoldingsFromBlockscout(wallet.address);
+
+        if (holdings) {
+            for (const item of holdings) {
+                if (!item || !item.token) continue;
+                // value "0" = sudah tidak dipegang
+                if (item.value != null && /^0+$/.test(String(item.value))) continue;
+                pushFound(item.token, item.value);
+            }
+        } else {
+            // ---------- Fallback 1: scan RPC token JSON ----------
+            const candidates = [...jsonMap.values()]
+                .filter(x => !customSet.has(x.address.toLowerCase()));
+
+            if (candidates.length) {
+                try {
+                    const balances = await batchGetTokenBalancesChunked(candidates, wallet.address, 15, 600);
+                    candidates.forEach(tk => {
+                        const r = balances[tk.address];
+                        if (!r || !r.balance) return;
+                        if (ethers.BigNumber.from(r.balance).gt(0)) {
+                            pushFound({ address: tk.address, decimals: r.decimals }, String(r.balance));
+                        }
+                    });
+                } catch (e) {
+                    console.warn("[detect] scan RPC gagal:", e.message);
+                }
+            }
+
+            // ---------- Fallback 2: token luar dari riwayat transfer ----------
+            const transfers = await fetchTokenTransfersFromBlockscout(wallet.address, 3);
+            if (transfers === null && !found.length) {
+                showToast?.(t("detect_balance_error") || "Gagal memindai saldo", "error");
+                return;
+            }
+            for (const item of (transfers || [])) pushFound(item && item.token, null);
+        }
+
+        if (!found.length) {
             showToast?.(t("detect_balance_none") || "Tidak ada token baru untuk dipindai", "info");
             return;
         }
 
-        const balances = await batchGetTokenBalancesChunked(candidates, wallet.address, 15, 600);
+        found.forEach(f => {
 
-        const results = candidates.map(token => {
-            const r = balances[token.address];
-            if (!r) return { token, value: 0 };
+            let entry;
 
-            const value = parseFloat(
-                ethers.utils.formatUnits(r.balance, r.decimals)
-            );
-            return { token, value };
+            if (f.json) {
+                // Token resmi (ada di tokens.json) -> token biasa
+                entry = normalizeToken({
+                    ...f.json,
+                    manual: false, isSpamDetected: false, userAdded: false
+                });
+            } else {
+                const tk     = f.external;
+                const symbol = sanitizeTokenText(tk.symbol, 12, "UNKNOWN");
+                entry = normalizeToken({
+                    symbol,
+                    name:     sanitizeTokenText(tk.name, 32, symbol),
+                    address:  ethers.utils.getAddress(f.key),
+                    decimals: Number.isInteger(f.decimals) ? f.decimals : 18,
+                    // Logo dari luar tidak dipakai; UI otomatis pakai avatar inisial
+                    logo:     "img/default.png",
+                    type:     "erc20",
+                    manual:         false,
+                    isSpamDetected: true,
+                    userAdded:      false
+                });
+            }
+
+            custom.push(entry);
+
+            // Isi cache saldo dulu supaya langsung tampil sebelum refreshAll selesai
+            if (f.raw != null) {
+                try {
+                    const v = parseFloat(ethers.utils.formatUnits(f.raw, entry.decimals)).toFixed(4);
+                    localStorage.setItem(wallet.address + "_" + entry.address, v + " " + entry.symbol);
+                } catch {}
+            }
         });
 
-        const found = results.filter(r => r.value > 0);
-        const empty = results.filter(r => r.value <= 0).map(r => r.token.address.toLowerCase());
-
-        const stillValid = emptyRaw.filter(e => _now - e.ts < EMPTY_TTL && !empty.includes(e.address));
-        const updatedEmpty = [
-            ...stillValid,
-            ...empty.map(addr => ({ address: addr, ts: _now }))
-        ];
-        localStorage.setItem(emptyCacheKey, JSON.stringify(updatedEmpty));
-
-        if (!found.length) {
-            showToast?.(t("detect_balance_empty") || "Tidak ditemukan saldo tambahan", "info");
-            return;
-        }
-
-        let custom2 = getCustomTokens();
-        let addedCount = 0;
-
-        found.forEach(({ token, value }) => {
-            if (custom2.length >= (window.MAX_CUSTOM_TOKENS ?? Infinity)) return;
-
-            const exists = custom2.some(
-                x => x.address.toLowerCase() === token.address.toLowerCase()
-            );
-            if (exists) return;
-
-            // TIDAK diberi userAdded -> akan otomatis kena filter
-            // sembunyikan-jika-0 di renderAssets() kalau saldonya balik nol
-            custom2.push({ ...token, manual: true });
-            localStorage.setItem(
-                wallet.address + "_" + token.address,
-                value.toFixed(4) + " " + token.symbol
-            );
-            addedCount++;
-        });
-
-        saveCustomTokens(custom2);
+        saveCustomTokens(custom);
         rebuildTokens();
 
-        showToast?.(
-            addedCount + " " + (t("detect_balance_found") || "token dengan saldo ditemukan"),
-            "success"
-        );
-
+        // Ambil saldo semua token (termasuk yang baru) lalu render ulang
+        await refreshAll?.();
         renderAssets?.();
         renderTokenTab?.();
         renderTokenSelect?.();
+
+        showToast?.(
+            found.length + " " + (t("detect_balance_found") || "token dengan saldo ditemukan"),
+            "success"
+        );
 
     } catch (e) {
         console.error("[detectHiddenBalances]", e);
         showToast?.(t("detect_balance_error") || "Gagal memindai saldo", "error");
     } finally {
+        // renderAssets() membuat ulang tombol, jadi ambil elemen terbaru
         const btn2     = document.getElementById("detectBalanceBtn");
         const btnText2 = document.getElementById("detectBalanceBtnText");
         if (btn2) btn2.disabled = false;
@@ -422,7 +475,6 @@ function renderTokenTab() {
 
         const isAdded   = addedAddresses.has(token.address.toLowerCase());
         const tokenData = encodeURIComponent(JSON.stringify(token));
-        const logo      = token.logo || token.icon || "img/default.png";
         const isWSDA    = token.symbol === "WSDA";
 
         const shortTokenAddr = token.address.slice(0, 8) + "..." + token.address.slice(-6);
@@ -432,11 +484,9 @@ function renderTokenTab() {
                  data-symbol="${token.symbol.toLowerCase()}">
 
                 <div style="display:flex;align-items:center;gap:10px;min-width:0;flex:1;">
-                    <img src="${logo}"
-                         onerror="this.src='img/default.png'"
-                         style="width:28px;height:28px;border-radius:50%;object-fit:contain;flex-shrink:0;">
+                    ${tokenLogoHTML(token, { size: 28, style: "flex-shrink:0;" })}
                     <div style="min-width:0;">
-                        <b>${token.name || token.symbol}</b><br>
+                        <b>${token.name || token.symbol}</b>${tokenVerifyBadgeHTML(token.address)}<br>
                         <small style="color:#888;">${token.symbol}</small><br>
                         <small onclick="event.stopPropagation();copyTokenAddress('${token.address}', ${isWSDA})"
                                style="color:#5b9bff;cursor:pointer;font-family:monospace;font-size:10.5px;">
