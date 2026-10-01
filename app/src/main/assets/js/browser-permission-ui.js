@@ -355,7 +355,7 @@
 
         // Notify dApp via bridge
         window.browserBridge?.broadcastEvent("accountsChanged", [account.address]);
-        window.browserBridge?.broadcastEvent("connect", { chainId: "0x" + (9700).toString(16) });
+        window.browserBridge?.broadcastEvent("connect", { chainId: "0x" + (97453).toString(16) });
 
         // Update dApp connection manager
         window.dappConnectionManager?.setActiveConnection(origin, account.address);
