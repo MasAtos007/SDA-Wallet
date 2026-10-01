@@ -349,7 +349,14 @@
     // 2. SIGN MODAL
     // Dipanggil oleh personal_sign, eth_sign
     // ─────────────────────────────────────────
+    // Param request disimpan di sini, BUKAN di atribut onclick. Sebelumnya
+    // onclick="...('${method}', "[\"0x..\"]")" memutus atribut HTML di tanda kutip
+    // pertama -> klik "Tanda Tangani"/"Kirim" -> SyntaxError diam-diam, tombol tidak respon.
+    let _pendingSign = null;
+    let _pendingTx   = null;
+
     window.openSignModal = function ({ method, params, origin }) {
+        _pendingSign = { method, params };
 
         const site    = _getSiteDisplay(origin);
         let   message = "";
@@ -403,7 +410,7 @@
                 <button class="sidra-btn sidra-btn-cancel" onclick="window._onUserReject('sign')">
                     Tolak
                 </button>
-                <button class="sidra-btn sidra-btn-approve" onclick="window._onUserApproveSign('${method}', ${JSON.stringify(JSON.stringify(params))})">
+                <button class="sidra-btn sidra-btn-approve" onclick="window._onUserApproveSign()">
                     Tanda Tangani
                 </button>
             </div>
@@ -417,6 +424,7 @@
     window.openTxModal = function ({ txParams, origin }) {
 
         const site = _getSiteDisplay(origin);
+        _pendingTx = txParams;
         const to   = txParams.to   || "-";
         const value = txParams.value
             ? parseFloat(ethers.utils.formatEther(txParams.value)).toFixed(6) + " SDA"
@@ -470,7 +478,7 @@
                 <button class="sidra-btn sidra-btn-cancel" onclick="window._onUserReject('tx')">
                     Tolak
                 </button>
-                <button class="sidra-btn sidra-btn-approve" onclick="window._onUserApproveTx(${JSON.stringify(JSON.stringify(txParams))})">
+                <button class="sidra-btn sidra-btn-approve" onclick="window._onUserApproveTx()">
                     Kirim
                 </button>
             </div>
@@ -489,13 +497,25 @@
         showToast?.("Wallet terhubung ✓", "success");
     };
 
-    window._onUserApproveSign = async function (method, paramsJson) {
+    window._onUserApproveSign = async function () {
         _removeOverlay();
 
+        const req = _pendingSign;
+        _pendingSign = null;
+
         try {
-            const params  = JSON.parse(paramsJson);
+            if (!req) throw new Error("Permintaan tanda tangan sudah kedaluwarsa");
+            const method = req.method;
+            const params = req.params;
             const signer  = window.SESSION.signer;
             if (!signer) throw new Error("Wallet tidak aktif");
+
+            // Alamat yang diminta dApp harus sama dengan akun aktif
+            const reqAddr = method === "personal_sign" ? params[1] : params[0];
+            if (typeof reqAddr === "string" && ethers.utils.isAddress(reqAddr) &&
+                reqAddr.toLowerCase() !== String(signer.address).toLowerCase()) {
+                throw new Error("Alamat penanda tangan tidak cocok dengan akun aktif");
+            }
 
             let signature;
 
@@ -545,11 +565,14 @@
         }
     };
 
-    window._onUserApproveTx = async function (txParamsJson) {
+    window._onUserApproveTx = async function () {
         _removeOverlay();
 
+        const txParams = _pendingTx;
+        _pendingTx = null;
+
         try {
-            const txParams = JSON.parse(txParamsJson);
+            if (!txParams) throw new Error("Permintaan transaksi sudah kedaluwarsa");
             const signer   = window.SESSION.signer;
             if (!signer) throw new Error("Wallet tidak aktif");
 
@@ -605,6 +628,8 @@
     // ─────────────────────────────────────────
     window._onUserReject = function (type) {
         _removeOverlay();
+        if (type === "sign") _pendingSign = null;
+        if (type === "tx")   _pendingTx   = null;
 
         const err = new Error("User rejected the request.");
         err.code  = 4001;
