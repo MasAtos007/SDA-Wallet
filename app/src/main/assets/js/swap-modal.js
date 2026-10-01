@@ -13,6 +13,16 @@ function _t(key, fallback) {
     } catch { return fallback; }
 }
 
+// Set ikon token pada <img> yang sudah ada (ID/elemen tidak diganti).
+// Tanpa logo asli / gagal dimuat -> avatar inisial simbol.
+// Level atas file supaya bisa dipakai updateUI() DAN showSwapSuccessModal().
+function _setTokenImg(img, logo, symbol) {
+    if (!img) return;
+    img.dataset.symbol = symbol || "";
+    img.onerror = function () { tokenLogoFallback(this); };
+    img.src = tokenLogoSrc(logo, symbol);
+}
+
 function getSwapDisplaySymbol(symbol) {
     if (!symbol) return "???";
     return SWAP_TOKEN_ALIAS[symbol] || symbol;
@@ -125,7 +135,7 @@ document.addEventListener("DOMContentLoaded", () => {
         const pay = getTokenData(swapState.payToken);
 
         if (paySymbol) paySymbol.innerText = pay.symbol;
-        if (payIcon)   payIcon.src         = pay.logo;
+        _setTokenImg(payIcon, pay.logo, pay.symbol);
 
         const searchIcon = document.getElementById("receiveTokenSearchIcon");
 
@@ -150,7 +160,7 @@ document.addEventListener("DOMContentLoaded", () => {
         if (receiveSymbol) receiveSymbol.innerText = recv.symbol;
         if (receiveIcon) {
             receiveIcon.style.display = "";
-            receiveIcon.src           = recv.logo;
+            _setTokenImg(receiveIcon, recv.logo, recv.symbol);
         }
         if (searchIcon) searchIcon.style.display = "none";
 
@@ -588,10 +598,8 @@ modal?.addEventListener("click", (e) => {
                      data-type="${type}"
                      data-address="${t.address}"
                      data-symbol="${t.symbol.toLowerCase()}">
-                    <img src="${t.logo || 'img/default.png'}"
-                         onerror="this.src='img/default.png'"
-                         style="width:28px;height:28px;border-radius:50%;object-fit:contain;">
-                    <span>${getSwapDisplaySymbol(t.symbol)}</span>
+                    ${tokenLogoHTML(t, { size: 28, style: "flex-shrink:0;" })}
+                    <span>${getSwapDisplaySymbol(t.symbol)}${tokenVerifyBadgeHTML(t.address)}</span>
                 </div>
             `).join("");
 
@@ -849,13 +857,10 @@ function showSwapSuccessModal({
         const el = document.getElementById(id);
         if (el) el.textContent = val;
     };
-    const setSrc = (id, src) => {
-        const el = document.getElementById(id);
-        if (el) el.src = src;
-    };
+    const setSrc = (id, src, sym) => _setTokenImg(document.getElementById(id), src, sym);
 
-    setSrc("swmFromIcon",   fromLogo);
-    setSrc("swmToIcon",     toLogo);
+    setSrc("swmFromIcon",   fromLogo, fromSymbol);
+    setSrc("swmToIcon",     toLogo,   toSymbol);
     set("swmFromAmount",    Number(amountIn        || 0).toLocaleString(undefined, { maximumFractionDigits: 6 }));
     set("swmToAmount",      Number(finalAmountOut  || 0).toLocaleString(undefined, { maximumFractionDigits: 6 }));
     set("swmFromSymbol",    fromSymbol);
