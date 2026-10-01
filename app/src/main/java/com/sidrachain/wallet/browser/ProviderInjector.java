@@ -38,6 +38,12 @@ public class ProviderInjector {
         view.evaluateJavascript(buildAndroidProvider(origin), null);
     }
 
+    // Dipakai WebViewCompat.addDocumentStartJavaScript: provider sudah ada
+    // SEBELUM script dApp jalan. Origin dibaca runtime dari location.origin.
+    public String getDocumentStartScript() {
+        return buildAndroidProvider(null);
+    }
+
     public boolean isAllowedOrigin(String url) {
         if (url == null) return false;
         if (!url.startsWith("https://")) return false;
@@ -50,9 +56,10 @@ public class ProviderInjector {
 
     private String buildAndroidProvider(String origin) {
         return "(function(){" +
+            "if(location.protocol!=='https:')return;" +
             "if(window.__SIDRA_ANDROID_INJECTED__)return;" +
             "window.__SIDRA_ANDROID_INJECTED__=true;" +
-            "var ORIGIN='" + origin + "';" +
+            "var ORIGIN=" + (origin == null ? "location.origin" : "'" + origin + "'") + ";" +
             "var _pending=new Map();" +
             "var _reqId=0;" +
             "var _listeners={};" +
@@ -61,10 +68,11 @@ public class ProviderInjector {
             "function _req(method,params){" +
             "  return new Promise(function(resolve,reject){" +
             "    var id='ar_'+(++_reqId)+'_'+Date.now();" +
+            "    var ms=/^(eth_requestAccounts|wallet_|eth_sendTransaction|eth_signTransaction|eth_sign|personal_sign)/.test(method)?300000:30000;" +
             "    var timer=setTimeout(function(){" +
             "      _pending.delete(id);" +
             "      reject(new Error('Timeout: '+method));" +
-            "    },30000);" +
+            "    },ms);" +
             "    _pending.set(id,{resolve:resolve,reject:reject,timer:timer});" +
             "    try{window.AndroidWallet.handleRequest(id,method,JSON.stringify(params||[]),ORIGIN);}" +
             "    catch(e){clearTimeout(timer);_pending.delete(id);reject(e);}" +
