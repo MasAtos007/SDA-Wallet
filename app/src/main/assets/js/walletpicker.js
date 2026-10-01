@@ -8,6 +8,24 @@
 
 let _wpInitDone = false;
 
+// Ambil teks sesuai bahasa aktif (fallback ke teks Indonesia)
+function _wpT(key, fallback) {
+    return window.LANG?.[window.CURRENT_LANG]?.[key] || fallback;
+}
+
+// Saat bahasa berganti, refresh teks overlay + daftar picker yang sedang terbuka
+if (typeof window.applyLang === "function" && !window._wpApplyLangHooked) {
+    window._wpApplyLangHooked = true;
+    const _origApplyLang = window.applyLang;
+    window.applyLang = function () {
+        _origApplyLang.apply(this, arguments);
+        syncWalletPickerDisplay();
+        syncSavedAddressDisplay();
+        if (document.getElementById("walletPickerModal")?.classList.contains("show")) renderWalletPickerList();
+        if (document.getElementById("savedAddressModal")?.classList.contains("show")) renderSavedAddressList();
+    };
+}
+
 function initWalletPickerOverlay() {
     if (_wpInitDone) return;
     const nativeSelect = document.getElementById("walletSelect");
@@ -23,7 +41,7 @@ function initWalletPickerOverlay() {
     overlay.id = "wpOverlayDisplay";
     overlay.className = "wp-overlay-display";
     overlay.innerHTML = `
-        <span id="wpOverlayText">Pilih wallet</span>
+        <span id="wpOverlayText">${_wpT("select_wallet", "Pilih wallet")}</span>
         <i class="fa-solid fa-chevron-down"></i>
     `;
     wrapper.appendChild(overlay);
@@ -53,7 +71,7 @@ function syncWalletPickerDisplay() {
     if (!textEl) return;
 
     const wallet = typeof getSelectedWallet === "function" ? getSelectedWallet() : null;
-    textEl.textContent = wallet ? (wallet.name || "Wallet") : "Pilih wallet";
+    textEl.textContent = wallet ? (wallet.name || "Wallet") : _wpT("select_wallet", "Pilih wallet");
 }
 
 // =====================================================
@@ -88,7 +106,7 @@ function renderWalletPickerList() {
     const activeAddress = (selected?.address || "").toLowerCase();
 
     if (wallets.length === 0) {
-        list.innerHTML = `<div class="wp-empty">Belum ada wallet tersimpan</div>`;
+        list.innerHTML = `<div class="wp-empty">${_wpT("wp_no_wallet", "Belum ada wallet tersimpan")}</div>`;
         return;
     }
 
@@ -107,11 +125,11 @@ function renderWalletPickerList() {
         el.innerHTML = `
             <div class="wp-avatar${isFullAccess ? "" : " view-only"}">${initial}</div>
             <div class="wp-meta">
-                <p class="wp-name">${w.name || "Wallet"}${isActive ? '<span class="wp-active-tag">&#9679; Aktif</span>' : ""}</p>
+                <p class="wp-name">${w.name || "Wallet"}${isActive ? '<span class="wp-active-tag">&#9679; ' + _wpT("account_active_badge", "Aktif") + '</span>' : ""}</p>
                 <p class="wp-addr">${shortAddr}</p>
                 <span class="wp-badge ${isFullAccess ? "full-access" : "view-only"}">
                     <i class="fa-solid ${isFullAccess ? "fa-key" : "fa-eye"}"></i>
-                    ${isFullAccess ? "Full Access" : "View Only"}
+                    ${isFullAccess ? _wpT("wp_full_access", "Full Access") : _wpT("wp_view_only", "View Only")}
                 </span>
             </div>
             <div class="wp-radio"><div class="wp-radio-dot"></div></div>
@@ -175,10 +193,10 @@ function openWpItemMenu(anchorBtn, index, wallet) {
     menu.className = "wp-item-menu";
     menu.innerHTML = `
         <button class="wp-item-menu-option" data-action="rename" type="button" ${isPK ? "disabled" : ""}>
-            <i class="fa-solid fa-pen"></i> Ganti Nama${isPK ? " (terkunci)" : ""}
+            <i class="fa-solid fa-pen"></i> ${_wpT("wp_rename", "Ganti Nama")}${isPK ? " (" + _wpT("wp_locked", "terkunci") + ")" : ""}
         </button>
         <button class="wp-item-menu-option danger" data-action="delete" type="button" ${isPK ? "disabled" : ""}>
-            <i class="fa-solid fa-trash"></i> Hapus${isPK ? " (terkunci)" : ""}
+            <i class="fa-solid fa-trash"></i> ${_wpT("delete", "Hapus")}${isPK ? " (" + _wpT("wp_locked", "terkunci") + ")" : ""}
         </button>
     `;
 
@@ -203,7 +221,7 @@ function openWpItemMenu(anchorBtn, index, wallet) {
         e.preventDefault();
         e.stopPropagation();
         if (isPK) {
-            showToast?.("Wallet ini hanya bisa diubah nama dari menu Manage Wallet (ikon gembok)", "error");
+            showToast?.(_wpT("wp_pk_rename_hint", "Wallet ini hanya bisa diubah nama dari menu Manage Wallet (ikon gembok)"), "error");
             return;
         }
         closeWpItemMenu();
@@ -215,7 +233,7 @@ function openWpItemMenu(anchorBtn, index, wallet) {
         e.preventDefault();
         e.stopPropagation();
         if (isPK) {
-            showToast?.("Wallet ini hanya bisa dihapus dari menu Manage Wallet (ikon gembok)", "error");
+            showToast?.(_wpT("wp_pk_delete_hint", "Wallet ini hanya bisa dihapus dari menu Manage Wallet (ikon gembok)"), "error");
             return;
         }
         closeWpItemMenu();
@@ -238,7 +256,7 @@ function openWpItemMenu(anchorBtn, index, wallet) {
 
 function wpRenameWallet(index, wallet) {
     showPrompt?.(
-        "Nama baru:",
+        _wpT("enter_new_name", "Nama baru:"),
         wallet.name || "",
         function (newName) {
             if (!newName?.trim()) return;
@@ -252,14 +270,14 @@ function wpRenameWallet(index, wallet) {
             renderWallets?.();
             renderWalletPickerList();
             syncWalletPickerDisplay();
-            showToast?.("Nama wallet diubah", "success");
+            showToast?.(_wpT("wallet_renamed", "Nama wallet diubah"), "success");
         }
     );
 }
 
 function wpDeleteWallet(index, wallet) {
     showConfirm?.(
-        "Hapus wallet \"" + (wallet.name || "Wallet") + "\"?",
+        _wpT("wp_delete_confirm", "Hapus wallet \"{name}\"?").replace("{name}", wallet.name || "Wallet"),
         function () {
             const wallets = getWallets?.() || [];
             if (!wallets[index]) return;
@@ -276,7 +294,7 @@ function wpDeleteWallet(index, wallet) {
             }
 
             syncWalletPickerDisplay();
-            showToast?.("Wallet dihapus", "success");
+            showToast?.(_wpT("wallet_deleted", "Wallet dihapus"), "success");
         }
     );
 }
@@ -332,7 +350,7 @@ function renderSavedAddressList() {
     const currentVal = (sel?.value || "").toLowerCase();
 
     if (!wallets.length) {
-        list.innerHTML = `<div class="wp-empty">Belum ada address tersimpan</div>`;
+        list.innerHTML = `<div class="wp-empty">${_wpT("wp_no_address", "Belum ada address tersimpan")}</div>`;
         return;
     }
 
@@ -352,11 +370,11 @@ function renderSavedAddressList() {
         el.innerHTML = `
             <div class="wp-avatar${isFullAccess ? "" : " view-only"}">${initial}</div>
             <div class="wp-meta">
-                <p class="wp-name">${w.name || "Wallet"}${isActive ? '<span class="wp-active-tag">&#9679; Aktif</span>' : ""}</p>
+                <p class="wp-name">${w.name || "Wallet"}${isActive ? '<span class="wp-active-tag">&#9679; ' + _wpT("account_active_badge", "Aktif") + '</span>' : ""}</p>
                 <p class="wp-addr">${shortAddr}</p>
                 <span class="wp-badge ${isFullAccess ? "full-access" : "view-only"}">
                     <i class="fa-solid ${isFullAccess ? "fa-key" : "fa-eye"}"></i>
-                    ${isFullAccess ? "Full Access" : "View Only"}
+                    ${isFullAccess ? _wpT("wp_full_access", "Full Access") : _wpT("wp_view_only", "View Only")}
                 </span>
             </div>
             <div class="wp-radio"><div class="wp-radio-dot"></div></div>
@@ -387,7 +405,7 @@ function syncSavedAddressDisplay() {
 
     textEl.textContent = w
         ? `${w.name || "Wallet"} - ${w.address.slice(0,6)}...${w.address.slice(-4)}`
-        : "Pilih address";
+        : _wpT("send_select_addr", "Pilih address");
 }
 
 document.addEventListener("DOMContentLoaded", () => {
