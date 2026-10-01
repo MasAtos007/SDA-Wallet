@@ -262,7 +262,7 @@
 
     function _notifyBrowserUI(origin, connected) {
         // Update status bar di browser jika origin cocok dengan yang aktif
-        if (window.sidraBrowser?.currentOrigin() === origin) {
+        if (window.sidraBrowser?.currentOrigin?.() === origin) {
             const el = document.getElementById("sbrConnStatus");
             if (el) {
                 el.textContent   = connected ? "â— Terhubung" : "â— Tidak terhubung";
