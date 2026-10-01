@@ -1,6 +1,13 @@
 package com.sidrachain.wallet.browser;
 
+import android.content.Context;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
+import android.graphics.Canvas;
+import android.util.Base64;
 import android.webkit.WebView;
+import java.io.ByteArrayOutputStream;
+import java.io.InputStream;
 import java.net.URL;
 import java.util.Arrays;
 import java.util.List;
@@ -16,6 +23,47 @@ public class ProviderInjector {
     );
 
     private UrlChangeListener urlChangeListener;
+
+    // ===== Logo wallet untuk EIP-6963 (dibaca dari assets/img/logo.png) =====
+    private static final String FALLBACK_ICON =
+        "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzIiIGhlaWdodD0iMzIiIHZpZXdCb3g9IjAgMCAzMiAzMiIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48Y2lyY2xlIGN4PSIxNiIgY3k9IjE2IiByPSIxNiIgZmlsbD0iIzAwZmY4OCIvPjwvc3ZnPg==";
+    private Context context;
+    private String iconDataUri;
+
+    public ProviderInjector() {}
+
+    public ProviderInjector(Context ctx) {
+        setContext(ctx);
+    }
+
+    public void setContext(Context ctx) {
+        if (ctx != null) this.context = ctx.getApplicationContext();
+    }
+
+    private synchronized String getIconDataUri() {
+        if (iconDataUri != null) return iconDataUri;
+        if (context != null) {
+            try (InputStream is = context.getAssets().open("img/logo.png")) {
+                Bitmap src = BitmapFactory.decodeStream(is);
+                if (src != null) {
+                    int size = 96;
+                    float scale = Math.min((float) size / src.getWidth(), (float) size / src.getHeight());
+                    int w = Math.round(src.getWidth() * scale);
+                    int h = Math.round(src.getHeight() * scale);
+                    Bitmap out = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888);
+                    Canvas c = new Canvas(out);
+                    c.drawBitmap(Bitmap.createScaledBitmap(src, w, h, true),
+                        (size - w) / 2f, (size - h) / 2f, null);
+                    ByteArrayOutputStream bos = new ByteArrayOutputStream();
+                    out.compress(Bitmap.CompressFormat.PNG, 100, bos);
+                    iconDataUri = "data:image/png;base64,"
+                        + Base64.encodeToString(bos.toByteArray(), Base64.NO_WRAP);
+                    return iconDataUri;
+                }
+            } catch (Exception ignored) {}
+        }
+        return FALLBACK_ICON; // belum di-cache supaya dicoba lagi kalau context baru di-set
+    }
 
     public interface UrlChangeListener {
         void onUrlChanged(String url);
@@ -140,29 +188,19 @@ public class ProviderInjector {
             "catch(e){window.ethereum=provider;}" +
             "window._sidraProvider=provider;" +
 
-            // EIP-6963: respond to request
-            "window.addEventListener('eip6963:requestProvider',function(){" +
-            "  window.dispatchEvent(new CustomEvent('eip6963:announceProvider',{" +
-            "    detail:{" +
-            "      info:{uuid:'sidra-android-v1',name:'Sidra Wallet'," +
-            "        icon:'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzIiIGhlaWdodD0iMzIiIHZpZXdCb3g9IjAgMCAzMiAzMiIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48Y2lyY2xlIGN4PSIxNiIgY3k9IjE2IiByPSIxNiIgZmlsbD0iIzAwZmY4OCIvPjwvc3ZnPg=='," +
-            "        rdns:'com.sidrachain.wallet'}," +
-            "      provider:provider" +
-            "    }" +
-            "  }));" +
-            "});" +
-
-            // EIP-6963: auto announce
-            "setTimeout(function(){" +
-            "  window.dispatchEvent(new CustomEvent('eip6963:announceProvider',{" +
-            "    detail:{" +
-            "      info:{uuid:'sidra-android-v1',name:'Sidra Wallet'," +
-            "        icon:'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzIiIGhlaWdodD0iMzIiIHZpZXdCb3g9IjAgMCAzMiAzMiIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48Y2lyY2xlIGN4PSIxNiIgY3k9IjE2IiByPSIxNiIgZmlsbD0iIzAwZmY4OCIvPjwvc3ZnPg=='," +
-            "        rdns:'com.sidrachain.wallet'}," +
-            "      provider:provider" +
-            "    }" +
-            "  }));" +
-            "},100);" +
+            // EIP-6963: nama + logo Sidra Wallet
+            "var INFO=Object.freeze({" +
+            "  uuid:'6f1c1d3a-5b2e-4c7a-9a43-5d1d7a0c51d4'," +
+            "  name:'Sidra Wallet'," +
+            "  icon:'" + getIconDataUri() + "'," +
+            "  rdns:'com.sidrachain.wallet'});" +
+            "var DETAIL=Object.freeze({info:INFO,provider:provider});" +
+            "function _announce(){" +
+            "  window.dispatchEvent(new CustomEvent('eip6963:announceProvider',{detail:DETAIL}));" +
+            "}" +
+            "window.addEventListener('eip6963:requestProvider',_announce);" +
+            "_announce();" +
+            "setTimeout(_announce,100);" +
 
             // Kompatibilitas MetaMask
             "document.dispatchEvent(new Event('ethereum#initialized'));" +
@@ -171,7 +209,7 @@ public class ProviderInjector {
             // Tandai connected
             "provider._isConnected=true;" +
 
-            // Auto fetch akun â€” FIX: pakai _emit bukan provider.emit
+            // Auto fetch akun - FIX: pakai _emit bukan provider.emit
             "provider.request({method:'eth_accounts'}).then(function(acc){" +
             "  if(acc&&acc.length){" +
             "    provider.selectedAddress=acc[0];" +
