@@ -141,7 +141,7 @@ public class MainActivity extends AppCompatActivity {
                     if (!"true".equals(result)) {
                         // Tidak ada modal terbuka â€” minimize app (bukan exit)
                         runOnUiThread(() -> {
-                            if (BrowserActivity.openCount > 0) {
+                            if (BrowserActivity.openCount > 0 && BrowserActivity.returnToBrowserOnBack) {
                                 // Wallet dibuka dari browser untuk approval -> kembali ke browser
                                 Intent i = new Intent(MainActivity.this, BrowserActivity.class);
                                 i.addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT);
