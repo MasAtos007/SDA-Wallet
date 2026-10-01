@@ -126,11 +126,7 @@ document.addEventListener("DOMContentLoaded", () => {
         });
     }
 
-    // TOKEN SELECT -> update icon + balance
-    const tokenSel = getEl("sendTokenSelect");
-    if (tokenSel) {
-        tokenSel.addEventListener("change", (e) => setSendToken(e.target.value));
-    }
+    // TOKEN SELECT: onchange ditangani send-token.js (loadSendTokens)
 
     // CONFIRM SEND MODAL - close on backdrop click
     const sendConfirm = getEl("sendConfirmModal");
@@ -142,6 +138,61 @@ document.addEventListener("DOMContentLoaded", () => {
         });
     }
 });
+
+
+// =============================
+// HELPER BAHASA (ambil dari LANG sesuai bahasa aktif)
+// =============================
+function _sendLang(key, fallback) {
+    return window.LANG?.[window.CURRENT_LANG]?.[key] || fallback;
+}
+
+
+// =============================
+// COPY ADDRESS WALLET PENGIRIM (ikon copy di kartu wallet send)
+// Menyalin alamat LENGKAP, bukan versi yang dipendekkan di UI.
+// =============================
+function copyWalletAddr() {
+    const address = SESSION?.address || getSelectedWallet?.()?.address;
+    if (!address) {
+        showToast?.(_sendLang("copy_failed", "Gagal menyalin"), "error");
+        return;
+    }
+
+    const ok  = () => showToast?.(_sendLang("copied", "Tersalin"), "success");
+    const bad = () => showToast?.(_sendLang("copy_failed", "Gagal menyalin"), "error");
+
+    // 1) Bridge Android (sama seperti copyTokenAddress di ui.js)
+    if (window.AndroidWallet?.copyToClipboard) {
+        try { window.AndroidWallet.copyToClipboard(address); ok(); return; } catch (e) {}
+    }
+
+    // 2) Clipboard API
+    if (navigator.clipboard?.writeText) {
+        navigator.clipboard.writeText(address).then(ok).catch(() => _fallbackCopy(address) ? ok() : bad());
+        return;
+    }
+
+    // 3) execCommand (WebView lama / konteks non-secure)
+    _fallbackCopy(address) ? ok() : bad();
+}
+window.copyWalletAddr = copyWalletAddr;
+
+function _fallbackCopy(text) {
+    try {
+        const ta = document.createElement("textarea");
+        ta.value = text;
+        ta.style.cssText = "position:fixed;top:-1000px;opacity:0;";
+        document.body.appendChild(ta);
+        ta.focus();
+        ta.select();
+        const done = document.execCommand("copy");
+        ta.remove();
+        return done;
+    } catch (e) {
+        return false;
+    }
+}
 
 
 // =============================
@@ -167,11 +218,11 @@ function _updateSendWalletInfo() {
     }
     if (statusEl) {
         if (unlocked && address) {
-            statusEl.innerHTML        = '<i class="fa-solid fa-lock-open" style="margin-right:3px;"></i>Siap';
+            statusEl.innerHTML        = '<i class="fa-solid fa-lock-open" style="margin-right:3px;"></i><span data-lang="send_ready">' + _sendLang("send_ready", "Siap") + '</span>';
             statusEl.style.background = "#00cc6620";
             statusEl.style.color      = "#00cc66";
         } else {
-            statusEl.innerHTML        = '<i class="fa-solid fa-lock" style="margin-right:3px;"></i>Terkunci';
+            statusEl.innerHTML        = '<i class="fa-solid fa-lock" style="margin-right:3px;"></i><span data-lang="send_locked">' + _sendLang("send_locked", "Terkunci") + '</span>';
             statusEl.style.background = "#ff333320";
             statusEl.style.color      = "#ff4444";
         }
@@ -193,7 +244,7 @@ async function setSendMax() {
 
     if (!addr) return;
 
-    const tokenData = window.selectedTokenData || { type: "native" };
+    const tokenData = window.sendTokenData || { type: "native" };
     const isNativeToken = !tokenData?.address || tokenData?.type === "native";
 
     try {
@@ -310,52 +361,19 @@ async function pasteToAddress() {
 // SYNC TOKEN UI
 // =============================
 function syncSendTokenUI() {
-    const val = window.selectedToken || "native";
-    let logo = "img/sda.png", symbol = "SDA";
-
-    if (val === "native") {
-        window.selectedTokenData = { symbol: "SDA", type: "native", decimals: 18, logo: "img/sda.png" };
-    } else {
-        const token = (window.TOKENS || []).find(t => t.address === val);
-        if (token) {
-            logo   = token.logo || "img/default.png";
-            symbol = token.symbol;
-            window.selectedTokenData = { ...token, type: "erc20", decimals: token.decimals || 18 };
-        }
-    }
-
-    const iconEl   = getEl("sendTokenIcon");
-    const iconSmEl = getEl("sendTokenIconSm");
-    const symbolEl = getEl("sendTokenSymbol");
-    const selectEl = getEl("sendTokenSelect");
-
-    if (iconEl)   iconEl.src = logo;
-    if (iconSmEl) iconSmEl.src = logo;
-    if (symbolEl) symbolEl.textContent = symbol;
-    if (selectEl) selectEl.value = val;
+    // Ikon/simbol/data token send diurus applySendTokenState() (send-token.js)
+    applySendTokenState?.();
 }
 
 
 // =============================
-// SET TOKEN
+// SET TOKEN (khusus Send - tidak menyentuh dashboard)
 // =============================
 function setSendToken(tokenAddress) {
-    window.selectedToken = tokenAddress || "native";
-    localStorage.setItem("selectedToken", window.selectedToken);
-
-    if (window.selectedToken === "native") {
-        window.selectedTokenData = { symbol: "SDA", type: "native", decimals: 18, logo: "img/sda.png" };
-    } else {
-        const token = (window.TOKENS || []).find(t => t.address === window.selectedToken);
-        if (token) {
-            window.selectedTokenData = { ...token, type: "erc20", decimals: token.decimals || 18 };
-        }
-    }
-
-    syncSendTokenUI();
-    loadBalance?.();
+    const sel = getEl("sendTokenSelect");
+    if (sel) sel.value = tokenAddress || "native";
+    applySendTokenState?.();
     updateSendBalance?.();
-    renderAssets?.();
 }
 
 
@@ -381,7 +399,7 @@ async function sendTx() {
         return;
     }
 
-    const tokenData   = window.selectedTokenData || { symbol: "SDA", type: "native", decimals: 18, logo: "img/sda.png" };
+    const tokenData   = window.sendTokenData || { symbol: "SDA", type: "native", decimals: 18, logo: "img/sda.png" };
     const fromAddress =
         getSelectedWallet()?.address ||
         SESSION.address ||
@@ -414,7 +432,7 @@ function showSendConfirmModal({ to, amount, tokenData, fromAddress, fromName }) 
 
     set("confirmSendAmount", Number(amount).toLocaleString(undefined, { maximumFractionDigits: 6 }));
     set("confirmSendSymbol", tokenData?.symbol || "SDA");
-    set("confirmSendFrom",   (fromName ? fromName + " Â· " : "") + (fromAddress ? fromAddress.slice(0,10) + "..." + fromAddress.slice(-8) : "-"));
+    set("confirmSendFrom",   (fromName ? fromName + " \u00B7 " : "") + (fromAddress ? fromAddress.slice(0,10) + "..." + fromAddress.slice(-8) : "-"));
     set("confirmSendTo",     to ? to.slice(0,10) + "..." + to.slice(-8) : "-");
 
     window._pendingSendData = { to, amount, tokenData, fromAddress };
