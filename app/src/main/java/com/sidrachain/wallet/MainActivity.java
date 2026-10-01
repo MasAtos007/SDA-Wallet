@@ -87,6 +87,11 @@ public class MainActivity extends AppCompatActivity {
         webViewManager = new WebViewManager(this, webView);
         webViewManager.setupWalletWebView();
 
+        // Wallet WebView harus tetap hidup saat BrowserActivity ada di depan
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+            webView.setRendererPriorityPolicy(WebView.RENDERER_PRIORITY_IMPORTANT, false);
+        }
+
         walletBridge = webViewManager.getBridge();
         walletBridge.setWalletWebView(walletWebView);
         walletBridge.setMainActivity(this);
@@ -135,7 +140,16 @@ public class MainActivity extends AppCompatActivity {
                 result -> {
                     if (!"true".equals(result)) {
                         // Tidak ada modal terbuka â€” minimize app (bukan exit)
-                        runOnUiThread(() -> moveTaskToBack(true));
+                        runOnUiThread(() -> {
+                            if (BrowserActivity.openCount > 0) {
+                                // Wallet dibuka dari browser untuk approval -> kembali ke browser
+                                Intent i = new Intent(MainActivity.this, BrowserActivity.class);
+                                i.addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT);
+                                startActivity(i);
+                            } else {
+                                moveTaskToBack(true);
+                            }
+                        });
                     }
                 }
             );
@@ -147,7 +161,8 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onPause() {
         super.onPause();
-        if (webView != null) webView.onPause();
+        // JANGAN webView.onPause(): saat BrowserActivity di depan, wallet WebView
+        // masih harus memproses request dApp (timer JS ikut berhenti kalau di-pause).
     }
 
     @Override
