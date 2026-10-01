@@ -4,17 +4,26 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.graphics.Color;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
+import android.text.TextUtils;
+import android.view.Gravity;
 import android.view.View;
+import android.view.ViewGroup;
 import android.view.inputmethod.EditorInfo;
+import android.view.inputmethod.InputMethodManager;
 import android.webkit.JavascriptInterface;
 import android.webkit.WebChromeClient;
 import android.webkit.WebView;
+import android.widget.FrameLayout;
+import android.widget.HorizontalScrollView;
 import android.widget.EditText;
 import android.widget.ImageButton;
+import android.widget.LinearLayout;
 import android.widget.ProgressBar;
+import android.widget.TextView;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 import androidx.webkit.WebViewCompat;
@@ -24,38 +33,66 @@ import com.sidrachain.wallet.R;
 import com.sidrachain.wallet.bridge.AndroidBridge;
 
 import java.net.URL;
+import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 public class BrowserActivity extends AppCompatActivity {
 
-    private WebView browserWebView;
-    private EditText urlBar;
-    private ProgressBar progressBar;
-    private ProviderInjector injector;
+    // Link resmi ekosistem Sidra Chain (halaman awal)
+    public static final String URL_MAIN = "https://www.sidrachain.com/";
+    public static final String URL_DEX  = "https://dex.sidrachain.com/#/swap";
 
     public static AndroidBridge sharedBridge;
 
     // Jumlah BrowserActivity yang sedang hidup (dipakai MainActivity untuk tombol back)
     public static volatile int openCount = 0;
 
-    // Origin halaman top-level yang sedang dibuka (diisi Java, bukan dipercaya dari JS)
-    private volatile String currentOrigin = null;
+    // true hanya saat wallet dibawa ke depan untuk approval dApp (back di wallet -> balik ke browser).
+    // false saat user menekan tombol "Dashboard Wallet" (back di wallet -> minimize biasa).
+    public static volatile boolean returnToBrowserOnBack = false;
+
+    // Instance aktif, dipakai AndroidBridge.openBrowser() agar tidak membuat browser dobel
+    public static BrowserActivity instance;
+
+    // ---------------------------------------------------------------
+    // Model tab
+    // ---------------------------------------------------------------
+    private static class Tab {
+        WebView web;
+        volatile String origin = null;   // diisi Java, bukan dipercaya dari JS
+        String url = "";
+        boolean home = true;             // true = tampilkan halaman awal
+        LinearLayout chip;
+        TextView chipTitle;
+    }
+
+    private final List<Tab> tabs = new ArrayList<>();
+    private Tab active;
+
+    private EditText urlBar;
+    private ProgressBar progressBar;
+    private FrameLayout webContainer;
+    private View startPage;
+    private LinearLayout tabContainer;
+    private HorizontalScrollView tabScroll;
+    private ProviderInjector injector;
 
     private final Handler uiHandler = new Handler(Looper.getMainLooper());
 
+    // requestId -> WebView (tab) pengirim, supaya jawaban wallet kembali ke tab yang benar
+    private final Map<String, WebView> requestOwner = new ConcurrentHashMap<>();
     // requestId yang butuh UI wallet (connect / sign / tx)
     private final Set<String> uiRequests = ConcurrentHashMap.newKeySet();
     // requestId yang wallet-nya sudah dibawa ke depan
     private final Set<String> walletShown = ConcurrentHashMap.newKeySet();
-    // runnable "bawa wallet ke depan" yang masih menunggu (dibatalkan kalau response cepat datang)
+    // runnable "bawa wallet ke depan" yang masih menunggu
     private final Map<String, Runnable> pendingFront = new ConcurrentHashMap<>();
 
-    // ---------------------------------------------------------------
-    // Method yang butuh layar approval di wallet WebView
-    // ---------------------------------------------------------------
     private static boolean needsWalletUi(String method) {
         if (method == null) return false;
         return method.equals("eth_requestAccounts")
@@ -70,12 +107,11 @@ public class BrowserActivity extends AppCompatActivity {
     }
 
     // ---------------------------------------------------------------
-    // Bridge KHUSUS dApp: hanya handleRequest.
-    // Sebelumnya extends AndroidBridge sehingga SEMUA situs bisa memanggil
-    // getClipboardText(), readAsset(), sendResponse(), broadcastEvent(), dst.
-    // Class konkret (bukan anonymous) supaya @JavascriptInterface terexpose.
+    // Bridge KHUSUS dApp: hanya handleRequest. Satu instance per tab.
     // ---------------------------------------------------------------
     private class BrowserBridge {
+        private final Tab tab;
+        BrowserBridge(Tab tab) { this.tab = tab; }
 
         @JavascriptInterface
         public void handleRequest(String requestId,
@@ -85,13 +121,12 @@ public class BrowserActivity extends AppCompatActivity {
             if (requestId == null || method == null) return;
 
             final String id = requestId;
-            // Origin dari Java kalau ada; nilai dari JS bisa dipalsukan situs
-            final String realOrigin = currentOrigin != null ? currentOrigin : origin;
+            final String realOrigin = tab.origin != null ? tab.origin : origin;
+
+            requestOwner.put(id, tab.web);
 
             if (needsWalletUi(method)) {
                 uiRequests.add(id);
-                // Kalau wallet menjawab cepat (sudah connect), tidak perlu pindah layar.
-                // Kalau belum ada jawaban dalam 350 ms, tampilkan wallet ke user.
                 Runnable r = () -> {
                     pendingFront.remove(id);
                     walletShown.add(id);
@@ -138,8 +173,20 @@ public class BrowserActivity extends AppCompatActivity {
     // ---------------------------------------------------------------
     // Pindah layar wallet <-> browser
     // ---------------------------------------------------------------
+    // Untuk approval dApp: back di wallet balik ke browser
     private void bringWalletToFront() {
         try {
+            returnToBrowserOnBack = true;
+            Intent i = new Intent(this, MainActivity.class);
+            i.addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT);
+            startActivity(i);
+        } catch (Exception ignored) {}
+    }
+
+    // Tombol header: langsung ke dashboard wallet (tab browser tetap hidup)
+    private void openWalletDashboard() {
+        try {
+            returnToBrowserOnBack = false;
             Intent i = new Intent(this, MainActivity.class);
             i.addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT);
             startActivity(i);
@@ -154,7 +201,6 @@ public class BrowserActivity extends AppCompatActivity {
         } catch (Exception ignored) {}
     }
 
-    // Dipanggil setiap response untuk request UI sampai
     private void handleWalletFocus(String requestId, String errorJson) {
         if (requestId == null || !uiRequests.remove(requestId)) return;
 
@@ -167,12 +213,20 @@ public class BrowserActivity extends AppCompatActivity {
         boolean locked = e.contains("locked") || e.contains("terkunci");
 
         if (locked) {
-            // Wallet terkunci: user harus lihat layar PIN di wallet, jangan tarik balik
             if (!shown) bringWalletToFront();
             return;
         }
 
         if (shown && walletShown.isEmpty()) bringBrowserToFront();
+    }
+
+    // Dipanggil AndroidBridge.openBrowser() kalau browser sudah hidup
+    public void openFromWallet(String url) {
+        if (url != null && !url.isEmpty()) {
+            if (active != null && active.home) navigate(active, url);
+            else createTab(url);
+        }
+        bringBrowserToFront();
     }
 
     // ---------------------------------------------------------------
@@ -181,33 +235,16 @@ public class BrowserActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_browser);
         openCount++;
+        instance = this;
 
-        browserWebView = findViewById(R.id.browserWebView);
-        urlBar         = findViewById(R.id.urlBar);
-        progressBar    = findViewById(R.id.progressBar);
+        urlBar       = findViewById(R.id.urlBar);
+        progressBar  = findViewById(R.id.progressBar);
+        webContainer = findViewById(R.id.webContainer);
+        startPage    = findViewById(R.id.startPage);
+        tabContainer = findViewById(R.id.tabContainer);
+        tabScroll    = findViewById(R.id.tabScroll);
 
         injector = new ProviderInjector();
-        injector.setUrlChangeListener(url ->
-            runOnUiThread(() -> { if (urlBar != null) urlBar.setText(url); })
-        );
-
-        // Daftarkan AndroidWallet SEBELUM load halaman apa pun
-        browserWebView.addJavascriptInterface(new BrowserBridge(), "AndroidWallet");
-
-        // Setup WebView
-        WebViewManager manager = new WebViewManager(this, browserWebView);
-        manager.setupBrowserWebView(injector);
-
-        // Inject provider SEBELUM script dApp jalan (document start).
-        // Tanpa ini dApp yang cek window.ethereum saat load bilang "wallet tidak ada".
-        // onPageFinished / onProgressChanged di bawah tetap sebagai fallback.
-        if (WebViewFeature.isFeatureSupported(WebViewFeature.DOCUMENT_START_SCRIPT)) {
-            WebViewCompat.addDocumentStartJavaScript(
-                browserWebView,
-                injector.getDocumentStartScript(),
-                Collections.singleton("*")
-            );
-        }
 
         LocalBroadcastManager.getInstance(this)
             .registerReceiver(
@@ -215,102 +252,250 @@ public class BrowserActivity extends AppCompatActivity {
                 new IntentFilter(MainActivity.ACTION_BRIDGE_RESPONSE)
             );
 
-        // WebViewClient
-        browserWebView.setWebViewClient(new android.webkit.WebViewClient() {
-
-            @Override
-            public void onPageStarted(android.webkit.WebView view,
-                                       String url,
-                                       android.graphics.Bitmap favicon) {
-                super.onPageStarted(view, url, favicon);
-                currentOrigin = extractOrigin(url);
-                if (urlBar != null) urlBar.setText(url);
-            }
-
-            @Override
-            public void onPageFinished(android.webkit.WebView view, String url) {
-                super.onPageFinished(view, url);
-                currentOrigin = extractOrigin(url);
-                if (urlBar != null) urlBar.setText(url);
-
-                injector.inject(view, url);
-
-                view.postDelayed(() -> {
-                    injector.inject(view, url);
-                    fireEthereumEvents(view);
-                }, 500);
-
-                view.postDelayed(() -> injector.inject(view, url), 1500);
-            }
-
-            @Override
-            public boolean shouldOverrideUrlLoading(
-                    android.webkit.WebView view,
-                    android.webkit.WebResourceRequest req) {
-                String url = req.getUrl().toString();
-                if (url.startsWith("http://") || url.startsWith("https://")) {
-                    return false;
-                }
-                try {
-                    Intent intent = new Intent(Intent.ACTION_VIEW, req.getUrl());
-                    startActivity(intent);
-                } catch (Exception ignored) {}
-                return true;
-            }
-        });
-
-        // WebChromeClient
-        browserWebView.setWebChromeClient(new WebChromeClient() {
-            @Override
-            public void onProgressChanged(WebView view, int newProgress) {
-                runOnUiThread(() -> {
-                    if (progressBar != null) {
-                        progressBar.setProgress(newProgress);
-                        progressBar.setVisibility(
-                            newProgress < 100 ? View.VISIBLE : View.GONE);
-                    }
-                    if (newProgress >= 90) {
-                        String url = view.getUrl();
-                        if (url != null) {
-                            injector.inject(browserWebView, url);
-                            fireEthereumEvents(browserWebView);
-                        }
-                    }
-                });
-            }
-        });
-
         // URL bar
         urlBar.setOnEditorActionListener((v, actionId, event) -> {
             if (actionId == EditorInfo.IME_ACTION_GO    ||
                 actionId == EditorInfo.IME_ACTION_SEARCH ||
                 actionId == EditorInfo.IME_ACTION_DONE) {
                 String input = urlBar.getText().toString().trim();
-                browserWebView.loadUrl(normalizeUrl(input));
+                if (!input.isEmpty() && active != null) {
+                    navigate(active, normalizeUrl(input));
+                    hideKeyboard();
+                }
                 return true;
             }
             return false;
         });
 
+        // Header: tombol bypass ke dashboard wallet
+        ImageButton btnWallet = findViewById(R.id.btnWallet);
+        if (btnWallet != null) btnWallet.setOnClickListener(v -> openWalletDashboard());
+
         ImageButton btnBack = findViewById(R.id.btnBack);
-        if (btnBack != null) {
-            btnBack.setOnClickListener(v -> {
-                if (browserWebView.canGoBack()) browserWebView.goBack();
-                else finish();
-            });
-        }
+        if (btnBack != null) btnBack.setOnClickListener(v -> handleBack());
 
         ImageButton btnRefresh = findViewById(R.id.btnRefresh);
         if (btnRefresh != null) {
-            btnRefresh.setOnClickListener(v -> browserWebView.reload());
+            btnRefresh.setOnClickListener(v -> {
+                if (active != null && !active.home) active.web.reload();
+            });
         }
 
+        ImageButton btnNewTab = findViewById(R.id.btnNewTab);
+        if (btnNewTab != null) btnNewTab.setOnClickListener(v -> createTab(""));
+
+        findViewById(R.id.cardMain).setOnClickListener(v -> {
+            if (active != null) navigate(active, URL_MAIN);
+        });
+        findViewById(R.id.cardDex).setOnClickListener(v -> {
+            if (active != null) navigate(active, URL_DEX);
+        });
+
+        // Tab pertama: kosong (halaman awal) kecuali ada url eksplisit
         String url = getIntent().getStringExtra("url");
-        if (url == null || url.isEmpty()) url = "https://www.sidrachain.com";
-        browserWebView.loadUrl(url);
-        urlBar.setText(url);
+        createTab(url == null ? "" : url);
     }
 
+    // ---------------------------------------------------------------
+    // TAB
+    // ---------------------------------------------------------------
+    private Tab createTab(String url) {
+        final Tab tab = new Tab();
+        final WebView web = new WebView(this);
+        web.setLayoutParams(new FrameLayout.LayoutParams(
+            ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+        web.setBackgroundColor(Color.BLACK);
+        web.setVisibility(View.GONE);
+        tab.web = web;
+        webContainer.addView(web);
+
+        // Daftarkan AndroidWallet SEBELUM load halaman apa pun
+        web.addJavascriptInterface(new BrowserBridge(tab), "AndroidWallet");
+
+        new WebViewManager(this, web).setupBrowserWebView(injector);
+
+        // Provider masuk SEBELUM script dApp jalan
+        if (WebViewFeature.isFeatureSupported(WebViewFeature.DOCUMENT_START_SCRIPT)) {
+            WebViewCompat.addDocumentStartJavaScript(
+                web,
+                injector.getDocumentStartScript(),
+                Collections.singleton("*")
+            );
+        }
+
+        web.setWebViewClient(new android.webkit.WebViewClient() {
+            @Override
+            public void onPageStarted(WebView view, String u, android.graphics.Bitmap favicon) {
+                super.onPageStarted(view, u, favicon);
+                tab.origin = extractOrigin(u);
+                tab.url = u;
+                if (tab == active && !tab.home && urlBar != null) urlBar.setText(u);
+            }
+
+            @Override
+            public void onPageFinished(WebView view, String u) {
+                super.onPageFinished(view, u);
+                tab.origin = extractOrigin(u);
+                tab.url = u;
+                if (tab == active && !tab.home && urlBar != null) urlBar.setText(u);
+
+                injector.inject(view, u);
+
+                view.postDelayed(() -> {
+                    injector.inject(view, u);
+                    fireEthereumEvents(view);
+                }, 500);
+
+                view.postDelayed(() -> injector.inject(view, u), 1500);
+            }
+
+            @Override
+            public boolean shouldOverrideUrlLoading(WebView view,
+                                                    android.webkit.WebResourceRequest req) {
+                String u = req.getUrl().toString();
+                if (u.startsWith("http://") || u.startsWith("https://")) return false;
+                try {
+                    startActivity(new Intent(Intent.ACTION_VIEW, req.getUrl()));
+                } catch (Exception ignored) {}
+                return true;
+            }
+        });
+
+        web.setWebChromeClient(new WebChromeClient() {
+            @Override
+            public void onProgressChanged(WebView view, int newProgress) {
+                runOnUiThread(() -> {
+                    if (tab == active && progressBar != null) {
+                        progressBar.setProgress(newProgress);
+                        progressBar.setVisibility(
+                            newProgress < 100 && !tab.home ? View.VISIBLE : View.GONE);
+                    }
+                    if (newProgress >= 90) {
+                        String u = view.getUrl();
+                        if (u != null) {
+                            injector.inject(view, u);
+                            fireEthereumEvents(view);
+                        }
+                    }
+                });
+            }
+
+            @Override
+            public void onReceivedTitle(WebView view, String title) {
+                if (tab.chipTitle != null && !TextUtils.isEmpty(title)) {
+                    tab.chipTitle.setText(title);
+                }
+            }
+        });
+
+        buildChip(tab);
+        tabs.add(tab);
+        tabContainer.addView(tab.chip);
+
+        tab.home = (url == null || url.isEmpty());
+        switchTo(tab);
+        if (!tab.home) navigate(tab, url);
+        return tab;
+    }
+
+    private void buildChip(final Tab tab) {
+        LinearLayout chip = new LinearLayout(this);
+        chip.setOrientation(LinearLayout.HORIZONTAL);
+        chip.setGravity(Gravity.CENTER_VERTICAL);
+        chip.setPadding(dp(12), 0, dp(4), 0);
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
+            ViewGroup.LayoutParams.WRAP_CONTENT, dp(32));
+        lp.setMargins(dp(3), 0, dp(3), 0);
+        chip.setLayoutParams(lp);
+
+        TextView title = new TextView(this);
+        title.setText("Tab baru");
+        title.setTextSize(12);
+        title.setSingleLine(true);
+        title.setEllipsize(TextUtils.TruncateAt.END);
+        title.setMaxWidth(dp(110));
+
+        ImageButton close = new ImageButton(this);
+        close.setImageResource(R.drawable.ic_close);
+        close.setBackgroundColor(Color.TRANSPARENT);
+        close.setScaleType(ImageButton.ScaleType.FIT_CENTER);
+        close.setPadding(dp(7), dp(7), dp(7), dp(7));
+        close.setLayoutParams(new LinearLayout.LayoutParams(dp(28), dp(28)));
+        close.setContentDescription("Tutup tab");
+        close.setOnClickListener(v -> closeTab(tab));
+
+        chip.addView(title);
+        chip.addView(close);
+        chip.setOnClickListener(v -> switchTo(tab));
+
+        tab.chip = chip;
+        tab.chipTitle = title;
+    }
+
+    private void switchTo(final Tab tab) {
+        active = tab;
+        for (Tab t : tabs) {
+            boolean sel = (t == tab);
+            t.web.setVisibility(sel && !t.home ? View.VISIBLE : View.GONE);
+            t.chip.setBackgroundResource(sel ? R.drawable.bg_tab_active : R.drawable.bg_tab_inactive);
+            t.chipTitle.setTextColor(sel ? Color.WHITE : Color.parseColor("#999999"));
+        }
+        startPage.setVisibility(tab.home ? View.VISIBLE : View.GONE);
+        progressBar.setVisibility(View.GONE);
+        urlBar.setText(tab.home ? "" : (tab.url != null ? tab.url : ""));
+        tabScroll.post(() -> tabScroll.smoothScrollTo(tab.chip.getLeft(), 0));
+    }
+
+    private void navigate(Tab tab, String url) {
+        tab.home = false;
+        tab.url = url;
+        if (tab == active) {
+            tab.web.setVisibility(View.VISIBLE);
+            startPage.setVisibility(View.GONE);
+            urlBar.setText(url);
+        }
+        tab.web.loadUrl(url);
+    }
+
+    private void showStartPage(Tab tab) {
+        tab.home = true;
+        switchTo(tab);
+    }
+
+    private void closeTab(Tab tab) {
+        int idx = tabs.indexOf(tab);
+        if (idx < 0) return;
+        tabs.remove(tab);
+        tabContainer.removeView(tab.chip);
+
+        Iterator<Map.Entry<String, WebView>> it = requestOwner.entrySet().iterator();
+        while (it.hasNext()) {
+            if (it.next().getValue() == tab.web) it.remove();
+        }
+
+        webContainer.removeView(tab.web);
+        tab.web.destroy();
+
+        if (tabs.isEmpty()) {
+            createTab("");
+        } else if (tab == active) {
+            switchTo(tabs.get(Math.min(idx, tabs.size() - 1)));
+        }
+    }
+
+    // Back ala Chrome: riwayat -> halaman awal -> tutup tab -> keluar ke wallet
+    private void handleBack() {
+        if (active == null) { finish(); return; }
+        if (!active.home) {
+            if (active.web.canGoBack()) active.web.goBack();
+            else showStartPage(active);
+            return;
+        }
+        if (tabs.size() > 1) closeTab(active);
+        else finish();
+    }
+
+    // ---------------------------------------------------------------
     private void fireEthereumEvents(WebView view) {
         view.evaluateJavascript(
             "window.dispatchEvent(new Event('ethereum#initialized'));", null);
@@ -323,13 +508,14 @@ public class BrowserActivity extends AppCompatActivity {
     private void _sendResponseToPage(String requestId,
                                       String resultJson,
                                       String errorJson) {
-        if (browserWebView == null) return;
         final String safeId = requestId != null ? requestId : "";
         final String result = resultJson != null ? resultJson : "null";
         final String error  = errorJson  != null ? errorJson  : "null";
 
         runOnUiThread(() -> {
-            if (browserWebView == null) return;
+            WebView target = requestOwner.remove(safeId);
+            if (target == null && active != null) target = active.web;
+            if (target == null) return;
             String js;
             if (!error.equals("null")) {
                 js = "window.__sidraAndroidResponse&&" +
@@ -340,21 +526,22 @@ public class BrowserActivity extends AppCompatActivity {
                      "window.__sidraAndroidResponse('" + safeId +
                      "'," + result + ",null);";
             }
-            browserWebView.evaluateJavascript(js, null);
+            target.evaluateJavascript(js, null);
         });
     }
 
+    // Event (accountsChanged, chainChanged, ...) dikirim ke semua tab
     private void _sendEventToPage(String eventName, String dataJson) {
-        if (browserWebView == null) return;
         final String safeEvent = eventName != null ? eventName : "";
         final String safeData  = dataJson  != null ? dataJson  : "null";
 
         runOnUiThread(() -> {
-            if (browserWebView == null) return;
             String js = "window.__sidraAndroidEvent&&" +
                         "window.__sidraAndroidEvent('" + safeEvent +
                         "'," + safeData + ");";
-            browserWebView.evaluateJavascript(js, null);
+            for (Tab t : new ArrayList<>(tabs)) {
+                t.web.evaluateJavascript(js, null);
+            }
         });
     }
 
@@ -370,32 +557,53 @@ public class BrowserActivity extends AppCompatActivity {
     }
 
     private String normalizeUrl(String input) {
-        if (input == null || input.isEmpty()) return "https://www.sidrachain.com";
+        if (input == null || input.isEmpty()) return URL_MAIN;
         if (input.startsWith("https://") || input.startsWith("http://")) return input;
         if (input.contains(".") && !input.contains(" ")) return "https://" + input;
         return "https://www.google.com/search?q=" + android.net.Uri.encode(input);
     }
 
+    private int dp(int v) {
+        return (int) (v * getResources().getDisplayMetrics().density + 0.5f);
+    }
+
+    private void hideKeyboard() {
+        try {
+            InputMethodManager imm =
+                (InputMethodManager) getSystemService(Context.INPUT_METHOD_SERVICE);
+            if (imm != null) imm.hideSoftInputFromWindow(urlBar.getWindowToken(), 0);
+            urlBar.clearFocus();
+        } catch (Exception ignored) {}
+    }
+
     @Override
     public void onBackPressed() {
-        if (browserWebView != null && browserWebView.canGoBack())
-            browserWebView.goBack();
-        else super.onBackPressed();
+        handleBack();
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        // Browser kembali di depan: back di wallet tidak perlu "menarik" ke browser lagi
+        returnToBrowserOnBack = false;
     }
 
     @Override
     protected void onDestroy() {
         openCount = Math.max(0, openCount - 1);
+        if (instance == this) instance = null;
         uiHandler.removeCallbacksAndMessages(null);
         pendingFront.clear();
         uiRequests.clear();
         walletShown.clear();
+        requestOwner.clear();
         LocalBroadcastManager.getInstance(this)
             .unregisterReceiver(responseReceiver);
-        if (browserWebView != null) {
-            browserWebView.destroy();
-            browserWebView = null;
+        for (Tab t : new ArrayList<>(tabs)) {
+            webContainer.removeView(t.web);
+            t.web.destroy();
         }
+        tabs.clear();
         super.onDestroy();
     }
 }
