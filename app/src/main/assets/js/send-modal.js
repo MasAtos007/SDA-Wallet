@@ -371,7 +371,17 @@ function syncSendTokenUI() {
 // =============================
 function setSendToken(tokenAddress) {
     const sel = getEl("sendTokenSelect");
-    if (sel) sel.value = tokenAddress || "native";
+    if (sel) {
+        const val = tokenAddress || "native";
+        // pastikan option ada, kalau tidak value jadi "" dan token kembali ke SDA
+        if (![...sel.options].some(o => o.value === val)) {
+            const opt = document.createElement("option");
+            opt.value = val;
+            opt.textContent = val;
+            sel.appendChild(opt);
+        }
+        sel.value = val;
+    }
     applySendTokenState?.();
     updateSendBalance?.();
 }
