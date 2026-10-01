@@ -174,6 +174,14 @@ public class AndroidBridge {
         openBrowser("");
     }
 
+    // Bahasa wallet -> disimpan agar browser native ikut bahasa yang sama
+    @JavascriptInterface
+    public void setLanguage(String lang) {
+        if (lang == null || !lang.matches("[a-zA-Z]{2,3}")) return;
+        context.getSharedPreferences("sidra_prefs", Context.MODE_PRIVATE)
+            .edit().putString("lang", lang.toLowerCase()).apply();
+    }
+
     @JavascriptInterface
     public void openUrl(String url) {
         openBrowser(url);
