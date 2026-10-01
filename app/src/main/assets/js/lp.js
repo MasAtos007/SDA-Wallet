@@ -159,10 +159,18 @@ async function loadNFTs() {
                 ]);
 
                 const priceKey = `${token0}_${token1}`;
-                if (!priceCache[priceKey]) {
-                    priceCache[priceKey] = await PRICE_ENGINE.getPrice(token0, token1);
+                let currentPrice = priceCache[priceKey];
+                if (currentPrice === undefined) {
+                    try {
+                        currentPrice = await PRICE_ENGINE.getPrice(token0, token1);
+                        priceCache[priceKey] = currentPrice;
+                    } catch (e) {
+                        // Token luar sering belum punya harga — posisi tetap ditampilkan
+                        console.warn("LP price unavailable:", e.message);
+                        currentPrice = 0;
+                    }
                 }
-                const currentPrice = priceCache[priceKey] || 0;
+                currentPrice = Number(currentPrice) || 0;
 
                 let priceLower = Math.pow(1.0001, pos[5]);
                 let priceUpper = Math.pow(1.0001, pos[6]);
@@ -170,8 +178,12 @@ async function loadNFTs() {
 
                 const status = (slot0.tick >= pos[5] && slot0.tick < pos[6]) ? "Active" : "Inactive";
 
-                const t0 = (window.TOKENS || []).find(t => t.address?.toLowerCase() === token0.toLowerCase());
-                const t1 = (window.TOKENS || []).find(t => t.address?.toLowerCase() === token1.toLowerCase());
+                // Token dari JSON/customTokens dipakai langsung; token luar dibaca
+                // dari kontrak (symbol/decimals) supaya jumlah & nama tetap benar
+                const [t0, t1] = await Promise.all([
+                    resolveTokenMeta(token0),
+                    resolveTokenMeta(token1)
+                ]);
 
                 const amounts = getAmounts(pos[7], slot0.sqrtPriceX96, pos[5], pos[6]);
 
@@ -279,13 +291,13 @@ function showCollectConfirmModal(lp) {
 
                 <div style="display:flex;align-items:center;gap:10px;justify-content:center;margin-bottom:16px;">
                     <div style="text-align:center;">
-                        <img src="${lp.logo0}" onerror="this.src='img/default.png'"
+                        <img src="${tokenLogoSrc(lp.logo0, lp.symbol0)}" data-symbol="${lp.symbol0}" onerror="tokenLogoFallback(this)"
                              style="width:38px;height:38px;border-radius:50%;object-fit:contain;border:2px solid rgba(255,255,255,.1);">
                         <div style="font-size:10px;color:#aaa;margin-top:3px;">${lp.symbol0}</div>
                     </div>
                     <div style="font-size:18px;color:#9b5cff;">+</div>
                     <div style="text-align:center;">
-                        <img src="${lp.logo1}" onerror="this.src='img/default.png'"
+                        <img src="${tokenLogoSrc(lp.logo1, lp.symbol1)}" data-symbol="${lp.symbol1}" onerror="tokenLogoFallback(this)"
                              style="width:38px;height:38px;border-radius:50%;object-fit:contain;border:2px solid rgba(255,255,255,.1);">
                         <div style="font-size:10px;color:#aaa;margin-top:3px;">${lp.symbol1}</div>
                     </div>
@@ -389,13 +401,13 @@ function showCollectSuccessModal({ hash, lp }) {
 
                 <div style="display:flex;align-items:center;gap:10px;justify-content:center;margin-bottom:16px;">
                     <div style="text-align:center;">
-                        <img src="${lp.logo0}" onerror="this.src='img/default.png'"
+                        <img src="${tokenLogoSrc(lp.logo0, lp.symbol0)}" data-symbol="${lp.symbol0}" onerror="tokenLogoFallback(this)"
                              style="width:38px;height:38px;border-radius:50%;object-fit:contain;border:2px solid rgba(255,255,255,.1);">
                         <div style="font-size:11px;color:#fff;margin-top:4px;">${lp.fees0} ${lp.symbol0}</div>
                     </div>
                     <div style="font-size:18px;color:#9b5cff;">+</div>
                     <div style="text-align:center;">
-                        <img src="${lp.logo1}" onerror="this.src='img/default.png'"
+                        <img src="${tokenLogoSrc(lp.logo1, lp.symbol1)}" data-symbol="${lp.symbol1}" onerror="tokenLogoFallback(this)"
                              style="width:38px;height:38px;border-radius:50%;object-fit:contain;border:2px solid rgba(255,255,255,.1);">
                         <div style="font-size:11px;color:#fff;margin-top:4px;">${lp.fees1} ${lp.symbol1}</div>
                     </div>
@@ -463,13 +475,13 @@ function showRemoveConfirmModal(lp) {
 
                 <div style="display:flex;align-items:center;gap:10px;justify-content:center;margin-bottom:16px;">
                     <div style="text-align:center;">
-                        <img src="${lp.logo0}" onerror="this.src='img/default.png'"
+                        <img src="${tokenLogoSrc(lp.logo0, lp.symbol0)}" data-symbol="${lp.symbol0}" onerror="tokenLogoFallback(this)"
                              style="width:38px;height:38px;border-radius:50%;object-fit:contain;border:2px solid rgba(255,255,255,.1);">
                         <div style="font-size:10px;color:#aaa;margin-top:3px;">${lp.symbol0}</div>
                     </div>
                     <div style="font-size:18px;color:#9b5cff;">+</div>
                     <div style="text-align:center;">
-                        <img src="${lp.logo1}" onerror="this.src='img/default.png'"
+                        <img src="${tokenLogoSrc(lp.logo1, lp.symbol1)}" data-symbol="${lp.symbol1}" onerror="tokenLogoFallback(this)"
                              style="width:38px;height:38px;border-radius:50%;object-fit:contain;border:2px solid rgba(255,255,255,.1);">
                         <div style="font-size:10px;color:#aaa;margin-top:3px;">${lp.symbol1}</div>
                     </div>
@@ -602,13 +614,13 @@ function showRemoveSuccessModal({ hash, lp }) {
 
                 <div style="display:flex;align-items:center;gap:10px;justify-content:center;margin-bottom:16px;">
                     <div style="text-align:center;">
-                        <img src="${lp.logo0}" onerror="this.src='img/default.png'"
+                        <img src="${tokenLogoSrc(lp.logo0, lp.symbol0)}" data-symbol="${lp.symbol0}" onerror="tokenLogoFallback(this)"
                              style="width:38px;height:38px;border-radius:50%;object-fit:contain;border:2px solid rgba(255,255,255,.1);">
                         <div style="font-size:11px;color:#fff;margin-top:4px;">${lp.amount0} ${lp.symbol0}</div>
                     </div>
                     <div style="font-size:18px;color:#9b5cff;">+</div>
                     <div style="text-align:center;">
-                        <img src="${lp.logo1}" onerror="this.src='img/default.png'"
+                        <img src="${tokenLogoSrc(lp.logo1, lp.symbol1)}" data-symbol="${lp.symbol1}" onerror="tokenLogoFallback(this)"
                              style="width:38px;height:38px;border-radius:50%;object-fit:contain;border:2px solid rgba(255,255,255,.1);">
                         <div style="font-size:11px;color:#fff;margin-top:4px;">${lp.amount1} ${lp.symbol1}</div>
                     </div>
@@ -756,11 +768,11 @@ function openLPDetail(id) {
 
             <div class="lp-detail-header">
                 <div class="lp-pair-icons">
-                    <img src="${lp.logo0}" onerror="this.src='img/default.png'" class="lp-icon">
-                    <img src="${lp.logo1}" onerror="this.src='img/default.png'" class="lp-icon overlap">
+                    <img src="${tokenLogoSrc(lp.logo0, lp.symbol0)}" data-symbol="${lp.symbol0}" onerror="tokenLogoFallback(this)" class="lp-icon">
+                    <img src="${tokenLogoSrc(lp.logo1, lp.symbol1)}" data-symbol="${lp.symbol1}" onerror="tokenLogoFallback(this)" class="lp-icon overlap">
                 </div>
                 <div>
-                    <div class="lp-title">${lp.symbol0}/${lp.symbol1}</div>
+                    <div class="lp-title">${lp.symbol0}/${lp.symbol1}${lpVerifyBadgeHTML(lp)}</div>
                     <div class="lp-sub">${lp.fee} &bull; #${lp.id}</div>
                 </div>
                 <div class="lp-status ${lp.status === 'Active' ? 'active' : 'inactive'}">
@@ -875,10 +887,10 @@ function renderLPCards(list) {
         // fees bar â€” tampil hanya kalau ada fees
         const feesHTML = lp.hasFees
             ? `<div class="lp-fees-bar">
-                <img src="${lp.logo0}" onerror="this.src='img/default.png'" style="width:14px;height:14px;border-radius:50%;">
+                <img src="${tokenLogoSrc(lp.logo0, lp.symbol0)}" data-symbol="${lp.symbol0}" onerror="tokenLogoFallback(this)" style="width:14px;height:14px;border-radius:50%;">
                 <span style="color:#ffb020;font-weight:600;">${lp.fees0} ${lp.symbol0}</span>
                 <span style="color:#888;">+</span>
-                <img src="${lp.logo1}" onerror="this.src='img/default.png'" style="width:14px;height:14px;border-radius:50%;">
+                <img src="${tokenLogoSrc(lp.logo1, lp.symbol1)}" data-symbol="${lp.symbol1}" onerror="tokenLogoFallback(this)" style="width:14px;height:14px;border-radius:50%;">
                 <span style="color:#ffb020;font-weight:600;">${lp.fees1} ${lp.symbol1}</span>
                </div>`
             : `<div class="lp-fees-empty">No uncollected fees</div>`;
@@ -890,11 +902,11 @@ function renderLPCards(list) {
                 <div class="lp-header">
                     <div class="lp-pair">
                         <div class="lp-pair-logos">
-                            <img src="${lp.logo0}" onerror="this.src='img/default.png'" class="lp-icon">
-                            <img src="${lp.logo1}" onerror="this.src='img/default.png'" class="lp-icon overlap">
+                            <img src="${tokenLogoSrc(lp.logo0, lp.symbol0)}" data-symbol="${lp.symbol0}" onerror="tokenLogoFallback(this)" class="lp-icon">
+                            <img src="${tokenLogoSrc(lp.logo1, lp.symbol1)}" data-symbol="${lp.symbol1}" onerror="tokenLogoFallback(this)" class="lp-icon overlap">
                         </div>
                         <div>
-                            <div class="lp-title">${lp.symbol0}/${lp.symbol1}</div>
+                            <div class="lp-title">${lp.symbol0}/${lp.symbol1}${lpVerifyBadgeHTML(lp)}</div>
                             <div class="lp-sub">${lp.fee} &bull; #${lp.id}</div>
                         </div>
                     </div>
@@ -924,12 +936,12 @@ function renderLPCards(list) {
                 <!-- AMOUNTS WITH LOGOS -->
                 <div class="lp-amounts">
                     <div class="lp-amount-item">
-                        <img src="${lp.logo0}" onerror="this.src='img/default.png'" style="width:18px;height:18px;border-radius:50%;">
+                        <img src="${tokenLogoSrc(lp.logo0, lp.symbol0)}" data-symbol="${lp.symbol0}" onerror="tokenLogoFallback(this)" style="width:18px;height:18px;border-radius:50%;">
                         <span><b>${lp.amount0}</b> ${lp.symbol0}</span>
                     </div>
                     <div class="lp-amount-sep">|</div>
                     <div class="lp-amount-item">
-                        <img src="${lp.logo1}" onerror="this.src='img/default.png'" style="width:18px;height:18px;border-radius:50%;">
+                        <img src="${tokenLogoSrc(lp.logo1, lp.symbol1)}" data-symbol="${lp.symbol1}" onerror="tokenLogoFallback(this)" style="width:18px;height:18px;border-radius:50%;">
                         <span><b>${lp.amount1}</b> ${lp.symbol1}</span>
                     </div>
                 </div>
@@ -1051,6 +1063,12 @@ function formatPrice(p) {
     if (!p || p < 0.000001) return "0";
     if (p > 1e9)            return "\u221E"; // âˆž
     return p.toFixed(5);
+}
+
+// Centang hanya jika KEDUA token ada di tokens.json; selain itu tanda seru
+function lpVerifyBadgeHTML(lp) {
+    // token0 tidak terverifikasi -> tanda seru; kalau tidak, token1 yang menentukan
+    return tokenVerifyBadgeHTML(isVerifiedToken(lp.token0) ? lp.token1 : lp.token0);
 }
 
 function tickToPrice(tick) {
