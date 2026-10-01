@@ -424,7 +424,7 @@
 
     window.openConnectModal = function (origin) {
         // Jika browser sedang aktif, pakai browser permission UI
-        if (window.sidraBrowser?.isVisible()) {
+        if (window.sidraBrowser?.isVisible?.()) {
             window.showBrowserPermission(
                 origin,
                 (address) => window._providerOnConnect?.(address),
