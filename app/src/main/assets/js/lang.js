@@ -185,6 +185,7 @@ function setLanguage(lang){
         else if (s === "IMPORT_CHOICE" && typeof showImportChoiceScreen === "function") showImportChoiceScreen();
         else if (s === "IMPORT_PHRASE" && typeof showImportPhraseScreen === "function") showImportPhraseScreen();
         else if (s === "IMPORT_PK" && typeof showImportPKScreen === "function") showImportPKScreen();
+        else if (s === "VERIFY_SEED" && typeof showVerifySeedScreen === "function") showVerifySeedScreen(true);
         else if (s === "SET_PIN" && typeof showSetPINScreen === "function") showSetPINScreen();
         else if (s === "SUCCESS" && typeof showSuccessScreen === "function") showSuccessScreen();
     }
