@@ -145,6 +145,78 @@ async function fetchSdaAmountFromTx(hash) {
     }
 }
 // =============================
+// SANITASI DATA TOKEN DARI BLOCKSCOUT
+// Nama/simbol/icon token dibuat bebas oleh pembuat token (termasuk
+// token spam), lalu dirender lewat innerHTML di riwayat. Dibersihkan
+// di satu pintu masuk ini supaya tidak bisa menyisipkan HTML/atribut.
+// =============================
+function _cleanTokenText(s, max, fb) {
+    if (typeof window.sanitizeTokenText === "function") return window.sanitizeTokenText(s, max, fb);
+    const v = String(s == null ? "" : s).replace(/[\u0000-\u001F<>"'`&\\]/g, "").trim().slice(0, max || 32);
+    return v || fb || "";
+}
+
+function _cleanIconUrl(u) {
+    return (typeof u === "string" && /^https?:\/\/[^\s"'<>`\\]+$/i.test(u)) ? u : null;
+}
+
+function _sanitizeBlockscoutItems(items) {
+    for (const it of (items || [])) {
+        const tk = it && it.token;
+        if (!tk) continue;
+        tk.symbol   = _cleanTokenText(tk.symbol, 12, "TOKEN");
+        tk.name     = _cleanTokenText(tk.name, 32, tk.symbol);
+        tk.icon_url = _cleanIconUrl(tk.icon_url);
+    }
+    return items;
+}
+
+// =============================
+// FETCH TOKEN YANG SEDANG DIPEGANG (holdings, bukan riwayat)
+// GET /addresses/{addr}/tokens?type=ERC-20  -> [{ token, value }]
+// Return: array item, atau null kalau halaman pertama gagal.
+// Kalau halaman berikutnya gagal, hasil yang sudah terkumpul tetap dipakai.
+// =============================
+async function fetchTokenHoldingsFromBlockscout(address, maxPages = 10) {
+    if (!address) return null;
+
+    let items = [];
+    let url   = `${BLOCKSCOUT_API}/addresses/${address}/tokens?type=ERC-20`;
+    let page  = 0;
+
+    while (url && page < maxPages) {
+        try {
+            const res = await fetch(url, {
+                signal:  AbortSignal.timeout(10000),
+                headers: { "Accept": "application/json" }
+            });
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            const data = await res.json();
+
+            items = items.concat(data.items || []);
+            page++;
+
+            if (data.next_page_params) {
+                const np = new URLSearchParams();
+                Object.entries(data.next_page_params).forEach(([k, v]) => {
+                    if (v !== null && v !== undefined) np.append(k, v);
+                });
+                url = `${BLOCKSCOUT_API}/addresses/${address}/tokens?type=ERC-20&${np.toString()}`;
+            } else {
+                url = null;
+            }
+        } catch (err) {
+            console.warn("[Blockscout] fetchTokenHoldings error:", err.message);
+            if (page === 0) return null;   // gagal total -> pemanggil pakai fallback
+            break;                         // sebagian sudah ada -> pakai itu
+        }
+    }
+
+    console.log("[Blockscout] token holdings total:", items.length, "pages:", page);
+    return _sanitizeBlockscoutItems(items);
+}
+
+// =============================
 // FETCH TOKEN TRANSFERS (with pagination)
 // =============================
 async function fetchTokenTransfersFromBlockscout(address, maxPages = 1) {
@@ -174,7 +246,7 @@ async function fetchTokenTransfersFromBlockscout(address, maxPages = 1) {
         }
 
         console.log("[Blockscout] token transfer total:", items.length, "pages:", page);
-        return items;
+        return _sanitizeBlockscoutItems(items);
     } catch (err) {
         console.warn("[Blockscout] fetchTokenTransfers error:", err.message);
         return null;
@@ -1105,11 +1177,11 @@ function showTxDetail(tx) {
                 iconWrap.style.border = "none";
                 iconWrap.innerHTML = `
                     <div style="position:relative;width:68px;height:50px;">
-                        <img src="${safeOut}" onerror="this.onerror=null;this.src='img/default.png'"
+                        <img src="${tokenLogoSrc(safeOut, tx.outSymbol)}" data-symbol="${_escAttr(tx.outSymbol)}" onerror="tokenLogoFallback(this)"
                              style="width:38px;height:38px;border-radius:50%;position:absolute;
                                     left:0;top:6px;background:#111;padding:4px;z-index:1;
                                     object-fit:contain;border:2px solid #0a1628;">
-                        <img src="${safeIn}" onerror="this.onerror=null;this.src='img/default.png'"
+                        <img src="${tokenLogoSrc(safeIn, tx.inSymbol)}" data-symbol="${_escAttr(tx.inSymbol)}" onerror="tokenLogoFallback(this)"
                              style="width:38px;height:38px;border-radius:50%;position:absolute;
                                     right:0;top:6px;background:#111;padding:4px;z-index:2;
                                     object-fit:contain;border:2px solid #0a1628;">
@@ -1152,7 +1224,14 @@ function showTxDetail(tx) {
         if (amountEl) amountEl.style.display = "none";
 
         const setEl = (id, val) => { const e = document.getElementById(id); if (e) e.textContent = val; };
-        const setImg = (id, src) => { const e = document.getElementById(id); if (e) e.src = src || "img/default.png"; };
+        const setImg = (id, src, sym) => {
+            const e = document.getElementById(id);
+            if (!e) return;
+            // elemen statis (ID tetap) — tidak diganti, cukup src + handler error
+            e.dataset.symbol = sym || "";
+            e.onerror = function () { tokenLogoFallback(this); };
+            e.src = tokenLogoSrc(src, sym);
+        };
 
         // Ganti ikon panah jadi "+" khusus untuk ADD_LP
         const arrowIcon = pairRow.querySelector(".swm-pair-arrow i");
@@ -1167,27 +1246,27 @@ function showTxDetail(tx) {
         if (isAddLpDisplay) {
             setEl("txdOutAmount", tx.amount0   || "?");
             setEl("txdOutSymbol", tx.inSymbol  || "?");
-            setImg("txdOutIcon",  tx.inLogo    ? normalizeLogo(tx.inLogo, "img/default.png") : resolveTokenLogo(tx.inSymbol, null));
+            setImg("txdOutIcon",  tx.inLogo    ? normalizeLogo(tx.inLogo, "img/default.png") : resolveTokenLogo(tx.inSymbol, null), tx.inSymbol);
 
             setEl("txdInAmount",  tx.amount1   || "?");
             setEl("txdInSymbol",  tx.outSymbol || "?");
-            setImg("txdInIcon",   tx.outLogo   ? normalizeLogo(tx.outLogo, "img/default.png") : resolveTokenLogo(tx.outSymbol, null));
+            setImg("txdInIcon",   tx.outLogo   ? normalizeLogo(tx.outLogo, "img/default.png") : resolveTokenLogo(tx.outSymbol, null), tx.outSymbol);
         } else if (isCollectDisplay) {
             setEl("txdOutAmount", tx.amountOut || "?");
             setEl("txdOutSymbol", tx.inSymbol  || "?");
-            setImg("txdOutIcon",  tx.inLogo    ? normalizeLogo(tx.inLogo, "img/default.png") : resolveTokenLogo(tx.inSymbol, null));
+            setImg("txdOutIcon",  tx.inLogo    ? normalizeLogo(tx.inLogo, "img/default.png") : resolveTokenLogo(tx.inSymbol, null), tx.inSymbol);
 
             setEl("txdInAmount",  tx.amount1   || "?");
             setEl("txdInSymbol",  tx.outSymbol || "?");
-            setImg("txdInIcon",   tx.outLogo   ? normalizeLogo(tx.outLogo, "img/default.png") : resolveTokenLogo(tx.outSymbol, null));
+            setImg("txdInIcon",   tx.outLogo   ? normalizeLogo(tx.outLogo, "img/default.png") : resolveTokenLogo(tx.outSymbol, null), tx.outSymbol);
         } else {
             setEl("txdOutAmount", tx.amountIn  || "?");
             setEl("txdOutSymbol", tx.outSymbol || "?");
-            setImg("txdOutIcon",  tx.outLogo   ? normalizeLogo(tx.outLogo, "img/default.png") : resolveTokenLogo(tx.outSymbol, null));
+            setImg("txdOutIcon",  tx.outLogo   ? normalizeLogo(tx.outLogo, "img/default.png") : resolveTokenLogo(tx.outSymbol, null), tx.outSymbol);
 
             setEl("txdInAmount",  tx.amountOut || "?");
             setEl("txdInSymbol",  tx.inSymbol  || "?");
-            setImg("txdInIcon",   tx.inLogo    ? normalizeLogo(tx.inLogo, "img/default.png") : resolveTokenLogo(tx.inSymbol, null));
+            setImg("txdInIcon",   tx.inLogo    ? normalizeLogo(tx.inLogo, "img/default.png") : resolveTokenLogo(tx.inSymbol, null), tx.inSymbol);
         }
 
     } else {
@@ -1492,15 +1571,15 @@ const valueColor = isFailed ? "#555" : isLpNftTx ? "#888" : (isNeutralValueType 
         const logoHTML = (isLpNftTx || isBurnLp)
             ? `<div style="width:38px;height:38px;border-radius:50%;background:#1a1a2e;display:flex;align-items:center;justify-content:center;"><i class="fa-solid fa-droplet" style="color:#888;font-size:16px;"></i></div>`
             : isWrapTx
-                ? `<img src="img/sda.png" onerror="this.src='img/default.png'" style="width:38px;height:38px;border-radius:50%;background:#111;padding:4px;object-fit:contain;flex-shrink:0;">`
+                ? `<img src="img/sda.png" data-symbol="SDA" onerror="tokenLogoFallback(this)" style="width:38px;height:38px;border-radius:50%;background:#111;padding:4px;object-fit:contain;flex-shrink:0;">`
             : isSingleSided
-                ? `<img src="${safeInLogo}" onerror="this.src='img/default.png'" style="width:38px;height:38px;border-radius:50%;background:#111;padding:4px;object-fit:contain;flex-shrink:0;">`
+                ? `<img src="${tokenLogoSrc(safeInLogo, tx.inSymbol)}" data-symbol="${_escAttr(tx.inSymbol)}" onerror="tokenLogoFallback(this)" style="width:38px;height:38px;border-radius:50%;background:#111;padding:4px;object-fit:contain;flex-shrink:0;">`
                 : (isSwap||isAddLP||isRemoveLP||isCollectFee)
                     ? `<div style="position:relative;width:42px;height:38px;flex-shrink:0;">
-                        <img src="${safeOutLogo}" onerror="this.src='img/default.png'" style="width:26px;height:26px;border-radius:50%;position:absolute;left:0;top:6px;background:#111;padding:2px;z-index:1;object-fit:contain;border:2px solid #141416;">
-                        <img src="${safeInLogo}"  onerror="this.src='img/default.png'" style="width:26px;height:26px;border-radius:50%;position:absolute;right:0;top:6px;background:#111;padding:2px;z-index:2;object-fit:contain;border:2px solid #141416;box-shadow:0 0 0 1px rgba(255,255,255,0.06);">
+                        <img src="${tokenLogoSrc(safeOutLogo, tx.outSymbol)}" data-symbol="${_escAttr(tx.outSymbol)}" onerror="tokenLogoFallback(this)" style="width:26px;height:26px;border-radius:50%;position:absolute;left:0;top:6px;background:#111;padding:2px;z-index:1;object-fit:contain;border:2px solid #141416;">
+                        <img src="${tokenLogoSrc(safeInLogo, tx.inSymbol)}" data-symbol="${_escAttr(tx.inSymbol)}" onerror="tokenLogoFallback(this)" style="width:26px;height:26px;border-radius:50%;position:absolute;right:0;top:6px;background:#111;padding:2px;z-index:2;object-fit:contain;border:2px solid #141416;box-shadow:0 0 0 1px rgba(255,255,255,0.06);">
                        </div>`
-                    : `<img src="${logo}" onerror="this.src='img/default.png'" style="width:38px;height:38px;border-radius:50%;background:#111;padding:4px;object-fit:contain;flex-shrink:0;">`;
+                    : `<img src="${tokenLogoSrc(logo, tx.symbol)}" data-symbol="${_escAttr(tx.symbol)}" onerror="tokenLogoFallback(this)" style="width:38px;height:38px;border-radius:50%;background:#111;padding:4px;object-fit:contain;flex-shrink:0;">`;
 
         const sourceBadge = tx.source === "blockscout"
     ? `<span style="font-size:9px;font-weight:600;color:#3b82f6;background:rgba(59,130,246,0.15);border-radius:5px;padding:1px 6px;margin-left:5px;letter-spacing:.3px;">LIVE</span>`
