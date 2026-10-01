@@ -6,7 +6,7 @@
     "use strict";
     try {
 
-    const CHAIN_ID     = "0x" + (97453).toString(16);  // 0x17c8d
+    const CHAIN_ID     = "0x" + (97453).toString(16);  // 0x17cad
     const CHAIN_ID_INT = 97453;
     const RPC_URL      = "https://node.sidrachain.com";
 
@@ -50,6 +50,24 @@
             new ethers.providers.JsonRpcProvider(RPC_URL);
     }
 
+    // Panggilan internal wallet (tanpa origin) selalu boleh. Origin dApp harus
+    // sudah punya permission (connect). Tanpa ini, situs mana pun bisa membaca
+    // alamat lewat eth_accounts dan memicu popup sign/tx tanpa pernah connect,
+    // dan "Cabut" tidak berefek karena eth_accounts tetap mengembalikan akun.
+    function _originAllowed(origin) {
+        if (!origin || origin === "unknown") return true;
+        return !!(window.permissionManager && window.permissionManager.hasPermission(origin));
+    }
+
+    function _requireOriginPermission(origin) {
+        if (!_originAllowed(origin)) {
+            throw Object.assign(
+                new Error("Situs belum terhubung. Hubungkan wallet dulu."),
+                { code: 4100 }
+            );
+        }
+    }
+
     function _requireSigner() {
         var signer = _getActiveSigner();
         if (!signer) {
@@ -74,7 +92,7 @@
 
         if (method === "eth_accounts") {
             var addr = _getActiveAddress();
-            return addr ? [addr] : [];
+            return (addr && _originAllowed(origin)) ? [addr] : [];
         }
 
         if (method === "eth_requestAccounts") {
@@ -160,7 +178,7 @@
 
         if (method === "wallet_getPermissions") {
             var addr = _getActiveAddress();
-            if (!addr) return [];
+            if (!addr || !_originAllowed(origin)) return [];
             return [{ parentCapability: "eth_accounts", caveats: [] }];
         }
 
@@ -219,6 +237,7 @@
         }
 
         if (method === "eth_sendTransaction") {
+            _requireOriginPermission(origin);
             var signer = _requireSigner();
             var tx     = params[0] || {};
 
@@ -247,16 +266,28 @@
         }
 
         if (method === "eth_signTransaction") {
-            return await _requireSigner().signTransaction(params[0] || {});
-        }
-
-        if (method === "eth_sign") {
-            return await _requireSigner().signMessage(
-                ethers.utils.arrayify(params[1])
+            throw Object.assign(
+                new Error("eth_signTransaction tidak didukung. Gunakan eth_sendTransaction."),
+                { code: -32601 }
             );
         }
 
+        if (method === "eth_sign") {
+            _requireOriginPermission(origin);
+            // Lewat modal konfirmasi (sebelumnya menandatangani tanpa konfirmasi)
+            return new Promise(function(resolve, reject) {
+                window._signResolve = resolve;
+                window._signReject  = reject;
+                if (typeof window.openSignModal === "function") {
+                    window.openSignModal({ method: method, params: params, origin: origin });
+                } else {
+                    reject(Object.assign(new Error("UI tanda tangan tidak tersedia"), { code: -32603 }));
+                }
+            });
+        }
+
         if (method === "personal_sign") {
+            _requireOriginPermission(origin);
             // Tampilkan sign modal
             return new Promise(function(resolve, reject) {
                 window._signResolve = resolve;
@@ -278,6 +309,7 @@
         if (method === "eth_signTypedData" ||
             method === "eth_signTypedData_v3" ||
             method === "eth_signTypedData_v4") {
+            _requireOriginPermission(origin);
             return new Promise(function(resolve, reject) {
                 window._signResolve = resolve;
                 window._signReject  = reject;
