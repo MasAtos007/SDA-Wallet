@@ -921,6 +921,10 @@ function showWalletManageScreen() {
                 <div style="width:34px;height:34px;min-width:34px;background:rgba(102,153,255,0.15);border-radius:10px;display:flex;align-items:center;justify-content:center;color:#6699ff;font-size:14px;"><i class="fa-solid fa-file-import"></i></div>
                 ${LANG[CURRENT_LANG]?.import_external_btn || 'Import dari Seed / PK Lain'}
             </button>
+            <button onclick="showConnectedSitesScreen()" style="width:100%;padding:14px 16px;background:#141414;border:1px solid #2a2a2a;border-radius:14px;color:#fff;font-size:14px;cursor:pointer;margin-bottom:10px;display:flex;align-items:center;gap:12px;">
+                <div style="width:34px;height:34px;min-width:34px;background:rgba(0,255,136,0.12);border-radius:10px;display:flex;align-items:center;justify-content:center;color:#00cc66;font-size:14px;"><i class="fa-solid fa-link"></i></div>
+                ${LANG[CURRENT_LANG]?.connected_sites_title || 'Situs Terhubung'}
+            </button>
             <button onclick="showSetPINScreen(true)" style="width:100%;padding:14px 16px;background:#141414;border:1px solid #2a2a2a;border-radius:14px;color:#fff;font-size:14px;cursor:pointer;margin-bottom:10px;display:flex;align-items:center;gap:12px;">
                 <div style="width:34px;height:34px;min-width:34px;background:rgba(153,102,255,0.15);border-radius:10px;display:flex;align-items:center;justify-content:center;color:#a370ff;font-size:14px;"><i class="fa-solid fa-key"></i></div>
                 ${LANG[CURRENT_LANG]?.pin_change_title || 'Ubah PIN'}
@@ -931,6 +935,88 @@ function showWalletManageScreen() {
             </button>
         </div>
     `);
+}
+
+// -------------------------------------
+// SCREEN: SITUS TERHUBUNG (dApp connections)
+// -------------------------------------
+function showConnectedSitesScreen() {
+    window._pinContext = "wallet";
+    window._onboardState.screen = "CONNECTED_SITES";
+
+    if (!SESSION.unlocked) { showPINUnlockScreen(); return; }
+
+    const L = LANG[CURRENT_LANG] || {};
+
+    _showOnboarding(`
+        <div style="padding:24px 24px 100px;max-width:420px;margin:0 auto;box-sizing:border-box;">
+            <div style="display:flex;align-items:center;gap:14px;margin-bottom:24px;">
+                <button onclick="showWalletManageScreen()" style="width:40px;height:40px;min-width:40px;background:#1a1a1a;border:none;border-radius:12px;color:#fff;font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;">
+                    <i class="fa-solid fa-arrow-left"></i>
+                </button>
+                <div>
+                    <div style="font-size:19px;font-weight:700;color:#fff;line-height:1.3;">${L.connected_sites_title || 'Situs Terhubung'}</div>
+                    <div style="font-size:12px;color:#888;margin-top:2px;">${L.connected_sites_subtitle || 'dApp yang punya izin melihat alamat wallet kamu'}</div>
+                </div>
+            </div>
+            <div id="connectedSitesList"></div>
+            <button id="connectedSitesDisconnectAll" style="display:none;width:100%;margin-top:16px;padding:14px 16px;background:#1a0000;border:1px solid #ff333330;border-radius:14px;color:#ff6666;font-size:14px;cursor:pointer;">
+                ${L.connected_sites_disconnect_all || 'Cabut Semua'}
+            </button>
+        </div>
+    `);
+
+    _renderConnectedSites();
+}
+
+function _renderConnectedSites() {
+    const L    = LANG[CURRENT_LANG] || {};
+    const el   = document.getElementById("connectedSitesList");
+    const allB = document.getElementById("connectedSitesDisconnectAll");
+    if (!el) return;
+
+    const esc = s => String(s == null ? "" : s).replace(/[&<>"']/g,
+        c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+    const host = o => { try { return new URL(o).hostname.replace(/^www\./, ""); } catch { return o; } };
+    const shortAddr = a => a ? a.slice(0, 8) + "..." + a.slice(-4) : "-";
+
+    const all = window.dappConnectionManager?.getAll?.() || [];
+
+    if (!all.length) {
+        el.innerHTML = `<div style="text-align:center;padding:48px 0;color:#666;font-size:13px;">${esc(L.connected_sites_empty || 'Belum ada dApp yang terhubung')}</div>`;
+        if (allB) allB.style.display = "none";
+        return;
+    }
+
+    el.innerHTML = all.map(c => `
+        <div style="background:#0d0d0d;border:1px solid #222;border-radius:14px;margin-bottom:10px;padding:14px;display:flex;align-items:center;gap:12px;">
+            <div style="width:40px;height:40px;min-width:40px;border-radius:10px;background:#1a1a1a;border:1px solid #2a2a2a;overflow:hidden;display:flex;align-items:center;justify-content:center;color:#555;">
+                <img src="https://www.google.com/s2/favicons?domain=${esc(host(c.origin))}&sz=64" onerror="this.style.display='none'" style="width:100%;height:100%;">
+            </div>
+            <div style="flex:1;min-width:0;">
+                <div style="font-size:14px;font-weight:600;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${esc(host(c.origin))}</div>
+                <div style="font-size:11px;color:#555;font-family:monospace;margin-top:2px;">${esc(shortAddr(c.address))}</div>
+            </div>
+            <button class="cs-disconnect" data-origin="${esc(c.origin)}" style="background:rgba(255,68,68,0.12);border:1px solid rgba(255,68,68,0.25);color:#ff6666;padding:8px 14px;border-radius:10px;font-size:12px;font-weight:600;cursor:pointer;flex-shrink:0;">
+                ${esc(L.connected_sites_disconnect || 'Cabut')}
+            </button>
+        </div>
+    `).join("");
+
+    el.querySelectorAll(".cs-disconnect").forEach(btn => {
+        btn.onclick = () => {
+            window.dappConnectionManager.disconnect(btn.dataset.origin);
+            _renderConnectedSites();
+        };
+    });
+
+    if (allB) {
+        allB.style.display = "block";
+        allB.onclick = () => {
+            window.dappConnectionManager.disconnectAll();
+            _renderConnectedSites();
+        };
+    }
 }
 
 // -------------------------------------
