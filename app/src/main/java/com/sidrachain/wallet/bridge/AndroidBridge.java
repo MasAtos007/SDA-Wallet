@@ -92,10 +92,9 @@ public class AndroidBridge {
         final String result = resultJson != null ? resultJson : "null";
         final String error  = errorJson  != null ? errorJson  : "null";
 
-        final boolean hasError  = !error.equals("null");
-        final boolean hasResult = !result.equals("null");
-        // Guard: jangan kirim kalau dua-duanya null
-        if (!hasError && !hasResult) return;
+        final boolean hasError = !error.equals("null");
+        // Result "null" itu VALID (wallet_switchEthereumChain, wallet_addEthereumChain, dll
+        // sukses dengan result null). Jangan di-drop, kalau tidak dApp menunggu sampai timeout.
 
         mainHandler.post(() -> {
             // Broadcast ke BrowserActivity
