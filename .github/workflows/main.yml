@@ -33,6 +33,11 @@ jobs:
 
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
+        with:
+          # Default action ini memasang paket "tools" yang sudah dihapus dari
+          # repository Google (error: Failed to find package 'tools').
+          # String kosong = lewati paket tambahan. Lisensi tetap diterima otomatis.
+          packages: ''
 
       - name: Decode Keystore
         env:
