@@ -2,6 +2,16 @@ let LANG = {};
 let CURRENT_LANG = localStorage.getItem("lang") || "id";
 window.CURRENT_LANG = CURRENT_LANG;
 
+// Sinkronkan bahasa ke native (browser APK ikut bahasa wallet)
+function _syncLangToAndroid(l){
+    try{
+        if (window.AndroidWallet && typeof window.AndroidWallet.setLanguage === "function") {
+            window.AndroidWallet.setLanguage(l);
+        }
+    }catch(e){}
+}
+_syncLangToAndroid(CURRENT_LANG);
+
 // ==========================
 // LOAD JSON
 // ==========================
@@ -44,10 +54,10 @@ function updateLangBtn() {
         text.textContent = "English";
     } else if (CURRENT_LANG === "ar") {
         flag.src = "https://flagcdn.com/w20/sa.png";
-        text.textContent = "العربية";
+        text.textContent = "Ø§Ù„Ø¹Ø±Ø¨ÙŠØ©";
     } else if (CURRENT_LANG === "vi") {
         flag.src = "https://flagcdn.com/w20/vn.png";
-        text.textContent = "Tiếng Việt";
+        text.textContent = "Tiáº¿ng Viá»‡t";
     } else {
         flag.src = "https://flagcdn.com/w20/id.png";
         text.textContent = "Indonesia";
@@ -70,7 +80,7 @@ function applyLang(){
 
         if(langData[key]){
 
-            // 🔥 FIX: jangan overwrite icon di dalam element
+            // ðŸ”¥ FIX: jangan overwrite icon di dalam element
             if(el.children.length > 0){
                 // cari text node saja
                 el.childNodes.forEach(node => {
@@ -110,6 +120,7 @@ function setLanguage(lang){
     CURRENT_LANG = lang;
     window.CURRENT_LANG = lang;
     localStorage.setItem("lang", lang);
+    _syncLangToAndroid(lang);
     updateLangBtn();
 
     applyLang();
@@ -185,7 +196,6 @@ function setLanguage(lang){
         else if (s === "IMPORT_CHOICE" && typeof showImportChoiceScreen === "function") showImportChoiceScreen();
         else if (s === "IMPORT_PHRASE" && typeof showImportPhraseScreen === "function") showImportPhraseScreen();
         else if (s === "IMPORT_PK" && typeof showImportPKScreen === "function") showImportPKScreen();
-        else if (s === "VERIFY_SEED" && typeof showVerifySeedScreen === "function") showVerifySeedScreen(true);
         else if (s === "SET_PIN" && typeof showSetPINScreen === "function") showSetPINScreen();
         else if (s === "SUCCESS" && typeof showSuccessScreen === "function") showSuccessScreen();
     }
