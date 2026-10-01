@@ -114,10 +114,24 @@ const TOKEN_PRICE_USD = {
 // contoh: const STABLECOIN_ADDRESS = "0xAbC...123";
 const STABLECOIN_ADDRESS = null;
 
-const _usdPriceCache = {}; // { [symbol]: { value, ts } }
+// Object.create(null): simbol token dari luar (mis. "constructor", "__proto__")
+// tidak boleh bentrok dengan properti bawaan Object.
+const _usdPriceCache = Object.create(null); // { [symbol]: { value, ts } }
+
+// Harga manual yang aman: 0 kalau simbol tidak dikenal / bukan angka valid
+function _manualPriceUsd(symbol) {
+    if (typeof symbol !== "string") return 0;
+    if (!Object.prototype.hasOwnProperty.call(TOKEN_PRICE_USD, symbol)) return 0;
+    const p = Number(TOKEN_PRICE_USD[symbol]);
+    return Number.isFinite(p) && p > 0 ? p : 0;
+}
 const PRICE_CACHE_TTL = 45_000;
 
-async function getTokenUsdPrice(symbol) {
+async function getTokenUsdPrice(symbol, token) {
+
+    // Token hasil deteksi luar (spam/baru) tidak pernah diberi harga —
+    // mencegah simbol palsu seperti "SDA"/"WSDA" ikut kena harga asli.
+    if (!symbol || (token && token.isSpamDetected)) return 0;
 
     const cached = _usdPriceCache[symbol];
     if (cached && (Date.now() - cached.ts) < PRICE_CACHE_TTL) {
@@ -167,17 +181,20 @@ async function getTokenUsdPrice(symbol) {
                 }
             }
 
-            if (!price) price = TOKEN_PRICE_USD[symbol] || 0;
+            if (!price) price = _manualPriceUsd(symbol);
         }
     }
+
+    if (!Number.isFinite(price)) price = 0;
 
     _usdPriceCache[symbol] = { value: price, ts: Date.now() };
     return price;
 }
 
-async function formatUSD(amount, symbol) {
-    const price = await getTokenUsdPrice(symbol);
-    const usd = amount * price;
+async function formatUSD(amount, symbol, token) {
+    const price = await getTokenUsdPrice(symbol, token);
+    let usd = Number(amount) * price;
+    if (!Number.isFinite(usd)) usd = 0;
     return "~ $" + usd.toLocaleString("en-US", {
         minimumFractionDigits: 2,
         maximumFractionDigits: 2
@@ -186,9 +203,13 @@ async function formatUSD(amount, symbol) {
 
 
 
-async function batchGetTokenUsdPrices(tokens) {
-    const sdaPrice = TOKEN_PRICE_USD["SDA"] || 0;
-    const out = {};
+async function batchGetTokenUsdPrices(allTokens) {
+    const sdaPrice = _manualPriceUsd("SDA");
+    const out = Object.create(null);
+
+    // Token spam/hasil deteksi tidak diberi harga & tidak ikut query pool DEX.
+    // Pemanggil (renderAssets) menganggap token tsb = $0.
+    const tokens = (allTokens || []).filter(tk => tk && !tk.isSpamDetected);
 
     if (!tokens.length) return out;
 
@@ -207,7 +228,7 @@ async function batchGetTokenUsdPrices(tokens) {
                 out[t.symbol] = sdaPrice;
             } else {
                 const ratio = ratios[t.address] || 0;
-                out[t.symbol] = ratio > 0 ? ratio * sdaPrice : (TOKEN_PRICE_USD[t.symbol] || 0);
+                out[t.symbol] = ratio > 0 ? ratio * sdaPrice : _manualPriceUsd(t.symbol);
             }
             _usdPriceCache[t.symbol] = { value: out[t.symbol], ts: Date.now() };
         });
@@ -287,7 +308,9 @@ async function loadBalance() {
     if (usdEl) {
         const numericAmount = parseFloat(bal) || 0;
         usdEl.textContent = "..."; // loading sementara
-        formatUSD(numericAmount, symbol).then(text => {
+        formatUSD(numericAmount, symbol,
+            (window.TOKENS || []).find(tk => tk.address === window.selectedToken)
+        ).then(text => {
             // Pastikan token belum diganti lagi saat hasil datang
             usdEl.textContent = text;
         });
