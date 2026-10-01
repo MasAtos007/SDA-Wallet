@@ -26,7 +26,7 @@
     //   }
     // }
     // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-    const SIDRA_CHAIN_ID = "0x" + (9700).toString(16);
+    const SIDRA_CHAIN_ID = "0x" + (97453).toString(16);
 
     // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     // LOAD / SAVE
@@ -84,6 +84,7 @@
             window.permissionManager?.revokePermission(origin);
             window._providerOnDisconnect?.();
             window.browserBridge?.broadcastEvent("accountsChanged", []);
+            _notifyAndroidAccounts([]);
 
             _notifyBrowserUI(origin, false);
             showToast?.("Wallet dicabut dari " + _hostname(origin), "info");
@@ -98,6 +99,7 @@
             _save({});
             window._providerOnDisconnect?.();
             window.browserBridge?.broadcastEvent("accountsChanged", []);
+            _notifyAndroidAccounts([]);
         },
 
         // Cek apakah origin aktif
@@ -260,6 +262,13 @@
         return a.slice(0, 8) + "..." + a.slice(-4);
     }
 
+    // dApp di BrowserActivity (Android) tidak lewat browserBridge (iframe),
+    // jadi kirim event lewat AndroidBridge supaya halaman langsung tahu akun dicabut.
+    function _notifyAndroidAccounts(accounts) {
+        try { window.AndroidWallet?.broadcastEvent?.("accountsChanged", JSON.stringify(accounts || [])); }
+        catch {}
+    }
+
     function _notifyBrowserUI(origin, connected) {
         // Update status bar di browser jika origin cocok dengan yang aktif
         if (window.sidraBrowser?.currentOrigin?.() === origin) {
@@ -301,6 +310,7 @@
         }
         _save(data);
         window.browserBridge?.broadcastEvent("accountsChanged", []);
+        _notifyAndroidAccounts([]);
     };
 
     // Sync saat account switch
