@@ -114,17 +114,24 @@
         }
     };
 
-    if (window.sidraBrowser) {
-        window.sidraBrowser.open = function (url) {
+    // sidra-browser-v2.js dimuat SETELAH file ini dan menimpa window.sidraBrowser,
+    // jadi override open() harus dipasang lagi setelah semua script selesai dimuat.
+    // Di APK, dApp dibuka lewat BrowserActivity (provider di-inject native),
+    // bukan iframe (iframe lintas-origin tidak bisa di-inject & sering diblokir X-Frame-Options).
+    function _hookSidraBrowser() {
+        var open = function (url) {
             window.openAndroidBrowser(url || "https://www.sidrachain.com");
         };
-    } else {
-        window.sidraBrowser = {
-            open: function (url) {
-                window.openAndroidBrowser(url || "https://www.sidrachain.com");
-            }
-        };
+        if (window.sidraBrowser && typeof window.sidraBrowser === "object") {
+            window.sidraBrowser.open = open;          // method lain (isVisible dll) tetap utuh
+        } else {
+            window.sidraBrowser = { open: open };
+        }
     }
+    _hookSidraBrowser();
+    document.addEventListener("DOMContentLoaded", _hookSidraBrowser);
+    window.addEventListener("load", _hookSidraBrowser);
+    setTimeout(_hookSidraBrowser, 1500);
 
     // Log status provider setelah 1 detik
     setTimeout(function() {
