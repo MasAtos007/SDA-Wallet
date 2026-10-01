@@ -94,6 +94,9 @@
                 <div class="lang-item lang-item-border" onclick="setLanguage('en')">
                     <img src="https://flagcdn.com/w20/us.png" class="lang-flag"> English
                 </div>
+                <div class="lang-item lang-item-border" onclick="setLanguage('vi')">
+                    <img src="https://flagcdn.com/w20/vn.png" class="lang-flag"> Tiếng Việt
+                </div>
             </div>
         </div>
     </div>
@@ -122,10 +125,6 @@
         <div class="balance-hero-label">
             <span data-lang="total_balance">Total Balance</span>
             <i class="fa-regular fa-eye" id="balanceEyeToggle" onclick="toggleBalanceVisibility()"></i>
-        </div>
-        <div class="token-dropdown balance-hero-token">
-            <img id="tokenLogoDropdown" src="img/sda.png" class="token-logo" />
-            <select id="tokenSelect"></select>
         </div>
     </div>
 
@@ -400,6 +399,18 @@
              class="address-modal"
              onclick="toggleAddress(this)">
         </div>
+
+        <!-- COPY ADDRESS -->
+        <button id="receiveCopyAddrBtn"
+                type="button"
+                onclick="copyReceiveAddress()"
+                style="width:100%;margin-top:10px;padding:11px 14px;border-radius:12px;
+                       border:1px solid #2a2d3e;background:#1a1d2b;color:#fff;
+                       font-size:13px;font-weight:600;display:flex;align-items:center;
+                       justify-content:center;gap:8px;cursor:pointer;">
+            <i class="fa-solid fa-copy"></i>
+            <span data-lang="copy_address">Copy Address</span>
+        </button>
 
         <!-- AMOUNT -->
         <input type="number"
