@@ -8,8 +8,11 @@ android {
         applicationId "com.sidrachain.wallet"
         minSdk 24
         targetSdk 34
-        versionCode 1
-        versionName "1.0.0"
+        // APP_VERSION diisi dari GitHub Actions (github.run_number = angka tag, mis. 87).
+        // Build lokal tanpa env -> fallback 1 / "1.0.0".
+        def appVer = System.getenv("APP_VERSION")
+        versionCode appVer ? appVer.toInteger() : 1
+        versionName appVer ?: "1.0.0"
     }
     signingConfigs {
         config {
