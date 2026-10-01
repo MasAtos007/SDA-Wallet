@@ -81,7 +81,7 @@
             );
             window.AndroidWallet.broadcastEvent(
                 "connect",
-                JSON.stringify({ chainId: "0x17cad" })
+                JSON.stringify({ chainId: "0x17c8d" })
             );
         } catch (e) {}
     };
@@ -120,6 +120,12 @@
     // bukan iframe (iframe lintas-origin tidak bisa di-inject & sering diblokir X-Frame-Options).
     function _hookSidraBrowser() {
         var open = function (url) {
+            // Tanpa URL (menu Browser di wallet) → tampilkan dasbor internal dulu.
+            // Dengan URL eksplisit → langsung buka di BrowserActivity.
+            if (!url && window.sidraHub && typeof window.sidraHub.open === "function") {
+                window.sidraHub.open();
+                return;
+            }
             window.openAndroidBrowser(url || "https://www.sidrachain.com");
         };
         if (window.sidraBrowser && typeof window.sidraBrowser === "object") {
