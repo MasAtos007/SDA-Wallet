@@ -321,7 +321,7 @@
 
     <div class="action-card-divider"></div>
 
-    <div class="action-card-item" onclick="window.sidraBrowser.open()">
+    <div class="action-card-item" onclick="openSidraBrowser()">
         <div class="action-card-icon icon-blue">
             <i class="fa-solid fa-globe"></i>
         </div>
@@ -1984,6 +1984,15 @@ function toggleWatchPanel() {
     chevron.style.transform = isOpen ? 'rotate(0deg)' : 'rotate(180deg)';
     btn.style.borderRadius  = isOpen ? '12px' : '12px 12px 0 0';
     btn.style.borderBottom  = isOpen ? '1px solid #222' : '1px solid #1e1e1e';
+}
+
+// Tombol Browser: di Android buka browser native (halaman awal), selain itu pakai browser bawaan web
+function openSidraBrowser(){
+    if (window.AndroidWallet && window.AndroidWallet.openBrowserHome) {
+        window.AndroidWallet.openBrowserHome();
+    } else if (window.sidraBrowser && window.sidraBrowser.open) {
+        window.sidraBrowser.open();
+    }
 }
 
 function openPrivacyPolicy(){
