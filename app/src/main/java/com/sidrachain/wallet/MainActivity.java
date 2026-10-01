@@ -23,7 +23,7 @@ public class MainActivity extends AppCompatActivity {
     public static final String ACTION_BRIDGE_REQUEST  = "com.sidrachain.wallet.BRIDGE_REQUEST";
     public static final String ACTION_BRIDGE_RESPONSE = "com.sidrachain.wallet.BRIDGE_RESPONSE";
 
-    // Receiver: terima request dari BrowserActivity â†’ forward ke wallet WebView
+    // Receiver: terima request dari BrowserActivity Ã¢â€ â€™ forward ke wallet WebView
     private final BroadcastReceiver bridgeReceiver = new BroadcastReceiver() {
         @Override
         public void onReceive(Context context, Intent intent) {
@@ -139,7 +139,7 @@ public class MainActivity extends AppCompatActivity {
                 "(typeof window._handleAndroidBack === 'function') ? window._handleAndroidBack() : false",
                 result -> {
                     if (!"true".equals(result)) {
-                        // Tidak ada modal terbuka â€” minimize app (bukan exit)
+                        // Tidak ada modal terbuka Ã¢â‚¬â€ minimize app (bukan exit)
                         runOnUiThread(() -> {
                             if (BrowserActivity.openCount > 0 && BrowserActivity.returnToBrowserOnBack) {
                                 // Wallet dibuka dari browser untuk approval -> kembali ke browser
