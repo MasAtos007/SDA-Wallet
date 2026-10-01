@@ -268,7 +268,7 @@ public class BrowserActivity extends AppCompatActivity {
         });
 
         // Header: tombol bypass ke dashboard wallet
-        ImageButton btnWallet = findViewById(R.id.btnWallet);
+        View btnWallet = findViewById(R.id.btnWallet);
         if (btnWallet != null) btnWallet.setOnClickListener(v -> openWalletDashboard());
 
         ImageButton btnBack = findViewById(R.id.btnBack);
@@ -281,8 +281,11 @@ public class BrowserActivity extends AppCompatActivity {
             });
         }
 
-        ImageButton btnNewTab = findViewById(R.id.btnNewTab);
+        View btnNewTab = findViewById(R.id.btnNewTab);
         if (btnNewTab != null) btnNewTab.setOnClickListener(v -> createTab(""));
+
+        findViewById(R.id.cardMain).setBackground(roundBg("#151A21", "#2A323D", 14));
+        findViewById(R.id.cardDex).setBackground(roundBg("#151A21", "#2A323D", 14));
 
         findViewById(R.id.cardMain).setOnClickListener(v -> {
             if (active != null) navigate(active, URL_MAIN);
@@ -415,11 +418,11 @@ public class BrowserActivity extends AppCompatActivity {
         title.setEllipsize(TextUtils.TruncateAt.END);
         title.setMaxWidth(dp(110));
 
-        ImageButton close = new ImageButton(this);
-        close.setImageResource(R.drawable.ic_close);
-        close.setBackgroundColor(Color.TRANSPARENT);
-        close.setScaleType(ImageButton.ScaleType.FIT_CENTER);
-        close.setPadding(dp(7), dp(7), dp(7), dp(7));
+        TextView close = new TextView(this);
+        close.setText("\u00D7");
+        close.setTextSize(18);
+        close.setTextColor(Color.parseColor("#BBBBBB"));
+        close.setGravity(Gravity.CENTER);
         close.setLayoutParams(new LinearLayout.LayoutParams(dp(28), dp(28)));
         close.setContentDescription("Tutup tab");
         close.setOnClickListener(v -> closeTab(tab));
@@ -437,7 +440,7 @@ public class BrowserActivity extends AppCompatActivity {
         for (Tab t : tabs) {
             boolean sel = (t == tab);
             t.web.setVisibility(sel && !t.home ? View.VISIBLE : View.GONE);
-            t.chip.setBackgroundResource(sel ? R.drawable.bg_tab_active : R.drawable.bg_tab_inactive);
+            t.chip.setBackground(sel ? roundBg("#2A2A2A", "#FF8A00", 8) : roundBg("#171717", "#2A2A2A", 8));
             t.chipTitle.setTextColor(sel ? Color.WHITE : Color.parseColor("#999999"));
         }
         startPage.setVisibility(tab.home ? View.VISIBLE : View.GONE);
@@ -561,6 +564,14 @@ public class BrowserActivity extends AppCompatActivity {
         if (input.startsWith("https://") || input.startsWith("http://")) return input;
         if (input.contains(".") && !input.contains(" ")) return "https://" + input;
         return "https://www.google.com/search?q=" + android.net.Uri.encode(input);
+    }
+
+    private android.graphics.drawable.GradientDrawable roundBg(String fill, String stroke, int radiusDp) {
+        android.graphics.drawable.GradientDrawable g = new android.graphics.drawable.GradientDrawable();
+        g.setColor(Color.parseColor(fill));
+        g.setCornerRadius(dp(radiusDp));
+        g.setStroke(dp(1), Color.parseColor(stroke));
+        return g;
     }
 
     private int dp(int v) {
