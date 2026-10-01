@@ -7,7 +7,6 @@ window.selectEl         = document.getElementById("walletSelect");
 window.addressInput     = document.getElementById("address");
 window.saveBtn          = document.querySelector("button[onclick='saveWallet()']");
 window.tokenLogoBalance  = document.getElementById("tokenLogoBalance");
-window.tokenLogoDropdown = document.getElementById("tokenLogoDropdown");
 
 window.selectedToken     = "native";
 window.selectedTokenData = {
@@ -115,51 +114,18 @@ function showPrompt(message, defaultValue = "", callback) {
 
 
 // =====================================
-// SET GLOBAL TOKEN
+// DASHBOARD TOKEN = SELALU SDA
+// Dropdown token di dashboard sudah dihapus. Token lain tampil di tab Assets.
+// Token yang dipilih di Send Modal disimpan terpisah (window.sendTokenData,
+// lihat send-token.js) dan TIDAK mempengaruhi dashboard.
+// setGlobalToken dibiarkan sebagai no-op supaya pemanggil lama tidak error.
 // =====================================
-function setGlobalToken(val) {
-
-    window.selectedToken = val || "native";
-    localStorage.setItem("selectedToken", window.selectedToken);
-
-    let logo = "img/sda.png";
-
-    if (val === "native" || !val) {
-        window.selectedTokenData = {
-            symbol:   "SDA",
-            type:     "native",
-            decimals: 18,
-            logo:     "img/sda.png"
-        };
-    } else {
-        const token = (window.TOKENS || []).find(t => t.address === val);
-        if (token) {
-            logo = token.logo || "img/default.png";
-            window.selectedTokenData = {
-                ...token,
-                type:     "erc20",
-                decimals: token.decimals || 18
-            };
-        }
-    }
-
-    // sync dropdown
-    const mainSelect = document.getElementById("tokenSelect");
-    const sendSelect = document.getElementById("sendTokenSelect");
-    if (mainSelect) mainSelect.value = val;
-    if (sendSelect) sendSelect.value = val;
-
-    // sync icon
-    if (window.tokenLogoBalance)  window.tokenLogoBalance.src  = logo;
-    if (window.tokenLogoDropdown) window.tokenLogoDropdown.src = logo;
-
-    // sync modul lain
-    syncSendTokenUI?.();
-    applySendTokenState?.();
-    loadBalance?.();
-    updateSendBalance?.();
-    renderAssets?.();
+function setGlobalToken() {
+    window.selectedToken     = "native";
+    window.selectedTokenData = { symbol: "SDA", type: "native", decimals: 18, logo: "img/sda.png" };
 }
+window.setGlobalToken = setGlobalToken;
+localStorage.removeItem("selectedToken");
 
 
 // =====================================
