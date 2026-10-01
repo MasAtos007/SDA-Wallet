@@ -172,13 +172,14 @@ function showWelcomeScreen() {
             <div style="position:absolute;top:16px;right:16px;">
                 <button onclick="document.getElementById('welcomeLangMenu').style.display=document.getElementById('welcomeLangMenu').style.display==='none'?'block':'none'" style="background:#1a1a1a;border:1px solid #333;border-radius:10px;color:#fff;font-size:13px;padding:7px 12px;cursor:pointer;display:flex;align-items:center;gap:6px;">
                     <i class="fa-solid fa-globe"></i>
-                    <span style="display:flex;align-items:center;gap:6px;"><img src="https://flagcdn.com/w20/${CURRENT_LANG === 'en' ? 'us' : CURRENT_LANG === 'ar' ? 'sa' : 'id'}.png" style="width:18px;height:12px;border-radius:2px;object-fit:cover;"> ${CURRENT_LANG === 'en' ? 'English' : CURRENT_LANG === 'ar' ? 'العربية' : 'Indonesia'}</span>
+                    <span style="display:flex;align-items:center;gap:6px;"><img src="https://flagcdn.com/w20/${CURRENT_LANG === 'en' ? 'us' : CURRENT_LANG === 'ar' ? 'sa' : CURRENT_LANG === 'vi' ? 'vn' : 'id'}.png" style="width:18px;height:12px;border-radius:2px;object-fit:cover;"> ${CURRENT_LANG === 'en' ? 'English' : CURRENT_LANG === 'ar' ? 'العربية' : CURRENT_LANG === 'vi' ? 'Tiếng Việt' : 'Indonesia'}</span>
                     <i class="fa-solid fa-chevron-down" style="font-size:10px;"></i>
                 </button>
                 <div id="welcomeLangMenu" style="display:none;position:absolute;right:0;top:40px;background:#1a1a1a;border:1px solid #333;border-radius:12px;overflow:hidden;min-width:140px;z-index:10;">
                     <div onclick="setLanguage('id');document.getElementById('welcomeLangMenu').style.display='none'" style="padding:12px 16px;cursor:pointer;color:#fff;font-size:13px;display:flex;align-items:center;gap:8px;"><img src="https://flagcdn.com/w20/id.png" style="width:18px;height:12px;border-radius:2px;object-fit:cover;"> Indonesia</div>
                     <div onclick="setLanguage('ar');document.getElementById('welcomeLangMenu').style.display='none'" style="padding:12px 16px;cursor:pointer;color:#fff;font-size:13px;display:flex;align-items:center;gap:8px;border-top:1px solid #333;"><img src="https://flagcdn.com/w20/sa.png" style="width:18px;height:12px;border-radius:2px;object-fit:cover;"> العربية</div>
                     <div onclick="setLanguage('en');document.getElementById('welcomeLangMenu').style.display='none'" style="padding:12px 16px;cursor:pointer;color:#fff;font-size:13px;display:flex;align-items:center;gap:8px;border-top:1px solid #333;"><img src="https://flagcdn.com/w20/us.png" style="width:18px;height:12px;border-radius:2px;object-fit:cover;"> English</div>
+                    <div onclick="setLanguage('vi');document.getElementById('welcomeLangMenu').style.display='none'" style="padding:12px 16px;cursor:pointer;color:#fff;font-size:13px;display:flex;align-items:center;gap:8px;border-top:1px solid #333;"><img src="https://flagcdn.com/w20/vn.png" style="width:18px;height:12px;border-radius:2px;object-fit:cover;"> Tiếng Việt</div>
                 </div>
             </div>
             <img src="img/logo.png" style="width:72px;height:72px;border-radius:20px;margin-bottom:16px;" onerror="this.style.display='none'">
@@ -296,20 +297,22 @@ function showCreateSeedScreen() {
 // -------------------------------------
 // SCREEN: VERIFIKASI SEED PHRASE
 // -------------------------------------
-function showVerifySeedScreen() {
+function showVerifySeedScreen(keepQuiz) {
     const { walletData } = _onboardState;
     if (!walletData) { showWelcomeScreen(); return; }
+    _onboardState.screen = "VERIFY_SEED";
 
-    const quiz = generateVerifyQuiz(walletData.mnemonic);
+    // keepQuiz=true dipakai saat ganti bahasa: soal tidak diacak ulang
+    const quiz = (keepQuiz && _onboardState.quizItems) ? _onboardState.quizItems : generateVerifyQuiz(walletData.mnemonic);
     _onboardState.quizItems   = quiz;
     _onboardState.quizAnswers = {};
 
     const fields = quiz.map((q, i) => `
         <div style="margin-bottom:16px;">
-            <div style="font-size:13px;color:#888;margin-bottom:6px;">${q.label}</div>
+            <div style="font-size:13px;color:#888;margin-bottom:6px;">${(LANG[CURRENT_LANG]?.verify_word_label || 'Word #{n}').replace('{n}', q.index + 1)}</div>
             <input id="quizInput_${i}" type="text"
                 autocomplete="off" autocorrect="off" spellcheck="false"
-                placeholder="Masukkan kata ke-${q.index + 1}..."
+                placeholder="${(LANG[CURRENT_LANG]?.verify_placeholder || 'Enter word #{n}...').replace('{n}', q.index + 1)}"
                 style="width:100%;box-sizing:border-box;padding:14px 16px;background:#141414;border:1px solid #2a2a2a;border-radius:12px;color:#fff;font-size:15px;outline:none;"
                 oninput="this.style.borderColor='#333';document.getElementById('verifyError').style.display='none';">
         </div>
@@ -411,7 +414,7 @@ function showImportPhraseScreen() {
                 autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" rows="4"
                 style="width:100%;box-sizing:border-box;padding:14px 16px;background:#141414;border:1px solid #2a2a2a;border-radius:12px;color:#fff;font-size:15px;outline:none;resize:none;line-height:1.6;margin-bottom:8px;"
                 oninput="this.style.borderColor='#333';_validatePhraseInput(this.value);document.getElementById('importPhraseError').style.display='none';"></textarea>
-            <div id="importPhraseHint" style="font-size:12px;color:#555;margin-bottom:16px;">0 kata</div>
+            <div id="importPhraseHint" style="font-size:12px;color:#555;margin-bottom:16px;">0 ${LANG[CURRENT_LANG]?.words_label || 'words'}</div>
             <div id="importPhraseError" style="display:none;color:#ff4444;font-size:13px;padding:10px 14px;background:#2a0000;border-radius:10px;margin-bottom:12px;"></div>
             <button onclick="_submitImportPhrase()" style="width:100%;padding:16px;background:#ff7a00;border:none;border-radius:14px;color:#fff;font-size:16px;font-weight:600;cursor:pointer;">${LANG[CURRENT_LANG]?.import_btn || 'Import'}</button>
         </div>
@@ -503,7 +506,7 @@ function _pkMaskInput(inp) {
         inp.dataset.pkReal = displayVal;
     }
     var hint = document.getElementById("importPKHint");
-    if (hint) { var len = inp.dataset.pkReal.length; hint.textContent = len > 0 ? len + " karakter" : ""; }
+    if (hint) { var len = inp.dataset.pkReal.length; hint.textContent = len > 0 ? len + " " + (LANG[CURRENT_LANG]?.chars_label || "characters") : ""; }
     document.getElementById("importPKError").style.display = "none";
 }
 
@@ -519,7 +522,7 @@ function _pkHandlePaste(event, inp) {
     var newPos = start + pasted.length;
     try { inp.setSelectionRange(newPos, newPos); } catch(e){}
     var hint = document.getElementById("importPKHint");
-    if (hint) hint.textContent = real.length + " karakter";
+    if (hint) hint.textContent = real.length + " " + (LANG[CURRENT_LANG]?.chars_label || "characters");
     document.getElementById("importPKError").style.display = "none";
 }
 
@@ -549,7 +552,7 @@ async function _importPKPaste() {
     inp.dataset.pkReal = text;
     inp.value = window._pkMasked ? "*".repeat(text.length) : text;
     const hint = document.getElementById("importPKHint");
-    if (hint) hint.textContent = text.length + " karakter";
+    if (hint) hint.textContent = text.length + " " + (LANG[CURRENT_LANG]?.chars_label || "characters");
     showToast?.(LANG[CURRENT_LANG]?.toast_pk_pasted || "Private key dipaste", "success");
 }
 
@@ -921,10 +924,6 @@ function showWalletManageScreen() {
                 <div style="width:34px;height:34px;min-width:34px;background:rgba(102,153,255,0.15);border-radius:10px;display:flex;align-items:center;justify-content:center;color:#6699ff;font-size:14px;"><i class="fa-solid fa-file-import"></i></div>
                 ${LANG[CURRENT_LANG]?.import_external_btn || 'Import dari Seed / PK Lain'}
             </button>
-            <button onclick="showConnectedSitesScreen()" style="width:100%;padding:14px 16px;background:#141414;border:1px solid #2a2a2a;border-radius:14px;color:#fff;font-size:14px;cursor:pointer;margin-bottom:10px;display:flex;align-items:center;gap:12px;">
-                <div style="width:34px;height:34px;min-width:34px;background:rgba(0,255,136,0.12);border-radius:10px;display:flex;align-items:center;justify-content:center;color:#00cc66;font-size:14px;"><i class="fa-solid fa-link"></i></div>
-                ${LANG[CURRENT_LANG]?.connected_sites_title || 'Situs Terhubung'}
-            </button>
             <button onclick="showSetPINScreen(true)" style="width:100%;padding:14px 16px;background:#141414;border:1px solid #2a2a2a;border-radius:14px;color:#fff;font-size:14px;cursor:pointer;margin-bottom:10px;display:flex;align-items:center;gap:12px;">
                 <div style="width:34px;height:34px;min-width:34px;background:rgba(153,102,255,0.15);border-radius:10px;display:flex;align-items:center;justify-content:center;color:#a370ff;font-size:14px;"><i class="fa-solid fa-key"></i></div>
                 ${LANG[CURRENT_LANG]?.pin_change_title || 'Ubah PIN'}
@@ -935,88 +934,6 @@ function showWalletManageScreen() {
             </button>
         </div>
     `);
-}
-
-// -------------------------------------
-// SCREEN: SITUS TERHUBUNG (dApp connections)
-// -------------------------------------
-function showConnectedSitesScreen() {
-    window._pinContext = "wallet";
-    window._onboardState.screen = "CONNECTED_SITES";
-
-    if (!SESSION.unlocked) { showPINUnlockScreen(); return; }
-
-    const L = LANG[CURRENT_LANG] || {};
-
-    _showOnboarding(`
-        <div style="padding:24px 24px 100px;max-width:420px;margin:0 auto;box-sizing:border-box;">
-            <div style="display:flex;align-items:center;gap:14px;margin-bottom:24px;">
-                <button onclick="showWalletManageScreen()" style="width:40px;height:40px;min-width:40px;background:#1a1a1a;border:none;border-radius:12px;color:#fff;font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;">
-                    <i class="fa-solid fa-arrow-left"></i>
-                </button>
-                <div>
-                    <div style="font-size:19px;font-weight:700;color:#fff;line-height:1.3;">${L.connected_sites_title || 'Situs Terhubung'}</div>
-                    <div style="font-size:12px;color:#888;margin-top:2px;">${L.connected_sites_subtitle || 'dApp yang punya izin melihat alamat wallet kamu'}</div>
-                </div>
-            </div>
-            <div id="connectedSitesList"></div>
-            <button id="connectedSitesDisconnectAll" style="display:none;width:100%;margin-top:16px;padding:14px 16px;background:#1a0000;border:1px solid #ff333330;border-radius:14px;color:#ff6666;font-size:14px;cursor:pointer;">
-                ${L.connected_sites_disconnect_all || 'Cabut Semua'}
-            </button>
-        </div>
-    `);
-
-    _renderConnectedSites();
-}
-
-function _renderConnectedSites() {
-    const L    = LANG[CURRENT_LANG] || {};
-    const el   = document.getElementById("connectedSitesList");
-    const allB = document.getElementById("connectedSitesDisconnectAll");
-    if (!el) return;
-
-    const esc = s => String(s == null ? "" : s).replace(/[&<>"']/g,
-        c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
-    const host = o => { try { return new URL(o).hostname.replace(/^www\./, ""); } catch { return o; } };
-    const shortAddr = a => a ? a.slice(0, 8) + "..." + a.slice(-4) : "-";
-
-    const all = window.dappConnectionManager?.getAll?.() || [];
-
-    if (!all.length) {
-        el.innerHTML = `<div style="text-align:center;padding:48px 0;color:#666;font-size:13px;">${esc(L.connected_sites_empty || 'Belum ada dApp yang terhubung')}</div>`;
-        if (allB) allB.style.display = "none";
-        return;
-    }
-
-    el.innerHTML = all.map(c => `
-        <div style="background:#0d0d0d;border:1px solid #222;border-radius:14px;margin-bottom:10px;padding:14px;display:flex;align-items:center;gap:12px;">
-            <div style="width:40px;height:40px;min-width:40px;border-radius:10px;background:#1a1a1a;border:1px solid #2a2a2a;overflow:hidden;display:flex;align-items:center;justify-content:center;color:#555;">
-                <img src="https://www.google.com/s2/favicons?domain=${esc(host(c.origin))}&sz=64" onerror="this.style.display='none'" style="width:100%;height:100%;">
-            </div>
-            <div style="flex:1;min-width:0;">
-                <div style="font-size:14px;font-weight:600;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${esc(host(c.origin))}</div>
-                <div style="font-size:11px;color:#555;font-family:monospace;margin-top:2px;">${esc(shortAddr(c.address))}</div>
-            </div>
-            <button class="cs-disconnect" data-origin="${esc(c.origin)}" style="background:rgba(255,68,68,0.12);border:1px solid rgba(255,68,68,0.25);color:#ff6666;padding:8px 14px;border-radius:10px;font-size:12px;font-weight:600;cursor:pointer;flex-shrink:0;">
-                ${esc(L.connected_sites_disconnect || 'Cabut')}
-            </button>
-        </div>
-    `).join("");
-
-    el.querySelectorAll(".cs-disconnect").forEach(btn => {
-        btn.onclick = () => {
-            window.dappConnectionManager.disconnect(btn.dataset.origin);
-            _renderConnectedSites();
-        };
-    });
-
-    if (allB) {
-        allB.style.display = "block";
-        allB.onclick = () => {
-            window.dappConnectionManager.disconnectAll();
-            _renderConnectedSites();
-        };
-    }
 }
 
 // -------------------------------------
@@ -1082,7 +999,7 @@ function _showAccountDetail(index) {
                 <i class="fa-solid fa-eye"></i> ${L.detail_pk_show || 'Tampilkan Private Key'}
             </button>
             <div id="pkRevealBox" style="display:none;margin-top:16px;background:#0d0d0d;border:1px solid #2a2a2a;border-radius:14px;padding:14px 16px;">
-                <div style="font-size:11px;color:#888;margin-bottom:6px;">Private Key</div>
+                <div style="font-size:11px;color:#888;margin-bottom:6px;">${LANG[CURRENT_LANG]?.detail_pk_label || 'Private Key'}</div>
                 <div style="display:flex;align-items:flex-start;gap:8px;">
                     <div id="pkRevealText" style="flex:1;font-size:10.5px;color:#fff;font-family:monospace;word-break:break-all;line-height:1.7;user-select:all;"></div>
                     <button onclick="_copyPKFromDetail();_flashBtn(this)" style="background:#1a1a1a;border:none;color:#ff7a00;font-size:13px;cursor:pointer;padding:0;width:30px;height:30px;min-width:30px;border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0;" title="${L.detail_pk_copy || 'Salin private key'}"><i class="fa-solid fa-copy"></i></button>
@@ -1194,7 +1111,7 @@ function showAddAccountScreen() {
             </div>
             <div style="margin-bottom:16px;">
                 <div style="font-size:13px;color:#888;margin-bottom:6px;">${LANG[CURRENT_LANG]?.add_account_name_label || 'Nama Account (opsional)'}</div>
-                <input id="newAccountName" type="text" placeholder="Account ${nextIndex + 1}"
+                <input id="newAccountName" type="text" placeholder="${(LANG[CURRENT_LANG]?.account_default_placeholder || 'Account {n}').replace('{n}', nextIndex + 1)}"
                     style="width:100%;box-sizing:border-box;padding:14px 16px;background:#141414;border:1px solid #2a2a2a;border-radius:12px;color:#fff;font-size:15px;outline:none;">
             </div>
             <div style="margin-bottom:16px;">
@@ -1262,7 +1179,7 @@ function showImportExternalPKScreen() {
                     autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" rows="3"
                     style="width:100%;box-sizing:border-box;padding:12px 14px;background:#141414;border:1px solid #2a2a2a;border-radius:12px;color:#fff;font-size:14px;outline:none;resize:none;line-height:1.6;margin-bottom:6px;"
                     oninput="_validatePhraseInput2(this.value)"></textarea>
-                <div id="extSeedHint" style="font-size:12px;color:#555;margin-bottom:12px;">0 kata</div>
+                <div id="extSeedHint" style="font-size:12px;color:#555;margin-bottom:12px;">0 ${LANG[CURRENT_LANG]?.words_label || 'words'}</div>
             </div>
             <div id="panelPK" style="display:none;">
                 <div style="font-size:13px;color:#888;margin-bottom:6px;">${LANG[CURRENT_LANG]?.import_ext_pk_label || 'Private Key (0x...)'}</div>
@@ -1283,7 +1200,7 @@ function showImportExternalPKScreen() {
             </div>
             <div style="margin-bottom:16px;">
                 <div style="font-size:13px;color:#888;margin-bottom:6px;">${LANG[CURRENT_LANG]?.import_ext_name_label || 'Nama Account (opsional)'}</div>
-                <input id="extAccountName" type="text" placeholder="Imported Account"
+                <input id="extAccountName" type="text" placeholder="${LANG[CURRENT_LANG]?.import_ext_default_name || 'Imported Account'}"
                     style="width:100%;box-sizing:border-box;padding:12px 14px;background:#141414;border:1px solid #2a2a2a;border-radius:12px;color:#fff;font-size:14px;outline:none;">
             </div>
             <div style="margin-bottom:16px;">
@@ -1309,7 +1226,7 @@ function _extPkMaskInput(inp) {
         try { inp.setSelectionRange(cursorPos, cursorPos); } catch(e){}
     } else { inp.dataset.pkReal = displayVal; }
     var hint = document.getElementById("extPKHint");
-    if (hint) { var len = inp.dataset.pkReal.length; hint.textContent = len > 0 ? len + " karakter" : ""; }
+    if (hint) { var len = inp.dataset.pkReal.length; hint.textContent = len > 0 ? len + " " + (LANG[CURRENT_LANG]?.chars_label || "characters") : ""; }
 }
 
 function _extPkHandlePaste(event, inp) {
@@ -1321,7 +1238,7 @@ function _extPkHandlePaste(event, inp) {
     var newPos = start + pasted.length;
     try { inp.setSelectionRange(newPos, newPos); } catch(e){}
     var hint = document.getElementById("extPKHint");
-    if (hint) hint.textContent = real.length + " karakter";
+    if (hint) hint.textContent = real.length + " " + (LANG[CURRENT_LANG]?.chars_label || "characters");
 }
 
 function _extPkToggle() {
@@ -1347,7 +1264,7 @@ async function _extPkPaste() {
     inp.dataset.pkReal = text;
     inp.value = window._extPkMasked ? "*".repeat(text.length) : text;
     const hint = document.getElementById("extPKHint");
-    if (hint) hint.textContent = text.length + " karakter";
+    if (hint) hint.textContent = text.length + " " + (LANG[CURRENT_LANG]?.chars_label || "characters");
     showToast?.(LANG[CURRENT_LANG]?.toast_pk_pasted || "Private key dipaste", "success");
 }
 
