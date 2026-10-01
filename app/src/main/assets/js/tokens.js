@@ -77,14 +77,199 @@ function normalizeToken(t) {
         type:      t.type     || "erc20",
         isNative:  t.address  === "native",
         manual:    t.manual   || false,
-        userAdded: t.userAdded || false
+        userAdded: t.userAdded || false,
+        // Token hasil Dynamic Token Discovery (Blockscout) — belum diverifikasi user
+        isSpamDetected: t.isSpamDetected || false
     };
 }
+
+// =====================================
+// SANITIZER — untuk teks token dari sumber luar (Blockscout).
+// Nama/simbol token spam bebas diisi siapa saja, dan nanti
+// masuk ke innerHTML (renderAssets, openTokenDropdown), jadi
+// karakter HTML dibuang di sini, satu pintu masuk.
+// =====================================
+function sanitizeTokenText(str, maxLen, fallback) {
+    const clean = String(str == null ? "" : str)
+        .replace(/[\u0000-\u001F\u007F]/g, "")
+        .replace(/[<>"'`&\\]/g, "")
+        .trim()
+        .slice(0, maxLen || 32);
+    return clean || fallback || "";
+}
+window.sanitizeTokenText = sanitizeTokenText;
+
+// =====================================
+// VERIFIED + LOGO HELPERS
+// "Verified" = alamat token ada di data/tokens.json (DEFAULT_TOKENS).
+// Logo: kalau tidak ada file logo asli (kosong / default.png / gagal
+// dimuat) otomatis diganti avatar bulat berisi inisial simbol token.
+// Avatar dibuat sebagai SVG data-URI, jadi tetap berupa <img> —
+// ukuran/class/ID elemen yang sudah ada tidak berubah.
+// =====================================
+function isVerifiedToken(address) {
+    if (!address || address === "native") return true;
+    const a = String(address).toLowerCase();
+    return (DEFAULT_TOKENS || []).some(x => (x.address || "").toLowerCase() === a);
+}
+
+function tokenInitials(symbol) {
+    const s = String(symbol || "").replace(/[^A-Za-z0-9]/g, "");
+    return (s.slice(0, 2) || "?").toUpperCase();
+}
+
+function tokenAvatarURI(symbol) {
+    const ini = tokenInitials(symbol);
+    let h = 0;
+    for (const ch of String(symbol || "?")) h = (h * 31 + ch.charCodeAt(0)) % 360;
+    const svg =
+        '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">' +
+        '<circle cx="32" cy="32" r="32" fill="hsl(' + h + ',45%,32%)"/>' +
+        '<text x="32" y="32" dy=".35em" text-anchor="middle" ' +
+        'font-family="Arial,Helvetica,sans-serif" font-weight="700" font-size="26" fill="#fff">' +
+        ini + '</text></svg>';
+    return "data:image/svg+xml;charset=utf-8," + encodeURIComponent(svg);
+}
+
+function hasRealLogo(logo) {
+    return !!logo && !/(^|\/)default\.png$/i.test(String(logo));
+}
+
+// Set ikon token pada <img> yang sudah ada di index.html (ID tetap).
+function setTokenImg(img, logo, symbol) {
+    if (!img) return;
+    img.dataset.symbol = symbol || "";
+    img.onerror = function () { tokenLogoFallback(this); };
+    img.src = tokenLogoSrc(logo, symbol);
+}
+window.setTokenImg = setTokenImg;
+
+function tokenLogoSrc(logo, symbol) {
+    return hasRealLogo(logo) ? logo : tokenAvatarURI(symbol);
+}
+
+// Dipakai sebagai onerror="tokenLogoFallback(this)".
+// Simbol dibaca dari data-symbol (atau alt).
+function tokenLogoFallback(img) {
+    if (!img) return;
+    if (String(img.src || "").indexOf("data:image/svg+xml") === 0) return; // anti-loop
+    img.src = tokenAvatarURI(img.dataset?.symbol || img.alt || "?");
+}
+
+function _escAttr(s) {
+    return String(s == null ? "" : s).replace(/[&<>"']/g, c =>
+        ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+}
+
+// opts: { size, cls, style }
+function tokenLogoHTML(token, opts) {
+    opts = opts || {};
+    const symbol = token?.symbol || "?";
+    const logo   = token?.logo || token?.icon;
+    const sizeCss = opts.size
+        ? "width:" + opts.size + "px;height:" + opts.size + "px;border-radius:50%;object-fit:contain;"
+        : "";
+    return '<img src="' + _escAttr(tokenLogoSrc(logo, symbol)) + '"' +
+        ' data-symbol="' + _escAttr(symbol) + '"' +
+        (opts.cls ? ' class="' + _escAttr(opts.cls) + '"' : "") +
+        ' style="' + sizeCss + (opts.style || "") + '"' +
+        ' onerror="tokenLogoFallback(this)">';
+}
+
+// Ikon status di samping nama token:
+// centang hijau = ada di tokens.json, tanda seru = tidak terverifikasi
+function tokenVerifyBadgeHTML(address) {
+    if (isVerifiedToken(address)) {
+        return '<i class="fa-solid fa-circle-check token-verify ok" ' +
+            'title="' + _escAttr(_t("token_verified", "Terverifikasi")) + '" ' +
+            'style="color:#00cc66;font-size:12px;margin-left:5px;"></i>';
+    }
+    return '<i class="fa-solid fa-circle-exclamation token-verify warn" ' +
+        'title="' + _escAttr(_t("token_unverified", "Tidak terverifikasi")) + '" ' +
+        'onclick="event.stopPropagation();showToast?.(_t(\'token_unverified_note\',' +
+        '\'Token tidak ada di daftar resmi. Hati-hati sebelum berinteraksi.\'),\'error\')" ' +
+        'style="color:#ff9f1a;font-size:12px;margin-left:5px;cursor:pointer;"></i>';
+}
+
+// =====================================
+// RESOLVE TOKEN META — untuk token yang TIDAK ada di tokens.json /
+// customTokens (mis. pasangan LP dari token luar). Baca symbol, name,
+// decimals langsung dari kontrak, lalu cache.
+// Teks dari kontrak disanitasi karena kontrak bebas mengisi apa saja.
+// =====================================
+const _tokenMetaCache = Object.create(null);
+const TOKEN_META_LS_KEY = "tokenMetaCache_v1";
+
+async function resolveTokenMeta(address) {
+    if (!address) return null;
+    const key = String(address).toLowerCase();
+
+    const known = getAllTokens().find(x => (x.address || "").toLowerCase() === key);
+    if (known) return known;
+
+    if (_tokenMetaCache[key]) return _tokenMetaCache[key];
+
+    let ls = {};
+    try { ls = JSON.parse(localStorage.getItem(TOKEN_META_LS_KEY) || "{}"); } catch {}
+    if (ls[key]) return (_tokenMetaCache[key] = ls[key]);
+
+    const prov = window.provider || (typeof provider !== "undefined" ? provider : null);
+    const shortAddr = address.slice(0, 6) + "…" + address.slice(-4);
+    const fallback = {
+        symbol: shortAddr, name: shortAddr, address, decimals: 18,
+        logo: "img/default.png", type: "erc20", isNative: false,
+        manual: false, userAdded: false, isSpamDetected: false, isUnresolved: true
+    };
+    if (!prov) return fallback;
+
+    const abi = [
+        "function symbol() view returns (string)",
+        "function name() view returns (string)",
+        "function decimals() view returns (uint8)"
+    ];
+    const c = new ethers.Contract(address, abi, prov);
+    const guard = p => Promise.race([
+        p, new Promise((_, rej) => setTimeout(() => rej(new Error("timeout")), 6000))
+    ]);
+
+    const [sym, name, dec] = await Promise.all([
+        guard(c.symbol()).catch(() => null),
+        guard(c.name()).catch(() => null),
+        guard(c.decimals()).catch(() => null)
+    ]);
+
+    // Semua gagal (RPC down / bukan ERC-20): jangan di-cache
+    if (sym == null && dec == null) return fallback;
+
+    const decN = Number(dec);
+    const meta = {
+        symbol:   sanitizeTokenText(sym, 12, shortAddr),
+        name:     sanitizeTokenText(name, 32, sanitizeTokenText(sym, 12, shortAddr)),
+        address,
+        decimals: Number.isInteger(decN) && decN >= 0 && decN <= 36 ? decN : 18,
+        logo: "img/default.png", type: "erc20", isNative: false,
+        manual: false, userAdded: false, isSpamDetected: false
+    };
+
+    _tokenMetaCache[key] = meta;
+    try {
+        ls[key] = meta;
+        localStorage.setItem(TOKEN_META_LS_KEY, JSON.stringify(ls));
+    } catch {}
+    return meta;
+}
+window.resolveTokenMeta = resolveTokenMeta;
 
 
 // =====================================
 // STORAGE HELPERS
 // =====================================
+// Batas MAX_CUSTOM_TOKENS HANYA menghitung token yang user tambah
+// sendiri. Token hasil Deteksi Saldo (JSON / luar) tidak dibatasi,
+// supaya token yang punya saldo selalu ikut tampil di tab Aset.
+function _manualTokenCount(list) {
+    return (list || []).filter(x => x && x.userAdded).length;
+}
 function getCustomTokens() {
     try   { return JSON.parse(localStorage.getItem("customTokens") || "[]"); }
     catch { return []; }
@@ -230,8 +415,9 @@ function setGlobalToken(val) {
     // Sync icon
     const logoBalance  = document.getElementById("tokenLogoBalance");
     const logoDropdown = document.getElementById("tokenLogoDropdown");
-    if (logoBalance)  logoBalance.src  = logo;
-    if (logoDropdown) logoDropdown.src = logo;
+    const _sym = window.selectedTokenData?.symbol || "SDA";
+    setTokenImg(logoBalance,  logo, _sym);
+    setTokenImg(logoDropdown, logo, _sym);
 
     // Sync semua modul
     syncSendTokenUI?.();
@@ -284,11 +470,9 @@ function openTokenDropdown(target) {
         <div class="token-item"
              data-address="${t.address}"
              data-symbol="${t.symbol.toLowerCase()}">
-            <img src="${t.logo || 'img/default.png'}"
-                 onerror="this.src='img/default.png'"
-                 style="width:28px;height:28px;border-radius:50%;object-fit:contain;">
+            ${tokenLogoHTML(t, { size: 28, style: "flex-shrink:0;" })}
             <div>
-                <b>${t.symbol}</b><br>
+                <b>${t.symbol}</b>${tokenVerifyBadgeHTML(t.address)}<br>
                 <small style="color:#888;">${t.name}</small>
             </div>
         </div>
@@ -348,7 +532,7 @@ async function addTokenFromList(token) {
 
     let custom = getCustomTokens();
 
-    if (custom.length >= (window.MAX_CUSTOM_TOKENS ?? Infinity)) {
+    if (_manualTokenCount(custom) >= (window.MAX_CUSTOM_TOKENS ?? Infinity)) {
         return showToast(t("max_token") || "Max token reached", "error");
     }
 
@@ -412,7 +596,7 @@ async function addToken(symbol, address) {
 
     let custom = getCustomTokens();
 
-    if (custom.length >= (window.MAX_CUSTOM_TOKENS ?? Infinity)) {
+    if (_manualTokenCount(custom) >= (window.MAX_CUSTOM_TOKENS ?? Infinity)) {
         return showToast(t("max_token") || "Max token reached", "error");
     }
 
@@ -726,7 +910,7 @@ function ensureTokenTracked(addr) {
 
     if (!meta) return; // token tidak dikenal sama sekali — skip, tidak bisa dapat symbol/decimals
 
-    if (custom.length >= (window.MAX_CUSTOM_TOKENS ?? Infinity)) return; // hormati limit
+    if (_manualTokenCount(custom) >= (window.MAX_CUSTOM_TOKENS ?? Infinity)) return; // hormati limit
 
     custom.push({ ...meta, manual: true, userAdded: true });
     saveCustomTokens(custom);
