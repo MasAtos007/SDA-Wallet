@@ -150,14 +150,28 @@ public class AndroidBridge {
     // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     @JavascriptInterface
     public void openBrowser(String url) {
-        final String safeUrl = url != null ? url : "https://www.sidrachain.com";
+        // url kosong/null = buka browser di halaman awal (pilihan link resmi Sidra)
+        final String safeUrl = url != null ? url : "";
         mainHandler.post(() -> {
+            // Kalau browser sudah hidup: pakai lagi (tab tetap terjaga), jangan buat dobel
+            com.sidrachain.wallet.browser.BrowserActivity existing =
+                com.sidrachain.wallet.browser.BrowserActivity.instance;
+            if (existing != null) {
+                existing.openFromWallet(safeUrl);
+                return;
+            }
             Intent intent = new Intent(context,
                 com.sidrachain.wallet.browser.BrowserActivity.class);
-            intent.putExtra("url", safeUrl);
+            if (!safeUrl.isEmpty()) intent.putExtra("url", safeUrl);
             intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
             context.startActivity(intent);
         });
+    }
+
+    // Dipanggil tombol "Browser" di dashboard wallet
+    @JavascriptInterface
+    public void openBrowserHome() {
+        openBrowser("");
     }
 
     @JavascriptInterface
