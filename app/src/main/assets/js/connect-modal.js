@@ -188,6 +188,13 @@
         .sidra-tx-row:last-child { border-bottom: none; }
         .sidra-tx-key { font-size: 12px; color: #666; }
         .sidra-tx-val { font-size: 12px; color: #ccc; font-family: monospace; }
+        .sidra-wallet-chip {
+            display: inline-flex; align-items: center; gap: 6px;
+            background: #1a1a1a; border: 1px solid #2a2a2a;
+            border-radius: 20px; padding: 3px 10px 3px 4px;
+            font-size: 11px; color: #ddd; font-family: inherit;
+            margin-bottom: 10px;
+        }
     `;
 
     // ─────────────────────────────────────────
@@ -199,6 +206,42 @@
         style.id = "sidra-modal-css";
         style.textContent = MODAL_CSS;
         document.head.appendChild(style);
+    }
+
+    // ─────────────────────────────────────────
+    // IDENTITAS WALLET (satu sumber kebenaran)
+    // ─────────────────────────────────────────
+    const WALLET_NAME = "Sidra Wallet";
+    const WALLET_LOGO = "img/logo.png";
+    // Fallback inline (SVG data URI) kalau img/logo.png gagal dimuat
+    const WALLET_LOGO_FALLBACK =
+        "data:image/svg+xml;utf8," + encodeURIComponent(
+        '<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64">' +
+        '<rect width="64" height="64" rx="14" fill="#1a1a1a"/>' +
+        '<path d="M16 24h32a4 4 0 0 1 4 4v16a4 4 0 0 1-4 4H16a4 4 0 0 1-4-4V28a4 4 0 0 1 4-4zm0 0V20a4 4 0 0 1 4-4h24" ' +
+        'fill="none" stroke="#ff7a00" stroke-width="3" stroke-linecap="round"/>' +
+        '<circle cx="42" cy="36" r="3" fill="#ff7a00"/></svg>');
+
+    // Dipakai handler onerror: ganti sekali saja (hindari loop error)
+    window._sidraLogoFallback = function (img) {
+        if (!img || img.dataset.fb) return;
+        img.dataset.fb = "1";
+        img.src = WALLET_LOGO_FALLBACK;
+    };
+
+    function _walletLogoHTML(size) {
+        const px = size || 20;
+        return `<img src="${WALLET_LOGO}" alt="${WALLET_NAME}" width="${px}" height="${px}"
+                     style="border-radius:6px;object-fit:cover;display:block"
+                     onerror="window._sidraLogoFallback(this)">`;
+    }
+
+    // ─────────────────────────────────────────
+    // i18n: pakai LANG[CURRENT_LANG], fallback ke default (id)
+    // ─────────────────────────────────────────
+    function _t(key, fallback) {
+        const L = window.LANG && window.LANG[window.CURRENT_LANG || "id"];
+        return (L && L[key]) || fallback;
     }
 
     // ─────────────────────────────────────────
@@ -217,9 +260,17 @@
             </div>
         `;
 
-        // Tap outside = reject
+        // Tap outside = reject; tombol connect lewat delegasi (tanpa inline onclick,
+        // jadi origin/address tidak pernah di-interpolasi ke atribut JS)
         overlay.addEventListener("click", (e) => {
-            if (e.target === overlay) _onUserReject("connect");
+            if (e.target === overlay) { window._onUserReject("connect"); return; }
+            const btn = e.target.closest("[data-sidra-action]");
+            if (!btn) return;
+            if (btn.dataset.sidraAction === "approve-connect") {
+                window._onUserApproveConnect(btn.dataset.origin, btn.dataset.address);
+            } else if (btn.dataset.sidraAction === "reject-connect") {
+                window._onUserReject("connect");
+            }
         });
 
         document.body.appendChild(overlay);
@@ -289,30 +340,33 @@
 
         _createOverlay(`
             <div class="sidra-modal-header">
+                <div class="sidra-wallet-chip">
+                    ${_walletLogoHTML(20)}<span>${WALLET_NAME}</span>
+                </div>
                 <div class="sidra-modal-site">
                     <div class="sidra-modal-site-icon">
                         ${site.icon
-                            ? `<img src="${site.icon}" onerror="this.style.display='none'">`
+                            ? `<img src="${_escapeHtml(site.icon)}" onerror="this.style.display='none'">`
                             : "🌐"}
                     </div>
                     <div>
-                        <div class="sidra-modal-site-name">${site.name}</div>
-                        <div class="sidra-modal-site-url">${site.url}</div>
+                        <div class="sidra-modal-site-name">${_escapeHtml(site.name)}</div>
+                        <div class="sidra-modal-site-url">${_escapeHtml(site.url)}</div>
                     </div>
-                    ${trusted ? '<span class="sidra-badge-trusted">✓ Sidra Official</span>' : ""}
+                    ${trusted ? `<span class="sidra-badge-trusted">✓ ${_t("connect_official_badge", "Sidra Official")}</span>` : ""}
                 </div>
-                <div class="sidra-modal-title">Hubungkan Wallet?</div>
+                <div class="sidra-modal-title">${_t("connect_title", "Hubungkan Wallet?")}</div>
             </div>
 
             <div class="sidra-modal-body">
                 <p class="sidra-modal-desc">
-                    <strong style="color:#fff">${site.name}</strong> ingin mengakses wallet kamu.
+                    <strong style="color:#fff">${_escapeHtml(site.name)}</strong> ${_t("connect_wants_access", "ingin mengakses wallet kamu.")}
                 </p>
 
                 <div class="sidra-account-card">
                     <div class="sidra-account-dot"></div>
                     <div class="sidra-account-info">
-                        <div class="sidra-account-name">${accName}</div>
+                        <div class="sidra-account-name">${_escapeHtml(accName)}</div>
                         <div class="sidra-account-addr">${_shortAddr(address)}</div>
                     </div>
                     <span style="font-size:11px;color:#555;">SidraChain</span>
@@ -321,25 +375,28 @@
                 <div class="sidra-permission-list">
                     <div class="sidra-permission-item">
                         <span class="sidra-permission-icon">✓</span>
-                        Melihat alamat wallet kamu
+                        ${_t("connect_perm_address", "Melihat alamat wallet kamu")}
                     </div>
                     <div class="sidra-permission-item">
                         <span class="sidra-permission-icon">✓</span>
-                        Melihat saldo token di SidraChain
+                        ${_t("connect_perm_balance", "Melihat saldo token di SidraChain")}
                     </div>
                     <div class="sidra-permission-item">
                         <span class="sidra-permission-icon" style="color:#ff6b6b">✗</span>
-                        Tidak bisa memindahkan aset tanpa konfirmasi
+                        ${_t("connect_perm_noconfirm", "Tidak bisa memindahkan aset tanpa konfirmasi")}
                     </div>
                 </div>
+
+                ${trusted ? "" : `<div class="sidra-warning-box">⚠️ ${_t("dapp_warning", "Jangan hubungkan wallet Anda ke dApp di luar ekosistem resmi. Risiko keamanan dan kehilangan aset sepenuhnya ditanggung sendiri oleh pengguna.")}</div>`}
             </div>
 
             <div class="sidra-modal-actions">
-                <button class="sidra-btn sidra-btn-cancel" onclick="window._onUserReject('connect')">
-                    Tolak
+                <button class="sidra-btn sidra-btn-cancel" data-sidra-action="reject-connect">
+                    ${_t("connect_reject", "Tolak")}
                 </button>
-                <button class="sidra-btn sidra-btn-approve" onclick="window._onUserApproveConnect('${origin}', '${address}')">
-                    Hubungkan
+                <button class="sidra-btn sidra-btn-approve" data-sidra-action="approve-connect"
+                        data-origin="${_escapeHtml(origin)}" data-address="${_escapeHtml(address)}">
+                    ${_t("connect_approve", "Hubungkan")}
                 </button>
             </div>
         `);
@@ -349,14 +406,7 @@
     // 2. SIGN MODAL
     // Dipanggil oleh personal_sign, eth_sign
     // ─────────────────────────────────────────
-    // Param request disimpan di sini, BUKAN di atribut onclick. Sebelumnya
-    // onclick="...('${method}', "[\"0x..\"]")" memutus atribut HTML di tanda kutip
-    // pertama -> klik "Tanda Tangani"/"Kirim" -> SyntaxError diam-diam, tombol tidak respon.
-    let _pendingSign = null;
-    let _pendingTx   = null;
-
     window.openSignModal = function ({ method, params, origin }) {
-        _pendingSign = { method, params };
 
         const site    = _getSiteDisplay(origin);
         let   message = "";
@@ -410,7 +460,7 @@
                 <button class="sidra-btn sidra-btn-cancel" onclick="window._onUserReject('sign')">
                     Tolak
                 </button>
-                <button class="sidra-btn sidra-btn-approve" onclick="window._onUserApproveSign()">
+                <button class="sidra-btn sidra-btn-approve" onclick="window._onUserApproveSign('${method}', ${JSON.stringify(JSON.stringify(params))})">
                     Tanda Tangani
                 </button>
             </div>
@@ -424,7 +474,6 @@
     window.openTxModal = function ({ txParams, origin }) {
 
         const site = _getSiteDisplay(origin);
-        _pendingTx = txParams;
         const to   = txParams.to   || "-";
         const value = txParams.value
             ? parseFloat(ethers.utils.formatEther(txParams.value)).toFixed(6) + " SDA"
@@ -478,7 +527,7 @@
                 <button class="sidra-btn sidra-btn-cancel" onclick="window._onUserReject('tx')">
                     Tolak
                 </button>
-                <button class="sidra-btn sidra-btn-approve" onclick="window._onUserApproveTx()">
+                <button class="sidra-btn sidra-btn-approve" onclick="window._onUserApproveTx(${JSON.stringify(JSON.stringify(txParams))})">
                     Kirim
                 </button>
             </div>
@@ -492,30 +541,37 @@
     window._onUserApproveConnect = function (origin, address) {
         _removeOverlay();
 
+        // 1) izin (permission-manager) — dipakai provider untuk eth_accounts
         window.permissionManager?.grantPermission(origin, null, [address]);
+
+        // 2) koneksi aktif persisten (dapp-connection-manager → CONN_STORAGE_KEY).
+        //    Inilah yang ditampilkan di Settings & bisa di-disconnect.
+        try {
+            if (window.dappConnectionManager?.setActiveConnection) {
+                window.dappConnectionManager.setActiveConnection(origin, address);
+            } else {
+                console.warn("[SidraWallet] dappConnectionManager belum dimuat; koneksi tidak tercatat di Settings");
+            }
+        } catch (e) {
+            console.error("[SidraWallet] setActiveConnection gagal:", e);
+        }
+
+        // 3) resolve promise provider + broadcast event ke dApp
         window._providerOnConnect?.(address);
-        showToast?.("Wallet terhubung ✓", "success");
+
+        // 4) refresh daftar di Settings kalau sedang terbuka
+        window._refreshConnectedLists?.();
+
+        showToast?.(_t("toast_wallet_connected", "Wallet terhubung ✓"), "success");
     };
 
-    window._onUserApproveSign = async function () {
+    window._onUserApproveSign = async function (method, paramsJson) {
         _removeOverlay();
 
-        const req = _pendingSign;
-        _pendingSign = null;
-
         try {
-            if (!req) throw new Error("Permintaan tanda tangan sudah kedaluwarsa");
-            const method = req.method;
-            const params = req.params;
+            const params  = JSON.parse(paramsJson);
             const signer  = window.SESSION.signer;
             if (!signer) throw new Error("Wallet tidak aktif");
-
-            // Alamat yang diminta dApp harus sama dengan akun aktif
-            const reqAddr = method === "personal_sign" ? params[1] : params[0];
-            if (typeof reqAddr === "string" && ethers.utils.isAddress(reqAddr) &&
-                reqAddr.toLowerCase() !== String(signer.address).toLowerCase()) {
-                throw new Error("Alamat penanda tangan tidak cocok dengan akun aktif");
-            }
 
             let signature;
 
@@ -565,14 +621,11 @@
         }
     };
 
-    window._onUserApproveTx = async function () {
+    window._onUserApproveTx = async function (txParamsJson) {
         _removeOverlay();
 
-        const txParams = _pendingTx;
-        _pendingTx = null;
-
         try {
-            if (!txParams) throw new Error("Permintaan transaksi sudah kedaluwarsa");
+            const txParams = JSON.parse(txParamsJson);
             const signer   = window.SESSION.signer;
             if (!signer) throw new Error("Wallet tidak aktif");
 
@@ -628,8 +681,6 @@
     // ─────────────────────────────────────────
     window._onUserReject = function (type) {
         _removeOverlay();
-        if (type === "sign") _pendingSign = null;
-        if (type === "tx")   _pendingTx   = null;
 
         const err = new Error("User rejected the request.");
         err.code  = 4001;
@@ -680,46 +731,72 @@
     };
 
     // ─────────────────────────────────────────
-    // RENDER CONNECTED SITES LIST
-    // Untuk halaman Settings
+    // DAFTAR SITUS TERHUBUNG (Settings)
+    // Sumber utama: dappConnectionManager.renderConnectedList(containerId).
+    // Fallback: render dari permissionManager. Tombol "Cabut" memakai
+    // delegasi event (1 listener per container) dan origin lewat data-attribute.
     // ─────────────────────────────────────────
+    const _containers = new Set();
+
+    window._refreshConnectedLists = function () {
+        _containers.forEach(id => window.renderConnectedSites(id));
+    };
+
+    function _bindRevoke(el, containerId) {
+        if (el.dataset.revokeBound) return;           // cegah listener ganda
+        el.dataset.revokeBound = "1";
+        el.addEventListener("click", (e) => {
+            const btn = e.target.closest("[data-revoke-origin]");
+            if (btn) window._revokeAndRefresh(btn.dataset.revokeOrigin, containerId);
+        });
+    }
+
     window.renderConnectedSites = function (containerId) {
         const el = document.getElementById(containerId);
         if (!el) return;
+        _containers.add(containerId);
 
-        const sites = window.permissionManager?.getAll() || [];
-
-        if (!sites.length) {
-            el.innerHTML = `<p style="color:#555;font-size:13px;text-align:center;padding:20px 0">
-                Belum ada situs yang terhubung
-            </p>`;
+        // Pakai renderer manager kalau ada
+        if (typeof window.dappConnectionManager?.renderConnectedList === "function") {
+            window.dappConnectionManager.renderConnectedList(containerId);
             return;
         }
 
+        const sites = window.permissionManager?.getAll() || [];
+        if (!sites.length) {
+            el.innerHTML = `<p style="color:#555;font-size:13px;text-align:center;padding:20px 0">
+                ${_t("conn_empty", "Belum ada situs yang terhubung")}</p>`;
+            return;
+        }
+
+        const locale = ({ id: "id-ID", en: "en-US", ar: "ar" })[window.CURRENT_LANG] || "id-ID";
         el.innerHTML = sites.map(site => `
             <div style="display:flex;align-items:center;justify-content:space-between;
                         padding:12px 0;border-bottom:1px solid #1e1e1e;">
                 <div>
-                    <div style="font-size:13px;color:#fff;font-weight:600">${site.name}</div>
-                    <div style="font-size:11px;color:#555">${site.origin}</div>
+                    <div style="font-size:13px;color:#fff;font-weight:600">${_escapeHtml(site.name)}</div>
+                    <div style="font-size:11px;color:#555">${_escapeHtml(site.origin)}</div>
                     <div style="font-size:11px;color:#444;margin-top:2px">
-                        ${new Date(site.grantedAt).toLocaleDateString("id-ID")}
+                        ${new Date(site.grantedAt).toLocaleDateString(locale)}
                     </div>
                 </div>
-                <button onclick="window._revokeAndRefresh('${site.origin}', '${containerId}')"
+                <button data-revoke-origin="${_escapeHtml(site.origin)}"
                     style="background:#1e1e1e;border:1px solid #2a2a2a;color:#ff6b6b;
                            padding:6px 12px;border-radius:8px;font-size:12px;cursor:pointer">
-                    Cabut
+                    ${_t("conn_disconnect", "Cabut")}
                 </button>
             </div>
         `).join("");
+        _bindRevoke(el, containerId);
     };
 
     window._revokeAndRefresh = function (origin, containerId) {
+        // Hapus di KEDUA store supaya izin benar-benar hilang
+        try { window.dappConnectionManager?.disconnect?.(origin); } catch (e) { console.error(e); }
         window.permissionManager?.revokePermission(origin);
         window._providerOnDisconnect?.();
         window.renderConnectedSites?.(containerId);
-        showToast?.("Izin dicabut", "info");
+        showToast?.(_t("toast_permission_revoked", "Izin dicabut"), "info");
     };
 
 })();
