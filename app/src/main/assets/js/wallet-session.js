@@ -29,6 +29,11 @@ const SESSION = {
     _timer:       null
 };
 
+// PENTING: "const SESSION" di script klasik TIDAK otomatis jadi window.SESSION.
+// browser-permission-ui.js, dapp-connection-manager.js, android-provider.js
+// membaca window.SESSION -> tanpa baris ini selalu undefined ("wallet terkunci").
+window.SESSION = SESSION;
+
 const AUTO_LOCK_MINUTES = 10;
 let _isSwitchingAccount = false;
 
