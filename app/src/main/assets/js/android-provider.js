@@ -81,7 +81,7 @@
             );
             window.AndroidWallet.broadcastEvent(
                 "connect",
-                JSON.stringify({ chainId: "0x17c8d" })
+                JSON.stringify({ chainId: "0x17cad" })
             );
         } catch (e) {}
     };
