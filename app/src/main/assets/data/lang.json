@@ -481,7 +481,11 @@
     "wp_pk_rename_hint": "This wallet can only be renamed from the Manage Wallet menu (lock icon)",
     "wp_pk_delete_hint": "This wallet can only be deleted from the Manage Wallet menu (lock icon)",
     "wp_delete_confirm": "Delete wallet \"{name}\"?",
-    "lang_changed": "Language changed"
+    "lang_changed": "Language changed",
+    "verify_placeholder": "Enter word #{n}...",
+    "chars_label": "characters",
+    "account_default_placeholder": "Account {n}",
+    "import_ext_default_name": "Imported Account"
   },
   "id": {
     "app_name": "Sidra Chain",
@@ -965,7 +969,11 @@
     "wp_pk_rename_hint": "Wallet ini hanya bisa diubah nama dari menu Manage Wallet (ikon gembok)",
     "wp_pk_delete_hint": "Wallet ini hanya bisa dihapus dari menu Manage Wallet (ikon gembok)",
     "wp_delete_confirm": "Hapus wallet \"{name}\"?",
-    "lang_changed": "Bahasa diubah"
+    "lang_changed": "Bahasa diubah",
+    "verify_placeholder": "Masukkan kata ke-{n}...",
+    "chars_label": "karakter",
+    "account_default_placeholder": "Account {n}",
+    "import_ext_default_name": "Account Import"
   },
   "ar": {
     "app_name": "سيدرا تشين",
@@ -1449,7 +1457,11 @@
     "wp_pk_rename_hint": "يمكن إعادة تسمية هذه المحفظة فقط من قائمة إدارة المحفظة (أيقونة القفل)",
     "wp_pk_delete_hint": "يمكن حذف هذه المحفظة فقط من قائمة إدارة المحفظة (أيقونة القفل)",
     "wp_delete_confirm": "حذف المحفظة \"{name}\"؟",
-    "lang_changed": "تم تغيير اللغة"
+    "lang_changed": "تم تغيير اللغة",
+    "verify_placeholder": "أدخل الكلمة رقم {n}...",
+    "chars_label": "حرف",
+    "account_default_placeholder": "حساب {n}",
+    "import_ext_default_name": "حساب مستورد"
   },
   "vi": {
     "app_name": "Sidra Chain",
@@ -1933,6 +1945,10 @@
     "wp_pk_rename_hint": "Ví này chỉ có thể đổi tên từ menu Quản lý ví (biểu tượng ổ khóa)",
     "wp_pk_delete_hint": "Ví này chỉ có thể xóa từ menu Quản lý ví (biểu tượng ổ khóa)",
     "wp_delete_confirm": "Xóa ví \"{name}\"?",
-    "lang_changed": "Đã đổi ngôn ngữ"
+    "lang_changed": "Đã đổi ngôn ngữ",
+    "verify_placeholder": "Nhập từ số {n}...",
+    "chars_label": "ký tự",
+    "account_default_placeholder": "Tài khoản {n}",
+    "import_ext_default_name": "Tài khoản đã nhập"
   }
 }
