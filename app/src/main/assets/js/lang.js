@@ -54,10 +54,10 @@ function updateLangBtn() {
         text.textContent = "English";
     } else if (CURRENT_LANG === "ar") {
         flag.src = "https://flagcdn.com/w20/sa.png";
-        text.textContent = "Ø§Ù„Ø¹Ø±Ø¨ÙŠØ©";
+        text.textContent = "\u0627\u0644\u0639\u0631\u0628\u064a\u0629";
     } else if (CURRENT_LANG === "vi") {
         flag.src = "https://flagcdn.com/w20/vn.png";
-        text.textContent = "Tiáº¿ng Viá»‡t";
+        text.textContent = "Ti\u1ebfng Vi\u1ec7t";
     } else {
         flag.src = "https://flagcdn.com/w20/id.png";
         text.textContent = "Indonesia";
@@ -80,7 +80,7 @@ function applyLang(){
 
         if(langData[key]){
 
-            // ðŸ”¥ FIX: jangan overwrite icon di dalam element
+            // 🔥 FIX: jangan overwrite icon di dalam element
             if(el.children.length > 0){
                 // cari text node saja
                 el.childNodes.forEach(node => {
