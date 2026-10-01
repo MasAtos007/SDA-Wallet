@@ -508,7 +508,13 @@ function openTokenDropdown(target) {
         if (!item) return;
 
         const addr = item.dataset.address;
-        setGlobalToken(addr);
+
+        // Popup dari modal Kirim -> hanya ubah token Send (bukan dashboard)
+        if (target === "send" && typeof setSendToken === "function") {
+            setSendToken(addr);
+        } else {
+            setGlobalToken(addr);
+        }
         box.remove();
     });
 }
