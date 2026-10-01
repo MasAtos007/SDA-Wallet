@@ -44,7 +44,10 @@ function updateLangBtn() {
         text.textContent = "English";
     } else if (CURRENT_LANG === "ar") {
         flag.src = "https://flagcdn.com/w20/sa.png";
-        text.textContent = "";
+        text.textContent = "العربية";
+    } else if (CURRENT_LANG === "vi") {
+        flag.src = "https://flagcdn.com/w20/vn.png";
+        text.textContent = "Tiếng Việt";
     } else {
         flag.src = "https://flagcdn.com/w20/id.png";
         text.textContent = "Indonesia";
@@ -162,9 +165,8 @@ function setLanguage(lang){
     // TOAST
     // ==========================
     showToast(
-        lang === "id"
-        ? "Bahasa diubah"
-        : "Language changed"
+        LANG[lang]?.lang_changed ||
+        (lang === "id" ? "Bahasa diubah" : "Language changed")
     );
 
     // ==========================
