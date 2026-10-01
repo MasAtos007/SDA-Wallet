@@ -42,6 +42,9 @@ function loadSendTokens() {
 
     // ERC20
     SEND_TOKENS.forEach(t => {
+        // SDA native sudah ditambahkan manual di atas — jangan muncul 2x
+        if (t.address === "native" || t.isNative === true) return;
+
         const opt        = document.createElement("option");
         opt.value        = t.address;
         opt.textContent  = t.symbol;
@@ -49,11 +52,11 @@ function loadSendTokens() {
         sel.appendChild(opt);
     });
 
-    sel.value = window.selectedToken || "native";
+    sel.value = "native";   // default selalu SDA tiap modul dimuat
     applySendTokenState();
 
+    // Token send berdiri sendiri - TIDAK mengubah token dashboard
     sel.onchange = function () {
-        setGlobalToken?.(sel.value);
         applySendTokenState();
         updateSendBalance();
     };
@@ -79,13 +82,12 @@ function applySendTokenState() {
             const iconSmEl = document.getElementById("sendTokenIconSm");
             const symbolEl = document.getElementById("sendTokenSymbol");
 
-            if (iconEl)   iconEl.src        = token.logo || "img/sda.png";
-            if (iconSmEl) iconSmEl.src       = token.logo || "img/sda.png";
+            setTokenImg(iconEl,   token.logo, token.symbol);
+            setTokenImg(iconSmEl, token.logo, token.symbol);
             if (symbolEl) symbolEl.innerText = token.symbol;
 
-            // Sync ke global
-            window.selectedToken     = val;
-            window.selectedTokenData = sendCurrentToken;
+            // State khusus Send (bukan selectedToken dashboard)
+            window.sendTokenData = sendCurrentToken;
         }
     } else {
         sendCurrentToken = { symbol: "SDA", address: null, type: "native",
@@ -99,9 +101,12 @@ function applySendTokenState() {
         if (iconSmEl) iconSmEl.src       = "img/sda.png";
         if (symbolEl) symbolEl.innerText = "SDA";
 
-        window.selectedToken     = "native";
-        window.selectedTokenData = sendCurrentToken;
+        window.sendTokenData = sendCurrentToken;
     }
+
+    // Sinkron simbol di baris saldo send
+    const symEl = document.getElementById("sendBalanceSym");
+    if (symEl && sendCurrentToken) symEl.textContent = sendCurrentToken.symbol || "SDA";
 }
 
 
@@ -222,8 +227,49 @@ function showInsufficientBalanceModal(available, symbol) {
 
 
 // =====================================
-// SEND TX â€” tampilkan confirm dulu
-// TIDAK eksekusi langsung
+// ERC-20 ABI (khusus modul kirim)
+// Nama sengaja SEND_ERC20_ABI supaya tidak bentrok kalau file lain
+// sudah punya const ERC20_ABI.
+// =====================================
+const SEND_ERC20_ABI = [
+    "function balanceOf(address) view returns (uint256)",
+    "function decimals() view returns (uint8)",
+    "function transfer(address to, uint256 amount) returns (bool)"
+];
+
+// =====================================
+// PERFORM SEND — eksekusi transfer sebenarnya.
+// Dipanggil dari executeSendTx() SETELAH user menekan "Kirim Sekarang".
+// Native  -> signer.sendTransaction
+// ERC-20  -> contract.transfer(to, parsedAmount)
+// Burn    -> cukup isi `to` dengan 0x000000000000000000000000000000000000dEaD
+// Return: TransactionResponse (tx.hash, tx.wait())
+// =====================================
+async function performSendTransfer({ signer, to, amount, tokenData }) {
+
+    const token    = tokenData || sendCurrentToken || window.sendTokenData || { type: "native" };
+    const isNative = !token.address || token.address === "native" || token.type === "native";
+
+    if (isNative) {
+        const value = ethers.utils.parseEther(String(amount));
+        return await signer.sendTransaction({ to, value });
+    }
+
+    // Alamat kontrak diambil dinamis dari token yang dipilih
+    const contract = new ethers.Contract(token.address, SEND_ERC20_ABI, signer);
+
+    // decimals dari kontrak (bukan tebakan 18) supaya jumlah tepat
+    const decimals     = await contract.decimals().catch(() => token.decimals || 18);
+    const parsedAmount = ethers.utils.parseUnits(String(amount), decimals);
+
+    return await contract.transfer(to, parsedAmount);
+}
+window.performSendTransfer = performSendTransfer;
+
+
+// =====================================
+// SEND TX — validasi + tampilkan confirm dulu
+// TIDAK eksekusi langsung (eksekusi: executeSendTx -> performSendTransfer)
 // =====================================
 async function sendTx() {
 
@@ -231,7 +277,7 @@ async function sendTx() {
     const amount = document.getElementById("amountSend")?.value?.trim();
 
     // Validasi input
-    if (!to || !to.startsWith("0x") || to.length < 42) {
+    if (!to || !ethers.utils.isAddress(to)) {
         showToast?.("Alamat tujuan tidak valid", "error");
         return;
     }
@@ -251,35 +297,49 @@ async function sendTx() {
         return;
     }
 
-    // Cek saldo cukup (ambil saldo real-time, bukan cache)
-    const addrForBalance =
+    // Token data (dinamis dari token yang dipilih di dropdown)
+    const tokenData = sendCurrentToken
+        || window.sendTokenData
+        || { symbol: "SDA", type: "native", decimals: 18, logo: "img/sda.png" };
+
+    const isNative = !tokenData.address || tokenData.address === "native" || tokenData.type === "native";
+
+    const fromAddress =
         getSelectedWallet?.()?.address ||
-        SESSION?.address;
+        SESSION?.address ||
+        "";
 
-    const checkToken = sendCurrentToken || window.selectedTokenData || { type: "native" };
-    const isNativeCheck = !checkToken?.address || checkToken?.type === "native";
-
+    // Cek saldo real-time (bukan cache), dibandingkan dalam BigNumber
+    // supaya kirim "max" tidak gagal karena pembulatan float.
     try {
-        let availableNum = 0;
+        let balanceBN;
+        let decimals = 18;
 
-        if (isNativeCheck) {
-            const bal = await provider.getBalance(addrForBalance);
-            availableNum = parseFloat(ethers.utils.formatEther(bal));
+        if (isNative) {
+            balanceBN = await provider.getBalance(fromAddress);
         } else {
-            const abi = [
-                "function balanceOf(address) view returns (uint256)",
-                "function decimals() view returns (uint8)"
-            ];
-            const contract = new ethers.Contract(checkToken.address, abi, provider);
+            const contract = new ethers.Contract(tokenData.address, SEND_ERC20_ABI, provider);
             const [bal, dec] = await Promise.all([
-                contract.balanceOf(addrForBalance),
-                contract.decimals().catch(() => checkToken.decimals || 18)
+                contract.balanceOf(fromAddress),
+                contract.decimals().catch(() => tokenData.decimals || 18)
             ]);
-            availableNum = parseFloat(ethers.utils.formatUnits(bal, dec));
+            balanceBN = bal;
+            decimals  = dec;
         }
 
-        if (Number(amount) > availableNum) {
-            showInsufficientBalanceModal(availableNum, checkToken?.symbol || "SDA");
+        let parsedAmount;
+        try {
+            parsedAmount = ethers.utils.parseUnits(amount, decimals);
+        } catch {
+            showToast?.("Jumlah melebihi presisi desimal token (" + decimals + ")", "error");
+            return;
+        }
+
+        if (parsedAmount.gt(balanceBN)) {
+            showInsufficientBalanceModal(
+                parseFloat(ethers.utils.formatUnits(balanceBN, decimals)),
+                tokenData.symbol || "SDA"
+            );
             return;
         }
     } catch (e) {
@@ -288,21 +348,15 @@ async function sendTx() {
         return;
     }
 
-    // Token data
-    const tokenData   = sendCurrentToken
-        || window.selectedTokenData
-        || { symbol: "SDA", type: "native", decimals: 18, logo: "img/sda.png" };
-
-    const fromAddress =
-    getSelectedWallet()?.address ||
-    SESSION.address ||
-    "";
-    const wallets     = getWallets?.() || [];
-    const fromName    = wallets.find(
+    const wallets  = getWallets?.() || [];
+    const fromName = wallets.find(
         w => w.address?.toLowerCase() === fromAddress.toLowerCase()
     )?.name || "Account 1";
 
-    // Buka confirm modal â€” eksekusi ada di executeSendTx()
+    // Simpan data kirim untuk executeSendTx()
+    window._pendingSend = { to, amount, tokenData, fromAddress, fromName };
+
+    // Buka confirm modal — eksekusi ada di executeSendTx()
     showSendConfirmModal({ to, amount, tokenData, fromAddress, fromName });
 }
 
