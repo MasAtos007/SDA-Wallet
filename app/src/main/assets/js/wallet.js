@@ -539,15 +539,63 @@ function closeQRModal() {
 // ==========================
 // COPY ADDRESS
 // ==========================
+// Helper copy yang jalan di WebView Android:
+// 1) AndroidWallet.copyToClipboard  2) navigator.clipboard  3) execCommand
+function copyTextSmart(text, okMsg) {
+
+    const L    = (k, fb) => window.LANG?.[window.CURRENT_LANG]?.[k] || fb;
+    const ok   = () => showToast?.(okMsg || L("copied", "Tersalin"), "success");
+    const bad  = () => showToast?.(L("copy_failed", "Gagal menyalin"), "error");
+
+    const legacy = () => {
+        try {
+            const ta = document.createElement("textarea");
+            ta.value = text;
+            ta.style.cssText = "position:fixed;top:-1000px;opacity:0;";
+            document.body.appendChild(ta);
+            ta.focus();
+            ta.select();
+            const done = document.execCommand("copy");
+            ta.remove();
+            return done;
+        } catch (e) { return false; }
+    };
+
+    if (window.AndroidWallet?.copyToClipboard) {
+        try { window.AndroidWallet.copyToClipboard(text); ok(); return; } catch (e) {}
+    }
+
+    if (navigator.clipboard?.writeText) {
+        navigator.clipboard.writeText(text)
+            .then(ok)
+            .catch(() => legacy() ? ok() : bad());
+        return;
+    }
+
+    legacy() ? ok() : bad();
+}
+window.copyTextSmart = copyTextSmart;
+
 function copyAddress() {
 
     const wallet = getSelectedWallet();
-    if (!wallet) return showToast("Pilih wallet dulu");
+    if (!wallet) return showToast(window.LANG?.[window.CURRENT_LANG]?.select_wallet_error || "Pilih wallet dulu");
 
-    navigator.clipboard.writeText(wallet.address)
-        .then(()  => showToast("Copied"))
-        .catch(() => showToast("Gagal copy", "error"));
+    copyTextSmart(wallet.address);
 }
+
+// Tombol "Copy Address" di Receive modal
+function copyReceiveAddress() {
+
+    const wallet = getSelectedWallet();
+    const addr   = wallet?.address ||
+        document.getElementById("receiveAddress")?.textContent?.trim();
+
+    if (!addr) return showToast?.(window.LANG?.[window.CURRENT_LANG]?.select_wallet_error || "Pilih wallet dulu", "error");
+
+    copyTextSmart(addr, window.LANG?.[window.CURRENT_LANG]?.address_copied);
+}
+window.copyReceiveAddress = copyReceiveAddress;
 
 
 // ==========================
