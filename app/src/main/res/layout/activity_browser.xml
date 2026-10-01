@@ -9,21 +9,31 @@
     <!-- TOOLBAR -->
     <LinearLayout
         android:layout_width="match_parent"
-        android:layout_height="56dp"
+        android:layout_height="52dp"
         android:background="#111111"
-        android:paddingHorizontal="8dp"
-        android:paddingVertical="8dp"
+        android:paddingHorizontal="6dp"
+        android:paddingVertical="6dp"
         android:orientation="horizontal"
         android:gravity="center_vertical">
+
+        <!-- KE DASHBOARD WALLET (bypass, tanpa back berkali-kali) -->
+        <ImageButton
+            android:id="@+id/btnWallet"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:src="@drawable/ic_wallet"
+            android:background="@android:color/transparent"
+            android:contentDescription="Ke Dashboard Wallet"
+            android:padding="8dp" />
 
         <!-- BACK -->
         <ImageButton
             android:id="@+id/btnBack"
             android:layout_width="40dp"
             android:layout_height="40dp"
-            android:src="@android:drawable/ic_media_previous"
+            android:src="@drawable/ic_back"
             android:background="@android:color/transparent"
-            android:tint="#ffffff"
+            android:contentDescription="Kembali"
             android:padding="8dp" />
 
         <!-- URL BAR -->
@@ -32,11 +42,11 @@
             android:layout_width="0dp"
             android:layout_height="38dp"
             android:layout_weight="1"
-            android:layout_marginHorizontal="6dp"
+            android:layout_marginHorizontal="4dp"
             android:background="#1e1e1e"
             android:paddingHorizontal="14dp"
             android:textColor="#ffffff"
-            android:textColorHint="#555555"
+            android:textColorHint="#666666"
             android:hint="Cari atau masuk URL..."
             android:textSize="13sp"
             android:imeOptions="actionGo"
@@ -49,11 +59,46 @@
             android:id="@+id/btnRefresh"
             android:layout_width="40dp"
             android:layout_height="40dp"
-            android:src="@android:drawable/ic_menu_rotate"
+            android:src="@drawable/ic_refresh"
             android:background="@android:color/transparent"
-            android:tint="#ffffff"
+            android:contentDescription="Muat ulang"
             android:padding="8dp" />
 
+    </LinearLayout>
+
+    <!-- TAB STRIP -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="40dp"
+        android:background="#0A0A0A"
+        android:orientation="horizontal"
+        android:gravity="center_vertical">
+
+        <HorizontalScrollView
+            android:id="@+id/tabScroll"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1"
+            android:scrollbars="none"
+            android:overScrollMode="never">
+
+            <LinearLayout
+                android:id="@+id/tabContainer"
+                android:layout_width="wrap_content"
+                android:layout_height="match_parent"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:paddingHorizontal="4dp" />
+        </HorizontalScrollView>
+
+        <ImageButton
+            android:id="@+id/btnNewTab"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:src="@drawable/ic_add"
+            android:background="@android:color/transparent"
+            android:contentDescription="Jendela baru"
+            android:padding="9dp" />
     </LinearLayout>
 
     <!-- PROGRESS BAR -->
@@ -62,14 +107,125 @@
         style="?android:attr/progressBarStyleHorizontal"
         android:layout_width="match_parent"
         android:layout_height="3dp"
-        android:progressTint="#00ff88"
+        android:progressTint="#FF8A00"
         android:progressBackgroundTint="#1a1a1a"
         android:visibility="gone" />
 
-    <!-- BROWSER WEBVIEW -->
-    <WebView
-        android:id="@+id/browserWebView"
+    <!-- KONTEN: WebView tiap tab + halaman awal -->
+    <FrameLayout
         android:layout_width="match_parent"
-        android:layout_height="match_parent" />
+        android:layout_height="0dp"
+        android:layout_weight="1">
+
+        <FrameLayout
+            android:id="@+id/webContainer"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent" />
+
+        <!-- HALAMAN AWAL (belum masuk link) -->
+        <ScrollView
+            android:id="@+id/startPage"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:background="#0B0F14"
+            android:fillViewport="true">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="20dp">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Ekosistem Sidra Chain"
+                    android:textColor="#FFFFFF"
+                    android:textSize="22sp"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="4dp"
+                    android:layout_marginBottom="20dp"
+                    android:text="Tautan resmi. Atau ketik URL / pencarian di atas."
+                    android:textColor="#8A94A3"
+                    android:textSize="13sp" />
+
+                <LinearLayout
+                    android:id="@+id/cardMain"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:background="@drawable/bg_card"
+                    android:clickable="true"
+                    android:focusable="true"
+                    android:padding="16dp">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Sidra Chain"
+                        android:textColor="#FFFFFF"
+                        android:textSize="17sp"
+                        android:textStyle="bold" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="2dp"
+                        android:text="www.sidrachain.com"
+                        android:textColor="#FF8A00"
+                        android:textSize="13sp" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="6dp"
+                        android:text="Situs resmi utama"
+                        android:textColor="#8A94A3"
+                        android:textSize="12sp" />
+                </LinearLayout>
+
+                <LinearLayout
+                    android:id="@+id/cardDex"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="12dp"
+                    android:orientation="vertical"
+                    android:background="@drawable/bg_card"
+                    android:clickable="true"
+                    android:focusable="true"
+                    android:padding="16dp">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Sidra DEX"
+                        android:textColor="#FFFFFF"
+                        android:textSize="17sp"
+                        android:textStyle="bold" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="2dp"
+                        android:text="dex.sidrachain.com"
+                        android:textColor="#FF8A00"
+                        android:textSize="13sp" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="6dp"
+                        android:text="Tukar token &amp; likuiditas"
+                        android:textColor="#8A94A3"
+                        android:textSize="12sp" />
+                </LinearLayout>
+
+            </LinearLayout>
+        </ScrollView>
+    </FrameLayout>
 
 </LinearLayout>
