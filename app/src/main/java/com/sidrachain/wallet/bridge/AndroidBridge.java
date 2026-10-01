@@ -180,6 +180,19 @@ public class AndroidBridge {
         }
     }
 
+    // Buka link di browser eksternal (untuk download APK update).
+    // Whitelist: hanya repo SDA-Wallet.
+    @JavascriptInterface
+    public void openExternal(String url) {
+        if (url == null || !url.startsWith("https://github.com/MasAtos007/SDA-Wallet/")) return;
+        final String safeUrl = url;
+        mainHandler.post(() -> {
+            Intent intent = new Intent(Intent.ACTION_VIEW, Uri.parse(safeUrl));
+            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            context.startActivity(intent);
+        });
+    }
+
     @JavascriptInterface
     public void openPrivacyPolicy() {
         mainHandler.post(() -> {
