@@ -17,21 +17,27 @@
         android:gravity="center_vertical">
 
         <!-- KE DASHBOARD WALLET (bypass, tanpa back berkali-kali) -->
-        <ImageButton
+        <TextView
             android:id="@+id/btnWallet"
-            android:layout_width="40dp"
-            android:layout_height="40dp"
-            android:src="@drawable/ic_wallet"
-            android:background="@android:color/transparent"
+            android:layout_width="wrap_content"
+            android:layout_height="36dp"
+            android:gravity="center"
+            android:paddingHorizontal="10dp"
+            android:text="Wallet"
+            android:textColor="#FF8A00"
+            android:textSize="13sp"
+            android:textStyle="bold"
             android:contentDescription="Ke Dashboard Wallet"
-            android:padding="8dp" />
+            android:clickable="true"
+            android:focusable="true" />
 
         <!-- BACK -->
         <ImageButton
             android:id="@+id/btnBack"
             android:layout_width="40dp"
             android:layout_height="40dp"
-            android:src="@drawable/ic_back"
+            android:src="@android:drawable/ic_media_previous"
+            android:tint="#ffffff"
             android:background="@android:color/transparent"
             android:contentDescription="Kembali"
             android:padding="8dp" />
@@ -59,7 +65,8 @@
             android:id="@+id/btnRefresh"
             android:layout_width="40dp"
             android:layout_height="40dp"
-            android:src="@drawable/ic_refresh"
+            android:src="@android:drawable/ic_menu_rotate"
+            android:tint="#ffffff"
             android:background="@android:color/transparent"
             android:contentDescription="Muat ulang"
             android:padding="8dp" />
@@ -91,14 +98,17 @@
                 android:paddingHorizontal="4dp" />
         </HorizontalScrollView>
 
-        <ImageButton
+        <TextView
             android:id="@+id/btnNewTab"
             android:layout_width="40dp"
             android:layout_height="40dp"
-            android:src="@drawable/ic_add"
-            android:background="@android:color/transparent"
+            android:gravity="center"
+            android:text="+"
+            android:textColor="#FFFFFF"
+            android:textSize="24sp"
             android:contentDescription="Jendela baru"
-            android:padding="9dp" />
+            android:clickable="true"
+            android:focusable="true" />
     </LinearLayout>
 
     <!-- PROGRESS BAR -->
@@ -158,7 +168,6 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:orientation="vertical"
-                    android:background="@drawable/bg_card"
                     android:clickable="true"
                     android:focusable="true"
                     android:padding="16dp">
@@ -194,7 +203,6 @@
                     android:layout_height="wrap_content"
                     android:layout_marginTop="12dp"
                     android:orientation="vertical"
-                    android:background="@drawable/bg_card"
                     android:clickable="true"
                     android:focusable="true"
                     android:padding="16dp">
