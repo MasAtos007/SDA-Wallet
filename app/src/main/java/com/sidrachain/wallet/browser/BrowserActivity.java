@@ -5,6 +5,8 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
 import android.view.View;
 import android.view.inputmethod.EditorInfo;
 import android.webkit.JavascriptInterface;
@@ -15,9 +17,17 @@ import android.widget.ImageButton;
 import android.widget.ProgressBar;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.localbroadcastmanager.content.LocalBroadcastManager;
+import androidx.webkit.WebViewCompat;
+import androidx.webkit.WebViewFeature;
 import com.sidrachain.wallet.MainActivity;
 import com.sidrachain.wallet.R;
 import com.sidrachain.wallet.bridge.AndroidBridge;
+
+import java.net.URL;
+import java.util.Collections;
+import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class BrowserActivity extends AppCompatActivity {
 
@@ -28,36 +38,82 @@ public class BrowserActivity extends AppCompatActivity {
 
     public static AndroidBridge sharedBridge;
 
-    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-    // Inner class â€” WAJIB untuk @JavascriptInterface agar terexpose ke WebView
-    // Anonymous subclass TIDAK bisa expose @JavascriptInterface yang di-override
-    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-    private class BrowserAndroidBridge extends AndroidBridge {
+    // Jumlah BrowserActivity yang sedang hidup (dipakai MainActivity untuk tombol back)
+    public static volatile int openCount = 0;
 
-        BrowserAndroidBridge(Context ctx) {
-            super(ctx, null);
-        }
+    // Origin halaman top-level yang sedang dibuka (diisi Java, bukan dipercaya dari JS)
+    private volatile String currentOrigin = null;
 
-        // FIX: @JavascriptInterface HARUS ada di class konkret, bukan anonymous
-        @Override
+    private final Handler uiHandler = new Handler(Looper.getMainLooper());
+
+    // requestId yang butuh UI wallet (connect / sign / tx)
+    private final Set<String> uiRequests = ConcurrentHashMap.newKeySet();
+    // requestId yang wallet-nya sudah dibawa ke depan
+    private final Set<String> walletShown = ConcurrentHashMap.newKeySet();
+    // runnable "bawa wallet ke depan" yang masih menunggu (dibatalkan kalau response cepat datang)
+    private final Map<String, Runnable> pendingFront = new ConcurrentHashMap<>();
+
+    // ---------------------------------------------------------------
+    // Method yang butuh layar approval di wallet WebView
+    // ---------------------------------------------------------------
+    private static boolean needsWalletUi(String method) {
+        if (method == null) return false;
+        return method.equals("eth_requestAccounts")
+            || method.equals("wallet_requestPermissions")
+            || method.equals("wallet_addEthereumChain")
+            || method.equals("wallet_watchAsset")
+            || method.equals("eth_sendTransaction")
+            || method.equals("eth_signTransaction")
+            || method.equals("eth_sign")
+            || method.equals("personal_sign")
+            || method.startsWith("eth_signTypedData");
+    }
+
+    // ---------------------------------------------------------------
+    // Bridge KHUSUS dApp: hanya handleRequest.
+    // Sebelumnya extends AndroidBridge sehingga SEMUA situs bisa memanggil
+    // getClipboardText(), readAsset(), sendResponse(), broadcastEvent(), dst.
+    // Class konkret (bukan anonymous) supaya @JavascriptInterface terexpose.
+    // ---------------------------------------------------------------
+    private class BrowserBridge {
+
         @JavascriptInterface
         public void handleRequest(String requestId,
                                   String method,
                                   String paramsJson,
                                   String origin) {
+            if (requestId == null || method == null) return;
+
+            final String id = requestId;
+            // Origin dari Java kalau ada; nilai dari JS bisa dipalsukan situs
+            final String realOrigin = currentOrigin != null ? currentOrigin : origin;
+
+            if (needsWalletUi(method)) {
+                uiRequests.add(id);
+                // Kalau wallet menjawab cepat (sudah connect), tidak perlu pindah layar.
+                // Kalau belum ada jawaban dalam 350 ms, tampilkan wallet ke user.
+                Runnable r = () -> {
+                    pendingFront.remove(id);
+                    walletShown.add(id);
+                    bringWalletToFront();
+                };
+                pendingFront.put(id, r);
+                uiHandler.postDelayed(r, 350);
+            }
+
             Intent intent = new Intent(MainActivity.ACTION_BRIDGE_REQUEST);
             intent.putExtra("requestId", requestId);
             intent.putExtra("method",    method);
             intent.putExtra("params",    paramsJson);
-            intent.putExtra("origin",    origin);
+            intent.putExtra("origin",    realOrigin);
             LocalBroadcastManager.getInstance(BrowserActivity.this)
                 .sendBroadcast(intent);
         }
     }
 
-    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-    // Receiver: terima response dari MainActivity/Wallet
-    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ---------------------------------------------------------------
+    // Receiver: response / event dari wallet
+    // ---------------------------------------------------------------
     private final BroadcastReceiver responseReceiver = new BroadcastReceiver() {
         @Override
         public void onReceive(Context context, Intent intent) {
@@ -65,23 +121,66 @@ public class BrowserActivity extends AppCompatActivity {
 
             boolean isEvent = intent.getBooleanExtra("isEvent", false);
             if (isEvent) {
-                String eventName = intent.getStringExtra("eventName");
-                String eventData = intent.getStringExtra("eventData");
-                _sendEventToPage(eventName, eventData);
+                _sendEventToPage(intent.getStringExtra("eventName"),
+                                 intent.getStringExtra("eventData"));
                 return;
             }
 
             String requestId  = intent.getStringExtra("requestId");
             String resultJson = intent.getStringExtra("result");
             String errorJson  = intent.getStringExtra("error");
+
             _sendResponseToPage(requestId, resultJson, errorJson);
+            handleWalletFocus(requestId, errorJson);
         }
     };
 
+    // ---------------------------------------------------------------
+    // Pindah layar wallet <-> browser
+    // ---------------------------------------------------------------
+    private void bringWalletToFront() {
+        try {
+            Intent i = new Intent(this, MainActivity.class);
+            i.addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT);
+            startActivity(i);
+        } catch (Exception ignored) {}
+    }
+
+    private void bringBrowserToFront() {
+        try {
+            Intent i = new Intent(this, BrowserActivity.class);
+            i.addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT);
+            startActivity(i);
+        } catch (Exception ignored) {}
+    }
+
+    // Dipanggil setiap response untuk request UI sampai
+    private void handleWalletFocus(String requestId, String errorJson) {
+        if (requestId == null || !uiRequests.remove(requestId)) return;
+
+        Runnable r = pendingFront.remove(requestId);
+        if (r != null) uiHandler.removeCallbacks(r);
+
+        boolean shown = walletShown.remove(requestId);
+
+        String e = errorJson == null ? "" : errorJson.toLowerCase();
+        boolean locked = e.contains("locked") || e.contains("terkunci");
+
+        if (locked) {
+            // Wallet terkunci: user harus lihat layar PIN di wallet, jangan tarik balik
+            if (!shown) bringWalletToFront();
+            return;
+        }
+
+        if (shown && walletShown.isEmpty()) bringBrowserToFront();
+    }
+
+    // ---------------------------------------------------------------
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_browser);
+        openCount++;
 
         browserWebView = findViewById(R.id.browserWebView);
         urlBar         = findViewById(R.id.urlBar);
@@ -92,26 +191,31 @@ public class BrowserActivity extends AppCompatActivity {
             runOnUiThread(() -> { if (urlBar != null) urlBar.setText(url); })
         );
 
-        // FIX: Daftarkan AndroidWallet SEBELUM setupBrowserWebView
-        // agar saat onPageFinished inject provider, AndroidWallet sudah siap
-        BrowserAndroidBridge browserBridge = new BrowserAndroidBridge(this);
-        browserBridge.setBrowserWebView(browserWebView);
-        browserWebView.addJavascriptInterface(browserBridge, "AndroidWallet");
+        // Daftarkan AndroidWallet SEBELUM load halaman apa pun
+        browserWebView.addJavascriptInterface(new BrowserBridge(), "AndroidWallet");
 
         // Setup WebView
         WebViewManager manager = new WebViewManager(this, browserWebView);
         manager.setupBrowserWebView(injector);
 
-        // Register receiver untuk response dari wallet
+        // Inject provider SEBELUM script dApp jalan (document start).
+        // Tanpa ini dApp yang cek window.ethereum saat load bilang "wallet tidak ada".
+        // onPageFinished / onProgressChanged di bawah tetap sebagai fallback.
+        if (WebViewFeature.isFeatureSupported(WebViewFeature.DOCUMENT_START_SCRIPT)) {
+            WebViewCompat.addDocumentStartJavaScript(
+                browserWebView,
+                injector.getDocumentStartScript(),
+                Collections.singleton("*")
+            );
+        }
+
         LocalBroadcastManager.getInstance(this)
             .registerReceiver(
                 responseReceiver,
                 new IntentFilter(MainActivity.ACTION_BRIDGE_RESPONSE)
             );
 
-        // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         // WebViewClient
-        // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         browserWebView.setWebViewClient(new android.webkit.WebViewClient() {
 
             @Override
@@ -119,12 +223,14 @@ public class BrowserActivity extends AppCompatActivity {
                                        String url,
                                        android.graphics.Bitmap favicon) {
                 super.onPageStarted(view, url, favicon);
+                currentOrigin = extractOrigin(url);
                 if (urlBar != null) urlBar.setText(url);
             }
 
             @Override
             public void onPageFinished(android.webkit.WebView view, String url) {
                 super.onPageFinished(view, url);
+                currentOrigin = extractOrigin(url);
                 if (urlBar != null) urlBar.setText(url);
 
                 injector.inject(view, url);
@@ -134,9 +240,7 @@ public class BrowserActivity extends AppCompatActivity {
                     fireEthereumEvents(view);
                 }, 500);
 
-                view.postDelayed(() -> {
-                    injector.inject(view, url);
-                }, 1500);
+                view.postDelayed(() -> injector.inject(view, url), 1500);
             }
 
             @Override
@@ -155,9 +259,7 @@ public class BrowserActivity extends AppCompatActivity {
             }
         });
 
-        // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         // WebChromeClient
-        // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         browserWebView.setWebChromeClient(new WebChromeClient() {
             @Override
             public void onProgressChanged(WebView view, int newProgress) {
@@ -178,9 +280,7 @@ public class BrowserActivity extends AppCompatActivity {
             }
         });
 
-        // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         // URL bar
-        // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         urlBar.setOnEditorActionListener((v, actionId, event) -> {
             if (actionId == EditorInfo.IME_ACTION_GO    ||
                 actionId == EditorInfo.IME_ACTION_SEARCH ||
@@ -229,6 +329,7 @@ public class BrowserActivity extends AppCompatActivity {
         final String error  = errorJson  != null ? errorJson  : "null";
 
         runOnUiThread(() -> {
+            if (browserWebView == null) return;
             String js;
             if (!error.equals("null")) {
                 js = "window.__sidraAndroidResponse&&" +
@@ -249,11 +350,23 @@ public class BrowserActivity extends AppCompatActivity {
         final String safeData  = dataJson  != null ? dataJson  : "null";
 
         runOnUiThread(() -> {
+            if (browserWebView == null) return;
             String js = "window.__sidraAndroidEvent&&" +
                         "window.__sidraAndroidEvent('" + safeEvent +
                         "'," + safeData + ");";
             browserWebView.evaluateJavascript(js, null);
         });
+    }
+
+    private String extractOrigin(String url) {
+        try {
+            URL u = new URL(url);
+            String p = u.getProtocol();
+            if (!"https".equals(p) && !"http".equals(p)) return null;
+            return p + "://" + u.getHost();
+        } catch (Exception e) {
+            return null;
+        }
     }
 
     private String normalizeUrl(String input) {
@@ -272,6 +385,11 @@ public class BrowserActivity extends AppCompatActivity {
 
     @Override
     protected void onDestroy() {
+        openCount = Math.max(0, openCount - 1);
+        uiHandler.removeCallbacksAndMessages(null);
+        pendingFront.clear();
+        uiRequests.clear();
+        walletShown.clear();
         LocalBroadcastManager.getInstance(this)
             .unregisterReceiver(responseReceiver);
         if (browserWebView != null) {
