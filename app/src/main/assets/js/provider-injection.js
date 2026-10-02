@@ -80,10 +80,21 @@
         return signer;
     }
 
-    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ─────────────────────────────────────────
     // REQUEST HANDLER
     // FIX: _handleRequest terima origin sebagai parameter ke-3
-    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ─────────────────────────────────────────
+    // Catat koneksi supaya menu titik tiga di BrowserActivity tahu situs ini terhubung
+    function _recordConnection(origin, address) {
+        try {
+            if (!origin || origin === "unknown" || !address) return;
+            var m = window.dappConnectionManager;
+            if (m && typeof m.setActiveConnection === "function") {
+                m.setActiveConnection(origin, address);
+            }
+        } catch (e) {}
+    }
+
     async function _handleRequest(method, params, origin) {
         origin = origin || "unknown";
 
@@ -98,16 +109,17 @@
         if (method === "eth_requestAccounts") {
             var addr = _getActiveAddress();
 
-            // Sudah punya permission â€” langsung return
+            // Sudah punya permission — langsung return
             if (window.permissionManager && window.permissionManager.hasPermission(origin)) {
                 if (_isUnlocked() && addr) {
+                    _recordConnection(origin, addr);
                     _emit("accountsChanged", [addr]);
                     _emit("connect", { chainId: CHAIN_ID });
                     return [addr];
                 }
             }
 
-            // Sudah unlock â€” tampilkan connect modal
+            // Sudah unlock — tampilkan connect modal
             if (_isUnlocked() && addr) {
                 return new Promise(function(resolve, reject) {
                     window._providerResolve = resolve;
@@ -117,6 +129,7 @@
                         if (window.permissionManager) {
                             window.permissionManager.grantPermission(origin, null, [address]);
                         }
+                        _recordConnection(origin, address);
                         _emit("accountsChanged", [address]);
                         _emit("connect", { chainId: CHAIN_ID });
                         if (window._providerResolve) {
@@ -149,7 +162,7 @@
                 });
             }
 
-            // Belum unlock â€” tampilkan PIN screen
+            // Belum unlock — tampilkan PIN screen
             return new Promise(function(resolve, reject) {
                 window._providerResolve      = resolve;
                 window._providerReject       = reject;
@@ -360,9 +373,9 @@
         );
     }
 
-    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ─────────────────────────────────────────
     // PROVIDER OBJECT (EIP-1193)
-    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ─────────────────────────────────────────
     var _sidraProvider = {
         isMetaMask:     false,
         isSidraWallet:  true,
@@ -411,9 +424,9 @@
         isConnected:    function()            { return _isUnlocked(); }
     };
 
-    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ─────────────────────────────────────────
     // EXPOSE
-    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ─────────────────────────────────────────
     window._sidraProvider = _sidraProvider;
 
     // Hook: setelah unlock, lanjutkan pending connect
@@ -445,7 +458,7 @@
         _emit("connect", { chainId: CHAIN_ID });
     };
 
-    console.log("[SidraWallet] provider-injection.js loaded v3 âœ“");
+    console.log("[SidraWallet] provider-injection.js loaded v3 ✓");
 
     } catch(err) {
         alert("[provider-injection ERROR]\n" + err.message + "\n\n" + (err.stack||"").substring(0,300));
