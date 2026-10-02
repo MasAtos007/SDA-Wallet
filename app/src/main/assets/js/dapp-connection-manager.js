@@ -11,9 +11,15 @@
 (function () {
     "use strict";
 
+    // i18n: ambil teks dari window.LANG (data/lang.json); fallback ke teks Indonesia
+    function t(key, fallback) {
+        const l = (window.LANG && window.LANG[window.CURRENT_LANG]) || {};
+        return l[key] || fallback;
+    }
+
     const CONN_STORAGE_KEY = "sidra_dapp_connections_v1";
 
-    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ─────────────────────────────────────────
     // STRUKTUR DATA KONEKSI:
     // {
     //   "https://www.sidrachain.com": {
@@ -25,12 +31,12 @@
     //     sessionActive: true/false
     //   }
     // }
-    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ─────────────────────────────────────────
     const SIDRA_CHAIN_ID = "0x" + (97453).toString(16);
 
-    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ─────────────────────────────────────────
     // LOAD / SAVE
-    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ─────────────────────────────────────────
     function _load() {
         try { return JSON.parse(localStorage.getItem(CONN_STORAGE_KEY)) || {}; }
         catch { return {}; }
@@ -41,9 +47,9 @@
         catch {}
     }
 
-    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ─────────────────────────────────────────
     // PUBLIC API
-    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ─────────────────────────────────────────
     const dappConnectionManager = {
 
         // Set active connection (dipanggil setelah approve)
@@ -75,7 +81,7 @@
             _notifyBrowserUI(origin, false);
         },
 
-        // Disconnect penuh â€” hapus dari permission juga
+        // Disconnect penuh — hapus dari permission juga
         disconnect(origin) {
             const data = _load();
             delete data[origin];
@@ -87,7 +93,7 @@
             _notifyAndroidAccounts([]);
 
             _notifyBrowserUI(origin, false);
-            showToast?.("Wallet dicabut dari " + _hostname(origin), "info");
+            showToast?.(t("dc_revoked_toast", "Wallet dicabut dari {site}").replace("{site}", _hostname(origin)), "info");
         },
 
         // Disconnect semua
@@ -155,7 +161,7 @@
             }
         },
 
-        // Saat account switch â€” update semua koneksi aktif
+        // Saat account switch — update semua koneksi aktif
         onAccountSwitch(newAddress) {
             if (!newAddress) return;
             const data = _load();
@@ -188,7 +194,7 @@
             if (!all.length) {
                 el.innerHTML = `
                     <div style="text-align:center;padding:30px 0;color:#333;font-size:13px">
-                        Belum ada dApp yang terhubung
+                        ${t("dc_empty", "Belum ada dApp yang terhubung")}
                     </div>`;
                 return;
             }
@@ -223,7 +229,7 @@
                                     : "background:#1a1a1a;color:#444;border:1px solid #222"
                                 }
                             ">
-                                ${conn.sessionActive ? "â— Aktif" : "â— Tidak aktif"}
+                                ${conn.sessionActive ? "● " + t("dc_active", "Aktif") : "● " + t("dc_inactive", "Tidak aktif")}
                             </span>
                         </div>
                     </div>
@@ -241,7 +247,7 @@
                                 color:#ff6b6b;padding:5px 10px;border-radius:7px;
                                 font-size:11px;cursor:pointer
                             ">
-                            Cabut
+                            ${t("dc_revoke", "Cabut")}
                         </button>
                     </div>
                 </div>
@@ -249,9 +255,9 @@
         }
     };
 
-    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ─────────────────────────────────────────
     // HELPERS
-    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ─────────────────────────────────────────
     function _hostname(origin) {
         try { return new URL(origin).hostname.replace("www.", ""); }
         catch { return origin; }
@@ -274,16 +280,16 @@
         if (window.sidraBrowser?.currentOrigin?.() === origin) {
             const el = document.getElementById("sbrConnStatus");
             if (el) {
-                el.textContent   = connected ? "â— Terhubung" : "â— Tidak terhubung";
+                el.textContent   = connected ? "● " + t("dc_connected", "Terhubung") : "● " + t("dc_disconnected", "Tidak terhubung");
                 el.style.color   = connected ? "#00ff88" : "#555";
                 el.style.borderColor = connected ? "rgba(0,255,136,0.3)" : "#2a2a2a";
             }
         }
     }
 
-    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ─────────────────────────────────────────
     // HOOKS KE SESSION
-    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ─────────────────────────────────────────
 
     // Reconnect saat unlock
     const _origUnlock = window.unlockWallet;
@@ -323,9 +329,9 @@
         }
     };
 
-    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ─────────────────────────────────────────
     // EXPOSE GLOBAL
-    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ─────────────────────────────────────────
     window.dappConnectionManager = dappConnectionManager;
 
     // Init saat DOMContentLoaded
