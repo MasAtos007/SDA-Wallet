@@ -617,8 +617,13 @@ public class BrowserActivity extends AppCompatActivity {
             return;
         }
         // Tanya wallet: situs ini punya koneksi? (balikannya alamat, atau kosong)
-        String js = "(function(){try{var c=window.dappConnectionManager.getConnection("
-            + jsStr(origin) + ");return (c&&c.address)?c.address:'';}catch(e){return '';}})()";
+        // 1) catatan di dappConnectionManager, 2) fallback: izin (permissionManager) + akun aktif wallet
+        String js = "(function(){try{var o=" + jsStr(origin) + ";"
+            + "var c=window.dappConnectionManager&&window.dappConnectionManager.getConnection(o);"
+            + "if(c&&c.address)return c.address;"
+            + "var pm=window.permissionManager;"
+            + "if(pm&&pm.hasPermission(o)&&window.SESSION&&window.SESSION.address)return window.SESSION.address;"
+            + "return '';}catch(e){return '';}})()";
         wallet.evaluateJavascript(js, value -> {
             String addr = null;
             try {
