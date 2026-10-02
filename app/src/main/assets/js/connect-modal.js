@@ -306,7 +306,7 @@
                         <div class="sidra-modal-site-name">${site.name}</div>
                         <div class="sidra-modal-site-url">${site.url}</div>
                     </div>
-                    ${trusted ? '<span class="sidra-badge-trusted">✓ ${t("cm_sidra_official", "Sidra Official")}</span>' : ""}
+                    ${trusted ? `<span class="sidra-badge-trusted">✓ ${t("cm_sidra_official", "Sidra Official")}</span>` : ""}
                 </div>
                 <div class="sidra-modal-title">${t("cm_connect_title", "Hubungkan Wallet?")}</div>
             </div>
