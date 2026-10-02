@@ -13,6 +13,12 @@
 (function () {
     "use strict";
 
+    // i18n: ambil teks dari window.LANG (data/lang.json); fallback ke teks Indonesia
+    function t(key, fallback) {
+        const l = (window.LANG && window.LANG[window.CURRENT_LANG]) || {};
+        return l[key] || fallback;
+    }
+
     // ─────────────────────────────────────────
     // CSS MODAL
     // ─────────────────────────────────────────
@@ -210,6 +216,7 @@
 
         const overlay  = document.createElement("div");
         overlay.id     = "sidra-modal-overlay";
+        overlay.dir    = window.CURRENT_LANG === "ar" ? "rtl" : "ltr";
         overlay.innerHTML = `
             <div id="sidra-modal-box">
                 <div class="sidra-modal-handle"></div>
@@ -277,7 +284,7 @@
 
             if (typeof window.showPINUnlockScreen === "function") {
                 window.showPINUnlockScreen();
-                showToast?.("Unlock wallet untuk lanjut ke Connect", "info");
+                showToast?.(t("cm_unlock_toast", "Unlock wallet untuk lanjut ke Connect"), "info");
             }
             return;
         }
@@ -299,14 +306,14 @@
                         <div class="sidra-modal-site-name">${site.name}</div>
                         <div class="sidra-modal-site-url">${site.url}</div>
                     </div>
-                    ${trusted ? '<span class="sidra-badge-trusted">✓ Sidra Official</span>' : ""}
+                    ${trusted ? '<span class="sidra-badge-trusted">✓ ${t("cm_sidra_official", "Sidra Official")}</span>' : ""}
                 </div>
-                <div class="sidra-modal-title">Hubungkan Wallet?</div>
+                <div class="sidra-modal-title">${t("cm_connect_title", "Hubungkan Wallet?")}</div>
             </div>
 
             <div class="sidra-modal-body">
                 <p class="sidra-modal-desc">
-                    <strong style="color:#fff">${site.name}</strong> ingin mengakses wallet kamu.
+                    ${t("cm_connect_desc", "{site} ingin mengakses wallet kamu.").replace("{site}", `<strong style="color:#fff">${site.name}</strong>`)}
                 </p>
 
                 <div class="sidra-account-card">
@@ -321,25 +328,25 @@
                 <div class="sidra-permission-list">
                     <div class="sidra-permission-item">
                         <span class="sidra-permission-icon">✓</span>
-                        Melihat alamat wallet kamu
+                        ${t("cm_perm_view_address", "Melihat alamat wallet kamu")}
                     </div>
                     <div class="sidra-permission-item">
                         <span class="sidra-permission-icon">✓</span>
-                        Melihat saldo token di SidraChain
+                        ${t("cm_perm_view_balance", "Melihat saldo token di SidraChain")}
                     </div>
                     <div class="sidra-permission-item">
                         <span class="sidra-permission-icon" style="color:#ff6b6b">✗</span>
-                        Tidak bisa memindahkan aset tanpa konfirmasi
+                        ${t("cm_perm_no_move", "Tidak bisa memindahkan aset tanpa konfirmasi")}
                     </div>
                 </div>
             </div>
 
             <div class="sidra-modal-actions">
                 <button class="sidra-btn sidra-btn-cancel" onclick="window._onUserReject('connect')">
-                    Tolak
+                    ${t("cm_reject", "Tolak")}
                 </button>
                 <button class="sidra-btn sidra-btn-approve" onclick="window._onUserApproveConnect('${origin}', '${address}')">
-                    Hubungkan
+                    ${t("cm_connect_btn", "Hubungkan")}
                 </button>
             </div>
         `);
@@ -382,31 +389,32 @@
                         <div class="sidra-modal-site-url">${site.url}</div>
                     </div>
                 </div>
-                <div class="sidra-modal-title">Tanda Tangani Pesan</div>
+                <div class="sidra-modal-title">${t("cm_sign_title", "Tanda Tangani Pesan")}</div>
             </div>
 
             <div class="sidra-modal-body">
                 <p class="sidra-modal-desc">
-                    <strong style="color:#fff">${site.name}</strong> meminta tanda tangan dari
-                    <span style="color:#00ff88">${_shortAddr(address)}</span>
+                    ${t("cm_sign_desc", "{site} meminta tanda tangan dari {addr}")
+                        .replace("{site}", `<strong style="color:#fff">${site.name}</strong>`)
+                        .replace("{addr}", `<span style="color:#00ff88">${_shortAddr(address)}</span>`)}
                 </p>
 
                 <div class="sidra-sign-box">
-                    <div class="sidra-sign-label">Pesan</div>
+                    <div class="sidra-sign-label">${t("cm_sign_message", "Pesan")}</div>
                     <div class="sidra-sign-text">${_escapeHtml(message)}</div>
                 </div>
 
                 <div class="sidra-warning-box">
-                    ⚠️ Tanda tangan tidak memindahkan aset. Hanya lanjutkan jika kamu percaya situs ini.
+                    ⚠️ ${t("cm_sign_warning", "Tanda tangan tidak memindahkan aset. Hanya lanjutkan jika kamu percaya situs ini.")}
                 </div>
             </div>
 
             <div class="sidra-modal-actions">
                 <button class="sidra-btn sidra-btn-cancel" onclick="window._onUserReject('sign')">
-                    Tolak
+                    ${t("cm_reject", "Tolak")}
                 </button>
                 <button class="sidra-btn sidra-btn-approve" onclick="window._onUserApproveSign('${method}')">
-                    Tanda Tangani
+                    ${t("cm_sign_btn", "Tanda Tangani")}
                 </button>
             </div>
         `);
@@ -439,44 +447,44 @@
                         <div class="sidra-modal-site-url">${site.url}</div>
                     </div>
                 </div>
-                <div class="sidra-modal-title">Konfirmasi Transaksi</div>
+                <div class="sidra-modal-title">${t("cm_tx_title", "Konfirmasi Transaksi")}</div>
             </div>
 
             <div class="sidra-modal-body">
                 <div class="sidra-tx-detail">
                     <div class="sidra-tx-row">
-                        <span class="sidra-tx-key">Dari</span>
+                        <span class="sidra-tx-key">${t("cm_tx_from", "Dari")}</span>
                         <span class="sidra-tx-val">${_shortAddr(window.SESSION.address)}</span>
                     </div>
                     <div class="sidra-tx-row">
-                        <span class="sidra-tx-key">Ke</span>
+                        <span class="sidra-tx-key">${t("cm_tx_to", "Ke")}</span>
                         <span class="sidra-tx-val">${_shortAddr(to)}</span>
                     </div>
                     <div class="sidra-tx-row">
-                        <span class="sidra-tx-key">Nilai</span>
+                        <span class="sidra-tx-key">${t("cm_tx_value", "Nilai")}</span>
                         <span class="sidra-tx-val" style="color:#00ff88">${value}</span>
                     </div>
                     <div class="sidra-tx-row">
-                        <span class="sidra-tx-key">Gas Limit</span>
+                        <span class="sidra-tx-key">${t("cm_tx_gas", "Gas Limit")}</span>
                         <span class="sidra-tx-val">${gasLimit}</span>
                     </div>
                     <div class="sidra-tx-row">
-                        <span class="sidra-tx-key">Network</span>
+                        <span class="sidra-tx-key">${t("cm_tx_network", "Network")}</span>
                         <span class="sidra-tx-val">SidraChain</span>
                     </div>
                 </div>
 
                 <div class="sidra-warning-box">
-                    ⚠️ Transaksi ini tidak bisa dibatalkan setelah dikirim.
+                    ⚠️ ${t("cm_tx_warning", "Transaksi ini tidak bisa dibatalkan setelah dikirim.")}
                 </div>
             </div>
 
             <div class="sidra-modal-actions">
                 <button class="sidra-btn sidra-btn-cancel" onclick="window._onUserReject('tx')">
-                    Tolak
+                    ${t("cm_reject", "Tolak")}
                 </button>
                 <button class="sidra-btn sidra-btn-approve" onclick="window._onUserApproveTx()">
-                    Kirim
+                    ${t("cm_tx_send", "Kirim")}
                 </button>
             </div>
         `);
@@ -492,7 +500,7 @@
 
         window.permissionManager?.grantPermission(origin, null, [address]);
         window._providerOnConnect?.(address);
-        showToast?.("Wallet terhubung ✓", "success");
+        showToast?.(t("cm_toast_connected", "Wallet terhubung ✓"), "success");
     };
 
     window._onUserApproveSign = async function (method, paramsJson) {
@@ -540,7 +548,7 @@
                 window._signReject  = null;
             }
 
-            showToast?.("Pesan berhasil ditandatangani ✓", "success");
+            showToast?.(t("cm_toast_signed", "Pesan berhasil ditandatangani ✓"), "success");
 
         } catch (e) {
             console.error("Sign error:", e);
@@ -549,7 +557,7 @@
                 window._signResolve = null;
                 window._signReject  = null;
             }
-            showToast?.("Sign gagal: " + e.message, "error");
+            showToast?.(t("cm_toast_sign_fail", "Sign gagal: {err}").replace("{err}", e.message), "error");
         }
     };
 
@@ -591,7 +599,7 @@
                 window._txReject  = null;
             }
 
-            showToast?.("Transaksi berhasil: " + tx.hash.slice(0, 10) + "...", "success");
+            showToast?.(t("cm_toast_tx_ok", "Transaksi berhasil: {hash}").replace("{hash}", tx.hash.slice(0, 10) + "..."), "success");
 
             // Simpan ke history
             if (typeof window.saveTxToHistory === "function") {
@@ -606,7 +614,7 @@
                 window._txResolve = null;
                 window._txReject  = null;
             }
-            showToast?.("TX gagal: " + (e.reason || e.message), "error");
+            showToast?.(t("cm_toast_tx_fail", "TX gagal: {err}").replace("{err}", e.reason || e.message), "error");
         }
     };
 
@@ -676,7 +684,7 @@
 
         if (!sites.length) {
             el.innerHTML = `<p style="color:#555;font-size:13px;text-align:center;padding:20px 0">
-                Belum ada situs yang terhubung
+                ${t("cm_sites_empty", "Belum ada situs yang terhubung")}
             </p>`;
             return;
         }
@@ -688,13 +696,13 @@
                     <div style="font-size:13px;color:#fff;font-weight:600">${site.name}</div>
                     <div style="font-size:11px;color:#555">${site.origin}</div>
                     <div style="font-size:11px;color:#444;margin-top:2px">
-                        ${new Date(site.grantedAt).toLocaleDateString("id-ID")}
+                        ${new Date(site.grantedAt).toLocaleDateString({ id: "id-ID", en: "en-US", ar: "ar", vi: "vi-VN" }[window.CURRENT_LANG] || "id-ID")}
                     </div>
                 </div>
                 <button onclick="window._revokeAndRefresh('${site.origin}', '${containerId}')"
                     style="background:#1e1e1e;border:1px solid #2a2a2a;color:#ff6b6b;
                            padding:6px 12px;border-radius:8px;font-size:12px;cursor:pointer">
-                    Cabut
+                    ${t("cm_revoke", "Cabut")}
                 </button>
             </div>
         `).join("");
@@ -704,7 +712,7 @@
         window.permissionManager?.revokePermission(origin);
         window._providerOnDisconnect?.();
         window.renderConnectedSites?.(containerId);
-        showToast?.("Izin dicabut", "info");
+        showToast?.(t("cm_toast_revoked", "Izin dicabut"), "info");
     };
 
 })();
