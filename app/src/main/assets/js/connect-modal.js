@@ -13,9 +13,9 @@
 (function () {
     "use strict";
 
-    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ─────────────────────────────────────────
     // CSS MODAL
-    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ─────────────────────────────────────────
     const MODAL_CSS = `
         #sidra-modal-overlay {
             position: fixed; inset: 0;
@@ -190,9 +190,9 @@
         .sidra-tx-val { font-size: 12px; color: #ccc; font-family: monospace; }
     `;
 
-    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ─────────────────────────────────────────
     // INJECT CSS
-    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ─────────────────────────────────────────
     function _injectCSS() {
         if (document.getElementById("sidra-modal-css")) return;
         const style = document.createElement("style");
@@ -201,9 +201,9 @@
         document.head.appendChild(style);
     }
 
-    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ─────────────────────────────────────────
     // HELPER: buat overlay
-    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ─────────────────────────────────────────
     function _createOverlay(innerHTML) {
         _removeOverlay();
         _injectCSS();
@@ -230,9 +230,9 @@
         document.getElementById("sidra-modal-overlay")?.remove();
     }
 
-    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ─────────────────────────────────────────
     // HELPER: site info
-    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ─────────────────────────────────────────
     function _getSiteDisplay(origin) {
         try {
             const url  = new URL(origin);
@@ -249,9 +249,9 @@
         return addr.slice(0, 8) + "..." + addr.slice(-6);
     }
 
-    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ─────────────────────────────────────────
     // HELPER: decode message
-    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ─────────────────────────────────────────
     function _decodeMessage(msg) {
         if (!msg) return "(pesan kosong)";
         try {
@@ -264,10 +264,10 @@
         return msg;
     }
 
-    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ─────────────────────────────────────────
     // 1. CONNECT MODAL
     // Dipanggil oleh eth_requestAccounts
-    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ─────────────────────────────────────────
     window.openConnectModal = function (origin) {
 
         // Kalau wallet belum unlock, minta PIN dulu
@@ -293,13 +293,13 @@
                     <div class="sidra-modal-site-icon">
                         ${site.icon
                             ? `<img src="${site.icon}" onerror="this.style.display='none'">`
-                            : "ðŸŒ"}
+                            : "🌐"}
                     </div>
                     <div>
                         <div class="sidra-modal-site-name">${site.name}</div>
                         <div class="sidra-modal-site-url">${site.url}</div>
                     </div>
-                    ${trusted ? '<span class="sidra-badge-trusted">âœ“ Sidra Official</span>' : ""}
+                    ${trusted ? '<span class="sidra-badge-trusted">✓ Sidra Official</span>' : ""}
                 </div>
                 <div class="sidra-modal-title">Hubungkan Wallet?</div>
             </div>
@@ -320,15 +320,15 @@
 
                 <div class="sidra-permission-list">
                     <div class="sidra-permission-item">
-                        <span class="sidra-permission-icon">âœ“</span>
+                        <span class="sidra-permission-icon">✓</span>
                         Melihat alamat wallet kamu
                     </div>
                     <div class="sidra-permission-item">
-                        <span class="sidra-permission-icon">âœ“</span>
+                        <span class="sidra-permission-icon">✓</span>
                         Melihat saldo token di SidraChain
                     </div>
                     <div class="sidra-permission-item">
-                        <span class="sidra-permission-icon" style="color:#ff6b6b">âœ—</span>
+                        <span class="sidra-permission-icon" style="color:#ff6b6b">✗</span>
                         Tidak bisa memindahkan aset tanpa konfirmasi
                     </div>
                 </div>
@@ -345,10 +345,10 @@
         `);
     };
 
-    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ─────────────────────────────────────────
     // 2. SIGN MODAL
     // Dipanggil oleh personal_sign, eth_sign
-    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ─────────────────────────────────────────
     window.openSignModal = function ({ method, params, origin }) {
 
         window._pendingSign = JSON.stringify(params);
@@ -375,7 +375,7 @@
             <div class="sidra-modal-header">
                 <div class="sidra-modal-site">
                     <div class="sidra-modal-site-icon">
-                        ${site.icon ? `<img src="${site.icon}" onerror="this.style.display='none'">` : "âœï¸"}
+                        ${site.icon ? `<img src="${site.icon}" onerror="this.style.display='none'">` : "✍️"}
                     </div>
                     <div>
                         <div class="sidra-modal-site-name">${site.name}</div>
@@ -397,7 +397,7 @@
                 </div>
 
                 <div class="sidra-warning-box">
-                    âš ï¸ Tanda tangan tidak memindahkan aset. Hanya lanjutkan jika kamu percaya situs ini.
+                    ⚠️ Tanda tangan tidak memindahkan aset. Hanya lanjutkan jika kamu percaya situs ini.
                 </div>
             </div>
 
@@ -414,10 +414,10 @@
         if (_signOv) _signOv.dataset.rejectType = "sign";
     };
 
-    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ─────────────────────────────────────────
     // 3. TX MODAL
     // Dipanggil oleh eth_sendTransaction
-    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ─────────────────────────────────────────
     window.openTxModal = function ({ txParams, origin }) {
 
         const site = _getSiteDisplay(origin);
@@ -432,7 +432,7 @@
             <div class="sidra-modal-header">
                 <div class="sidra-modal-site">
                     <div class="sidra-modal-site-icon">
-                        ${site.icon ? `<img src="${site.icon}" onerror="this.style.display='none'">` : "ðŸ“¤"}
+                        ${site.icon ? `<img src="${site.icon}" onerror="this.style.display='none'">` : "📤"}
                     </div>
                     <div>
                         <div class="sidra-modal-site-name">${site.name}</div>
@@ -467,7 +467,7 @@
                 </div>
 
                 <div class="sidra-warning-box">
-                    âš ï¸ Transaksi ini tidak bisa dibatalkan setelah dikirim.
+                    ⚠️ Transaksi ini tidak bisa dibatalkan setelah dikirim.
                 </div>
             </div>
 
@@ -483,16 +483,16 @@
         if (_txOverlay) _txOverlay.dataset.rejectType = "tx";
     };
 
-    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ─────────────────────────────────────────
     // APPROVE HANDLERS
-    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ─────────────────────────────────────────
 
     window._onUserApproveConnect = function (origin, address) {
         _removeOverlay();
 
         window.permissionManager?.grantPermission(origin, null, [address]);
         window._providerOnConnect?.(address);
-        showToast?.("Wallet terhubung âœ“", "success");
+        showToast?.("Wallet terhubung ✓", "success");
     };
 
     window._onUserApproveSign = async function (method, paramsJson) {
@@ -513,7 +513,7 @@
                 signature = await signer.signMessage(msg);
 
             } else if (method === "eth_sign") {
-                // eth_sign: sign raw hash â€” BERBAHAYA, tapi dibutuhkan untuk compatibility
+                // eth_sign: sign raw hash — BERBAHAYA, tapi dibutuhkan untuk compatibility
                 const msgHash = params[1] || params[0];
                 const msgBytes = ethers.utils.arrayify(msgHash);
                 signature = await signer.signMessage(msgBytes);
@@ -540,7 +540,7 @@
                 window._signReject  = null;
             }
 
-            showToast?.("Pesan berhasil ditandatangani âœ“", "success");
+            showToast?.("Pesan berhasil ditandatangani ✓", "success");
 
         } catch (e) {
             console.error("Sign error:", e);
@@ -610,9 +610,9 @@
         }
     };
 
-    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ─────────────────────────────────────────
     // REJECT HANDLER
-    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ─────────────────────────────────────────
     window._onUserReject = function (type) {
         _removeOverlay();
 
@@ -640,9 +640,9 @@
         }
     };
 
-    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ─────────────────────────────────────────
     // HELPER: escape HTML untuk keamanan
-    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ─────────────────────────────────────────
     function _escapeHtml(str) {
         return String(str)
             .replace(/&/g, "&amp;")
@@ -652,10 +652,10 @@
             .replace(/'/g, "&#39;");
     }
 
-    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ─────────────────────────────────────────
     // PENDING CONNECT: lanjutkan setelah PIN unlock
     // Dipanggil dari wallet-session.js setelah unlock berhasil
-    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ─────────────────────────────────────────
     window._resumePendingConnect = function () {
         const origin = window._pendingConnectOrigin;
         if (origin) {
@@ -664,10 +664,10 @@
         }
     };
 
-    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ─────────────────────────────────────────
     // RENDER CONNECTED SITES LIST
     // Untuk halaman Settings
-    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ─────────────────────────────────────────
     window.renderConnectedSites = function (containerId) {
         const el = document.getElementById(containerId);
         if (!el) return;
