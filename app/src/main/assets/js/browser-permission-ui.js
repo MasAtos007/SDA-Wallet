@@ -8,9 +8,9 @@
 (function () {
     "use strict";
 
-    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ─────────────────────────────────────────
     // CSS TAMBAHAN
-    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ─────────────────────────────────────────
     const PERM_CSS = `
         #sbr-perm-overlay {
             position: fixed; inset: 0;
@@ -151,14 +151,14 @@
         document.head.appendChild(s);
     }
 
-    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ─────────────────────────────────────────
     // STATE
-    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ─────────────────────────────────────────
     let _selectedAccountIndex = 0;
 
-    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ─────────────────────────────────────────
     // HELPER
-    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ─────────────────────────────────────────
     function _getSiteInfo(origin) {
         try {
             const url  = new URL(origin);
@@ -190,15 +190,15 @@
         document.getElementById("sbr-perm-overlay")?.remove();
     }
 
-    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ─────────────────────────────────────────
     // RENDER WALLET LIST
-    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ─────────────────────────────────────────
     function _renderWalletList(accounts) {
         return accounts.map((acc, i) => `
             <div class="sbr-wallet-item ${i === _selectedAccountIndex ? "selected" : ""}"
                 onclick="window._sbrPermSelectAccount(${i})">
                 <div class="sbr-wallet-check ${i === _selectedAccountIndex ? "checked" : ""}">
-                    ${i === _selectedAccountIndex ? "âœ“" : ""}
+                    ${i === _selectedAccountIndex ? "✓" : ""}
                 </div>
                 <div style="flex:1">
                     <div class="sbr-wallet-name">${acc.name || "Account " + (i+1)}</div>
@@ -209,9 +209,9 @@
         `).join("");
     }
 
-    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ─────────────────────────────────────────
     // MAIN: SHOW BROWSER PERMISSION POPUP
-    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ─────────────────────────────────────────
     window.showBrowserPermission = function (origin, onApprove, onReject) {
         _injectPermCSS();
         _removeSheet();
@@ -246,7 +246,7 @@
                         <div class="sbr-perm-icon">
                             ${site.favicon
                                 ? `<img src="${site.favicon}" onerror="this.style.display='none'">`
-                                : "ðŸŒ"}
+                                : "🌐"}
                         </div>
                         <div>
                             <div class="sbr-perm-site-name">${site.name}</div>
@@ -261,7 +261,7 @@
                 <div class="sbr-perm-body">
                     ${site.trusted ? `
                         <div class="sbr-perm-trusted-badge">
-                            âœ“ Sidra Official â€” Situs tepercaya
+                            ✓ Sidra Official — Situs tepercaya
                         </div>
                     ` : ""}
 
@@ -273,19 +273,19 @@
                     <div class="sbr-perm-section-title">Izin yang Diberikan</div>
                     <div class="sbr-perm-grant-list">
                         <div class="sbr-perm-grant-item">
-                            <span class="sbr-perm-grant-icon" style="color:#00ff88">âœ“</span>
+                            <span class="sbr-perm-grant-icon" style="color:#00ff88">✓</span>
                             Melihat alamat & saldo wallet
                         </div>
                         <div class="sbr-perm-grant-item">
-                            <span class="sbr-perm-grant-icon" style="color:#00ff88">âœ“</span>
+                            <span class="sbr-perm-grant-icon" style="color:#00ff88">✓</span>
                             Mengirim request transaksi (perlu konfirmasi)
                         </div>
                         <div class="sbr-perm-grant-item">
-                            <span class="sbr-perm-grant-icon" style="color:#ff6b6b">âœ—</span>
+                            <span class="sbr-perm-grant-icon" style="color:#ff6b6b">✗</span>
                             Tidak dapat memindahkan aset tanpa konfirmasi
                         </div>
                         <div class="sbr-perm-grant-item">
-                            <span class="sbr-perm-grant-icon" style="color:#ff6b6b">âœ—</span>
+                            <span class="sbr-perm-grant-icon" style="color:#ff6b6b">✗</span>
                             Tidak dapat mengakses private key
                         </div>
                     </div>
@@ -319,9 +319,9 @@
         _loadAccountBalances(accounts);
     };
 
-    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ─────────────────────────────────────────
     // SELECT ACCOUNT
-    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ─────────────────────────────────────────
     window._sbrPermSelectAccount = function (index) {
         _selectedAccountIndex = index;
         const accounts = _getAccounts();
@@ -329,9 +329,9 @@
         if (list) list.innerHTML = _renderWalletList(accounts);
     };
 
-    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ─────────────────────────────────────────
     // APPROVE / REJECT
-    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ─────────────────────────────────────────
     window._onPermApprove = async function (origin) {
         _removeSheet();
 
@@ -393,9 +393,9 @@
         }
     };
 
-    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ─────────────────────────────────────────
     // LOAD BALANCE PER AKUN (async, update UI)
-    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ─────────────────────────────────────────
     async function _loadAccountBalances(accounts) {
         const prov = window.provider;
         if (!prov) return;
@@ -411,15 +411,15 @@
                 if (el) el.textContent = fmt + " SDA";
             } catch {
                 const el = document.getElementById("sbrBal_" + i);
-                if (el) el.textContent = "â€”";
+                if (el) el.textContent = "—";
             }
         }
     }
 
-    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ─────────────────────────────────────────
     // OVERRIDE openConnectModal saat browser aktif
     // Gunakan showBrowserPermission sebagai gantinya
-    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ─────────────────────────────────────────
     const _originalOpenConnectModal = window.openConnectModal;
 
     window.openConnectModal = function (origin) {
