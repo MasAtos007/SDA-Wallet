@@ -40,10 +40,10 @@ public class AndroidBridge {
     public void setBrowserWebView(WebView v)    { this.browserWebView = v; }
     public void setMainActivity(com.sidrachain.wallet.MainActivity a) { this.mainActivity = a; }
 
-    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ─────────────────────────────────────────
     // DIPANGGIL DARI dApp WebView
     // Override di BrowserActivity
-    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ─────────────────────────────────────────
     @JavascriptInterface
     public void handleRequest(String requestId, String method,
                                String paramsJson, String origin) {
@@ -51,7 +51,7 @@ public class AndroidBridge {
         final String safeMethod = sanitizeId(method);
         final String safeOrigin = sanitizeId(origin);
 
-        // FIX: escape untuk JSON.parse â€” JANGAN sanitize JSON mentah!
+        // FIX: escape untuk JSON.parse — JANGAN sanitize JSON mentah!
         final String escapedParams = (paramsJson != null ? paramsJson : "[]")
             .replace("\\", "\\\\")
             .replace("'", "\\'");
@@ -79,16 +79,16 @@ public class AndroidBridge {
         });
     }
 
-    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ─────────────────────────────────────────
     // DIPANGGIL DARI Wallet WebView (android-provider.js)
     // Kirim response balik ke dApp via broadcast
-    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ─────────────────────────────────────────
     @JavascriptInterface
     public void sendResponse(String requestId,
                               String resultJson,
                               String errorJson) {
         final String safeId = sanitizeId(requestId);
-        // FIX: result & error adalah JSON â€” jangan disanitize!
+        // FIX: result & error adalah JSON — jangan disanitize!
         final String result = resultJson != null ? resultJson : "null";
         final String error  = errorJson  != null ? errorJson  : "null";
 
@@ -119,9 +119,9 @@ public class AndroidBridge {
         });
     }
 
-    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ─────────────────────────────────────────
     // BROADCAST EVENT ke dApp
-    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ─────────────────────────────────────────
     @JavascriptInterface
     public void broadcastEvent(String eventName, String dataJson) {
         final String safeEvent = sanitizeId(eventName);
@@ -145,9 +145,9 @@ public class AndroidBridge {
         });
     }
 
-    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ─────────────────────────────────────────
     // BUKA BROWSER dari wallet
-    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ─────────────────────────────────────────
     @JavascriptInterface
     public void openBrowser(String url) {
         // url kosong/null = buka browser di halaman awal (pilihan link resmi Sidra)
@@ -187,9 +187,9 @@ public class AndroidBridge {
         openBrowser(url);
     }
 
-    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ─────────────────────────────────────────
     // VERSI APP & PRIVACY POLICY
-    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ─────────────────────────────────────────
     @JavascriptInterface
     public String getAppVersion() {
         try {
@@ -224,9 +224,9 @@ public class AndroidBridge {
         });
     }
 
-    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ─────────────────────────────────────────
     // BACA FILE ASSET
-    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ─────────────────────────────────────────
     @JavascriptInterface
     public String readAsset(String path) {
         try {
@@ -278,9 +278,9 @@ public String getClipboardText() {
     return "";
 }
 
-    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ─────────────────────────────────────────
     // HELPER
-    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ─────────────────────────────────────────
     private void sendErrorToApp(String id, int code, String message) {
         try {
             JSONObject err = new JSONObject();
@@ -295,7 +295,7 @@ public String getClipboardText() {
         } catch (JSONException e) { /* ignore */ }
     }
 
-    // Hanya untuk ID / method / origin â€” BUKAN untuk JSON
+    // Hanya untuk ID / method / origin — BUKAN untuk JSON
     protected String sanitizeId(String input) {
         if (input == null) return "";
         String s = input.replaceAll("['\"\\\\\\n\\r\\t]", "");
