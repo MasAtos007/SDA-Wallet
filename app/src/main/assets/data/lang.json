@@ -540,7 +540,13 @@
     "dc_revoke": "Revoke",
     "dc_connected": "Connected",
     "dc_disconnected": "Not connected",
-    "ap_provider_timeout": "Provider unavailable (timeout)"
+    "ap_provider_timeout": "Provider unavailable (timeout)",
+    "update_title": "Update Available",
+    "update_desc": "SDA Wallet v{version} is now available. Update to get the latest features and fixes.",
+    "update_btn_now": "Update Now",
+    "update_btn_later": "Later",
+    "browser_warning_title": "Security Warning",
+    "browser_warning": "Do not connect your wallet to dApps outside the official ecosystem. Security risks and loss of assets are entirely borne by the user."
   },
   "id": {
     "app_name": "Sidra Chain",
@@ -1083,7 +1089,13 @@
     "dc_revoke": "Cabut",
     "dc_connected": "Terhubung",
     "dc_disconnected": "Tidak terhubung",
-    "ap_provider_timeout": "Provider tidak tersedia (timeout)"
+    "ap_provider_timeout": "Provider tidak tersedia (timeout)",
+    "update_title": "Pembaruan Tersedia",
+    "update_desc": "SDA Wallet v{version} sudah tersedia. Perbarui untuk mendapatkan fitur dan perbaikan terbaru.",
+    "update_btn_now": "Perbarui Sekarang",
+    "update_btn_later": "Nanti",
+    "browser_warning_title": "Peringatan Keamanan",
+    "browser_warning": "Jangan hubungkan wallet Anda ke dApp di luar ekosistem resmi. Risiko keamanan dan kehilangan aset sepenuhnya ditanggung sendiri oleh pengguna."
   },
   "ar": {
     "app_name": "سيدرا تشين",
@@ -1626,7 +1638,13 @@
     "dc_revoke": "إلغاء",
     "dc_connected": "متصل",
     "dc_disconnected": "غير متصل",
-    "ap_provider_timeout": "المزوّد غير متاح (انتهت المهلة)"
+    "ap_provider_timeout": "المزوّد غير متاح (انتهت المهلة)",
+    "update_title": "تحديث متاح",
+    "update_desc": "الإصدار {version} من SDA Wallet متاح الآن. قم بالتحديث للحصول على أحدث الميزات والإصلاحات.",
+    "update_btn_now": "حدّث الآن",
+    "update_btn_later": "لاحقًا",
+    "browser_warning_title": "تحذير أمني",
+    "browser_warning": "لا تربط محفظتك بتطبيقات dApp خارج المنظومة الرسمية. المخاطر الأمنية وفقدان الأصول يتحملها المستخدم بالكامل."
   },
   "vi": {
     "app_name": "Sidra Chain",
@@ -2169,6 +2187,12 @@
     "dc_revoke": "Thu hồi",
     "dc_connected": "Đã kết nối",
     "dc_disconnected": "Chưa kết nối",
-    "ap_provider_timeout": "Provider không khả dụng (hết thời gian)"
+    "ap_provider_timeout": "Provider không khả dụng (hết thời gian)",
+    "update_title": "Có bản cập nhật",
+    "update_desc": "SDA Wallet v{version} đã có. Hãy cập nhật để nhận các tính năng và bản sửa lỗi mới nhất.",
+    "update_btn_now": "Cập nhật ngay",
+    "update_btn_later": "Để sau",
+    "browser_warning_title": "Cảnh báo bảo mật",
+    "browser_warning": "Không kết nối ví của bạn với dApp ngoài hệ sinh thái chính thức. Rủi ro bảo mật và mất tài sản hoàn toàn do người dùng tự chịu."
   }
 }
