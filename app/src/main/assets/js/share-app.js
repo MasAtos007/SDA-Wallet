@@ -23,6 +23,7 @@ function openShareAppModal() {
     if (input) input.value = SHARE_APP_URL;
 
     modal.style.display = "flex";
+    window.refreshUpdateInfo?.();   // tampilkan versi terpasang
 }
 
 function closeShareAppModal() {
