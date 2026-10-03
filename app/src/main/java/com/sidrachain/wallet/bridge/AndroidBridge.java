@@ -201,11 +201,27 @@ public class AndroidBridge {
         }
     }
 
-    // Buka link di browser eksternal (untuk download APK update).
-    // Whitelist: hanya repo SDA-Wallet.
+    // Whitelist link eksternal: repo SDA-Wallet (download/update APK)
+    // + wa.me & t.me (tombol bagikan WhatsApp/Telegram).
+    private boolean isAllowedExternal(String url) {
+        if (url == null) return false;
+        try {
+            Uri u = Uri.parse(url);
+            if (!"https".equals(u.getScheme())) return false;
+            String host = u.getHost();
+            String path = u.getPath() == null ? "" : u.getPath();
+            if (host == null) return false;
+            if (host.equals("github.com")) return path.startsWith("/MasAtos007/SDA-Wallet/");
+            return host.equals("wa.me") || host.equals("t.me");
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    // Buka link di browser eksternal
     @JavascriptInterface
     public void openExternal(String url) {
-        if (url == null || !url.startsWith("https://github.com/MasAtos007/SDA-Wallet/")) return;
+        if (!isAllowedExternal(url)) return;
         final String safeUrl = url;
         mainHandler.post(() -> {
             Intent intent = new Intent(Intent.ACTION_VIEW, Uri.parse(safeUrl));
