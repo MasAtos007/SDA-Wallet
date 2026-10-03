@@ -1,5 +1,5 @@
 # SidraWallet Android APK Builder
-
+. 
 Wallet non-custodial SidraChain dalam WebView (`MainActivity`) dengan browser dApp native
 (`BrowserActivity`) yang menyuntikkan provider `window.ethereum` ke halaman dApp.
 
