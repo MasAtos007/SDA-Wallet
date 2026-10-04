@@ -1368,7 +1368,7 @@
             </div>
             <div class="confirm-info-row">
                 <span data-lang="swap_gas">Estimasi Gas</span>
-                <span>~1,200,000</span>
+                <span id="confirmSwapGas">—</span>
             </div>
             <div class="confirm-info-row" id="confirmSwapRateRow">
                 <span data-lang="swap_rate">Rate</span>
@@ -1445,7 +1445,7 @@
 
             <div class="confirm-info-row">
                 <span data-lang="swap_gas">Estimasi Gas</span>
-                <span>~100,000</span>
+                <span id="confirmSendGas">—</span>
             </div>
 
             <div class="confirm-info-row" id="confirmSendNetworkRow">
@@ -1906,6 +1906,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/5.7.2/ethers.umd.min.js"></script>
 <!-- FOUNDATION: config & storage dulu sebelum apapun -->
 <script src="js/config.js"></script>
+<script src="js/gas-format.js"></script>
 <script src="js/storage.js"></script>
 <!-- WALLET CORE BARU: gen  vault  session (urutan dependency) -->
 <script src="js/bottom-nav.js"></script>
