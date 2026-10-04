@@ -528,9 +528,13 @@ function showLPConfirmModal({ t0, t1, a0, a1, feeLabel, rangeLabel }) {
                     <span style="color:#888;">Fee Tier</span>
                     <b style="color:#fff;">${feeLabel}</b>
                 </div>
-                <div style="display:flex;justify-content:space-between;padding:10px 0;margin-bottom:16px;">
+                <div style="display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid #1e2330;">
                     <span style="color:#888;">Range</span>
                     <b style="color:#fff;font-size:12px;">${rangeLabel}</b>
+                </div>
+                <div style="display:flex;justify-content:space-between;padding:10px 0;margin-bottom:16px;">
+                    <span style="color:#888;" data-lang="gas_estimated_label">${(window.LANG?.[window.CURRENT_LANG]?.gas_estimated_label) || "Estimated Gas Fee"}</span>
+                    <b id="lpConfirmGas" style="color:#fff;font-size:12px;">…</b>
                 </div>
 
                 <button id="confirmLPBtn" style="width:100%;padding:14px;border:none;border-radius:14px;
@@ -543,6 +547,8 @@ function showLPConfirmModal({ t0, t1, a0, a1, feeLabel, rangeLabel }) {
         </div>`;
 
     modal.style.cssText = "position:fixed;inset:0;z-index:20000;display:flex;";
+
+    GAS_UTIL.renderInto(modal.querySelector("#lpConfirmGas"), GAS_UTIL.TYPICAL.lp_add);
 
     modal.querySelector("#cancelLPBtn").onclick = () => {
         modal.style.display = "none";
