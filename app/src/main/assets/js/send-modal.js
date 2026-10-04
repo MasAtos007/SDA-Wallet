@@ -445,6 +445,12 @@ function showSendConfirmModal({ to, amount, tokenData, fromAddress, fromName }) 
     set("confirmSendFrom",   (fromName ? fromName + " \u00B7 " : "") + (fromAddress ? fromAddress.slice(0,10) + "..." + fromAddress.slice(-8) : "-"));
     set("confirmSendTo",     to ? to.slice(0,10) + "..." + to.slice(-8) : "-");
 
+    // Estimasi biaya gas dalam SDA (bukan unit gas mentah)
+    GAS_UTIL.renderInto(
+        getEl("confirmSendGas"),
+        () => GAS_UTIL.estimateSendUnits({ to, amount, tokenData, fromAddress })
+    );
+
     window._pendingSendData = { to, amount, tokenData, fromAddress };
 
     const modal = getEl("sendConfirmModal");
