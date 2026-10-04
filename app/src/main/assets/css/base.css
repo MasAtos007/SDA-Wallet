@@ -10,12 +10,13 @@ body{
     color:#fff;
     display:flex;
     justify-content:center;
-    padding:20px;
+    padding:20px 10px; /* sisi kiri-kanan 20px -> 10px supaya konten lebih lebar */
 }
 
 /* APP CONTAINER */
 .app{
-    width:360px;
+    width:100%;
+    max-width:480px; /* sebelumnya 360px fixed; sekarang ikut lebar layar, maks 480px */
 }
 
 
@@ -37,7 +38,8 @@ i{
 }
 
 .app{
-    width:360px;
+    width:100%;
+    max-width:480px;
     font-size:13px; /* turunkan baseline, semua elemen turunan ikut mengecil proporsional */
 }
 .label{
