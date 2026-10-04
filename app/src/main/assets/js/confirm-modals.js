@@ -75,6 +75,15 @@ set("confirmSwapOutSymbol", outToken?.symbol || "—");
     // Slippage
     set("confirmSwapSlippage", (window.CONFIG?.SLIPPAGE_DEFAULT || 2) + "%");
 
+    // Estimasi biaya gas dalam SDA (ganti "~1,200,000")
+    // estimateGas asli dari preview, dikoreksi rasio hasil kalibrasi resi nyata;
+    // fallback ke nilai tipikal bila estimateGas gagal
+    const _gs = window.swapConfirmState;
+    GAS_UTIL.renderInto(
+        document.getElementById("confirmSwapGas"),
+        GAS_UTIL.calibrate(_gs?.gasKey || "swap", _gs?.gasUnits, GAS_UTIL.TYPICAL.swap)
+    );
+
     // Wire confirm button — clone agar tidak double-bind
     const oldBtn = document.getElementById("btnConfirmSwap");
     if (oldBtn) {
