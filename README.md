@@ -1,5 +1,5 @@
 # SidraWallet Android APK Builder
-. 
+
 Wallet non-custodial SidraChain dalam WebView (`MainActivity`) dengan browser dApp native
 (`BrowserActivity`) yang menyuntikkan provider `window.ethereum` ke halaman dApp.
 
@@ -26,6 +26,15 @@ app/src/main/assets/
 > `browser-bridge.js`, `browser-permission-ui.js`, `dapp-hub.js`, `sidra-browser-v2.js`, `sidra-browser.js`.
 
 ### Langkah 2 — Pastikan urutan script di index.html
+
+Library `ethers` dimuat dari CDN (`cdnjs.cloudflare.com/.../ethers.umd.min.js`) paling awal, lalu `config.js` dan `gas-format.js` (urutan ini jangan dibalik):
+
+```html
+<script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/5.7.2/ethers.umd.min.js"></script>
+<script src="js/config.js"></script>
+<script src="js/gas-format.js"></script>
+<script src="js/storage.js"></script>
+```
 
 Lapisan dApp dimuat berurutan, dan `update-check.js` sesudah `lang.js`:
 
@@ -158,6 +167,7 @@ sidra-wallet-apk/
 │       │   │   └── fa-brands-400.woff2
 │       │   └── js/                          ← urutan sesuai index.html
 │       │       ├── config.js
+│       │       ├── gas-format.js                ← format gas fee (dimuat tepat setelah config.js)
 │       │       ├── storage.js
 │       │       ├── bottom-nav.js
 │       │       ├── wallet-gen.js
