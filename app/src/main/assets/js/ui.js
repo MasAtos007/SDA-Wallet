@@ -118,7 +118,10 @@ function renderAssets() {
                     <img class="asset-icon" src="img/sda.png"
                          onerror="this.src='img/default.png'">
                     <div>
-                        <div class="asset-name">Sidra Digital Asset ${tokenVerifyBadgeHTML("native")}</div>
+                        <div class="asset-name-row">
+                            <div class="asset-name">Sidra Digital Asset</div>
+                            <span class="token-badge-wrap">${tokenVerifyBadgeHTML("native")}</span>
+                        </div>
                         <div class="asset-subtitle">${t("native_token") || "Native Token"}</div>
                     </div>
                 </div>
@@ -187,8 +190,9 @@ function renderAssets() {
                     <div class="asset-card-info">
                         ${tokenLogoHTML(token, { cls: "asset-icon" })}
                         <div>
-                            <div class="asset-name">
-                                ${token.name || token.symbol} ${tokenVerifyBadgeHTML(token.address)}
+                            <div class="asset-name-row">
+                                <div class="asset-name">${token.name || token.symbol}</div>
+                                <span class="token-badge-wrap">${tokenVerifyBadgeHTML(token.address)}</span>
                             </div>
                             <div class="asset-subtitle">
                                 ${t("erc20_token") || "ERC-20 Token"}
@@ -486,7 +490,10 @@ function renderTokenTab() {
                 <div style="display:flex;align-items:center;gap:10px;min-width:0;flex:1;">
                     ${tokenLogoHTML(token, { size: 28, style: "flex-shrink:0;" })}
                     <div style="min-width:0;">
-                        <b>${token.name || token.symbol}</b>${tokenVerifyBadgeHTML(token.address)}<br>
+                        <div class="token-name-row">
+                            <b class="token-name-text">${token.name || token.symbol}</b>
+                            <span class="token-badge-wrap">${tokenVerifyBadgeHTML(token.address)}</span>
+                        </div>
                         <small style="color:#888;">${token.symbol}</small><br>
                         <small onclick="event.stopPropagation();copyTokenAddress('${token.address}', ${isWSDA})"
                                style="color:#5b9bff;cursor:pointer;font-family:monospace;font-size:10.5px;">
