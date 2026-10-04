@@ -59,7 +59,10 @@ window.CONFIG = Object.assign(window.CONFIG, {
     PRICE_IMPACT_LIMIT: 5,
 
     // NATIVE TOKEN SYMBOL
-    NATIVE_SYMBOL: "SDA"
+    NATIVE_SYMBOL: "SDA",
+
+    // GAS DISPLAY (fallback bila RPC gagal). Cek nilai asli: await provider.getGasPrice()
+    DEFAULT_GAS_PRICE_GWEI: 1.5
 });
 
 // ==========================
