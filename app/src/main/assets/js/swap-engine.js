@@ -57,6 +57,11 @@ window.SWAP_ENGINE = (function () {
         return !token || token === "native";
     }
 
+    // Terjemahan dari data/lang.json sesuai bahasa aktif (fallback English)
+    function _tr(key, fallback) {
+        return window.LANG?.[window.CURRENT_LANG]?.[key] || fallback;
+    }
+
     function toWSDA(token) {
         if (!token || token === "native") return WSDA_ADDR;
         return token;
@@ -153,14 +158,68 @@ window.SWAP_ENGINE = (function () {
     }
 
     // ==========================
+    // SPINNER TOMBOL PREVIEW
+    // Tampil sejak tombol ditekan sampai modal konfirmasi muncul
+    // (atau preview gagal). Hanya visual, tidak mengubah logika swap.
+    // ==========================
+    let _reviewBusy = false;
+
+    function _ensureReviewSpinnerStyle() {
+        if (document.getElementById("swapBtnSpinStyle")) return;
+        const s = document.createElement("style");
+        s.id = "swapBtnSpinStyle";
+        s.textContent =
+            "@keyframes swapBtnSpin{to{transform:rotate(360deg)}}" +
+            "#btnReviewSwap.is-loading{opacity:1!important;filter:none!important;cursor:wait;pointer-events:none;}" +
+            "#btnReviewSwap .btn-spin{display:inline-block;width:16px;height:16px;margin-inline-end:10px;" +
+            "border:2px solid rgba(255,255,255,.35);border-top-color:#fff;border-radius:50%;" +
+            "animation:swapBtnSpin .7s linear infinite;vertical-align:-3px;}";
+        document.head.appendChild(s);
+    }
+
+    function setReviewBtnLoading(state) {
+        const btn = document.getElementById("btnReviewSwap");
+        if (!btn) return;
+
+        if (state) {
+            if (btn.classList.contains("is-loading")) return;
+            _ensureReviewSpinnerStyle();
+            btn._origHTML = btn.innerHTML;
+            const label = window.LANG?.[window.CURRENT_LANG]?.swap_preview_loading || "Preparing...";
+            btn.classList.add("is-loading");
+            btn.disabled = true;
+            btn.innerHTML = '<span class="btn-spin"></span><span>' + label + '</span>';
+        } else {
+            if (!btn.classList.contains("is-loading")) return;
+            btn.classList.remove("is-loading");
+            btn.disabled = false;
+            if (btn._origHTML != null) btn.innerHTML = btn._origHTML;
+            btn._origHTML = null;
+        }
+    }
+
+    // ==========================
     // OPEN SWAP CONFIRM
+    // Wrapper: spinner on -> proses preview -> spinner off (selalu, termasuk saat error)
     // ==========================
     async function openSwapConfirm() {
+        if (_reviewBusy) return;
+        _reviewBusy = true;
+        setReviewBtnLoading(true);
+        try {
+            await _openSwapConfirmCore();
+        } finally {
+            _reviewBusy = false;
+            setReviewBtnLoading(false);
+        }
+    }
+
+    async function _openSwapConfirmCore() {
         try {
             // Cek wallet sebelum preview
             const wallet = getWallet();
             if (!wallet) {
-                showToast?.("Unlock wallet dulu", "error");
+                showToast?.(_tr("send_err_unlock", "Please unlock your wallet first"), "error");
                 showPINUnlockScreen?.();
                 return;
             }
@@ -170,12 +229,12 @@ window.SWAP_ENGINE = (function () {
             const amountUI = document.getElementById("payAmount")?.value;
 
             if (!tokenOut) {
-                showToast?.("Pilih token tujuan dulu", "error");
+                showToast?.(_tr("swap_select_dest", "Select destination token"), "error");
                 return;
             }
 
             if (!amountUI || Number(amountUI) <= 0) {
-                showToast?.("Masukkan jumlah terlebih dahulu", "error");
+                showToast?.(_tr("swap_err_enter_amount", "Enter an amount first"), "error");
                 window.shakePayInput?.();
                 return;
             }
@@ -187,7 +246,7 @@ window.SWAP_ENGINE = (function () {
             const balanceOk = await window.validatePayAmount?.();
             if (balanceOk === false) {
                 if (reviewBtn) reviewBtn.disabled = false;
-                showToast?.("Saldo tidak cukup", "error");
+                showToast?.(_tr("swap_insufficient", "Insufficient balance"), "error");
                 window.shakePayInput?.();
                 return;
             }
@@ -197,7 +256,7 @@ window.SWAP_ENGINE = (function () {
 
             if (!realistic || realistic <= 0) {
                 if (reviewBtn) reviewBtn.disabled = false;
-                showToast?.("Likuiditas tidak cukup untuk jumlah ini", "error");
+                showToast?.(_tr("swap_err_low_liq_amount", "Not enough liquidity for this amount"), "error");
                 window.shakePayInput?.();
                 return;
             }
@@ -272,12 +331,34 @@ window.SWAP_ENGINE = (function () {
                 console.warn("[openSwapConfirm] simulasi callStatic gagal (pool tetap valid), pakai estimasi curve:", simErr.message || simErr);
             }
 
+            // ==========================
+            // ESTIMASI GAS (unit) — HANYA untuk tampilan modal konfirmasi.
+            // Mensimulasikan multicall yang sama persis dengan swapExactInput().
+            // Gagal (mis. allowance belum cukup) -> null, UI pakai nilai tipikal.
+            // ==========================
+            let gasUnits = null;
+            try {
+                const gRouter = new ethers.Contract(ROUTER_ADDR, ROUTER_ABI, wallet);
+                const gParams = simulatedParams || { ...baseParams, amountOutMinimum: 0 };
+                const gCalls  = [encodeSwap(gRouter, gParams)];
+                if (isNative(tokenOut)) gCalls.push(encodeUnwrap(gRouter, wallet.address));
+                gasUnits = await gRouter.estimateGas.multicall(gCalls, {
+                    value: isNative(tokenIn) ? gParams.amountIn : 0
+                });
+            } catch (gasErr) {
+                console.warn("[openSwapConfirm] estimateGas gagal, UI pakai estimasi tipikal:", gasErr.message || gasErr);
+            }
+            // Jenis rute (native/token) menentukan kalibrasi, mis. "swap:T>N" = token -> SDA
+            const gasKey = "swap:" + (isNative(tokenIn) ? "N" : "T") + ">" + (isNative(tokenOut) ? "N" : "T");
+            window._swapGasEst = { tokenIn, tokenOut, amountUI, key: gasKey, units: gasUnits };
+            console.log("[GAS] swap estimateGas:", gasUnits ? gasUnits.toString() : "gagal (pakai tipikal)", "key:", gasKey);
+
             // GUARD TAMBAHAN — cek kedalaman likuiditas pool sesungguhnya
             const depthOk = await window.validateLiquidityDepth?.();
             if (reviewBtn) reviewBtn.disabled = false;
 
             if (depthOk === false) {
-                showToast?.("Jumlah melebihi kapasitas likuiditas pool", "error");
+                showToast?.(_tr("swap_err_exceeds_pool", "Amount exceeds pool liquidity capacity"), "error");
                 window.shakePayInput?.();
                 return;
             }
@@ -294,7 +375,9 @@ window.SWAP_ENGINE = (function () {
                 simParams: simulatedParams,          // hasil simulasi callStatic, siap dipakai ulang
                 baseParams: cachedBaseParams,         // FIX: pool/fee yang sudah ditemukan saat preview,
                                                        // biar swapExactInput() gak perlu getBestPool() ulang
-                simTs: cachedBaseParams ? Date.now() : null   // tetap dicatat waktunya walau simParams null
+                simTs: cachedBaseParams ? Date.now() : null,  // tetap dicatat waktunya walau simParams null
+                gasUnits,                                      // estimasi gas asli (tampilan saja)
+                gasKey
             };
 
             showSwapConfirmModal(inData, outData, amountUI, realistic);
@@ -575,7 +658,7 @@ window.SWAP_ENGINE = (function () {
             // Ambil signer AKTIF — bukan cache dari saat confirm
             const wallet = getWallet();
             if (!wallet) {
-                showToast?.("Wallet terkunci. Unlock dulu.", "error");
+                showToast?.(_tr("send_err_unlock", "Please unlock your wallet first"), "error");
                 showPINUnlockScreen?.();
                 throw new Error("Wallet locked");
             }
@@ -690,6 +773,15 @@ window.SWAP_ENGINE = (function () {
 
             const receipt = await tx.wait();
             if (receipt.status !== 1) throw new Error("Swap failed");
+
+            // Kalibrasi tampilan gas dari resi nyata (tidak mempengaruhi transaksi)
+            try {
+                const ge = window._swapGasEst;
+                if (ge && ge.tokenIn === tokenIn && ge.tokenOut === tokenOut && ge.amountUI === amountUI) {
+                    window.GAS_UTIL?.recordActual(ge.key, receipt.gasUsed, ge.units);
+                }
+                window._swapGasEst = null;
+            } catch (calErr) { /* abaikan */ }
 
             // SAVE HISTORY
             try {
